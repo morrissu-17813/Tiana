@@ -1,0 +1,4361 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>【天啊~~】2.5D 經典線上版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- 內建公開 WebSocket / WebRTC 信令連線庫 (支援把 HTML 放到 GitHub Pages / Netlify 直接全球網友連線) -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+        * {
+            user-select: none;
+            -webkit-user-select: none;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #07090e;
+            font-family: 'Noto Sans TC', sans-serif;
+            color: #e5d5b5;
+        }
+
+        .serif-font {
+            font-family: 'Noto Serif TC', serif;
+        }
+
+        .lineage-panel {
+            background: linear-gradient(180deg, rgba(24, 21, 18, 0.94) 0%, rgba(12, 10, 8, 0.97) 100%);
+            border: 2px solid #8a6d3b;
+            box-shadow:
+                inset 0 0 0 1px #2a2115,
+                0 8px 24px rgba(0, 0, 0, 0.85);
+            border-radius: 6px;
+        }
+
+        .lineage-header {
+            background: linear-gradient(90deg, #3b2d1d 0%, #5c4328 50%, #3b2d1d 100%);
+            border-bottom: 1px solid #9c7c44;
+            color: #f7d98c;
+            text-shadow: 0 1px 2px #000;
+        }
+
+        .lineage-btn {
+            background: linear-gradient(180deg, #4f3b22 0%, #2b1f11 100%);
+            border: 1px solid #a6854b;
+            color: #f3dc99;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.95);
+            transition: all 0.12s ease;
+        }
+
+        .lineage-btn:hover {
+            background: linear-gradient(180deg, #6b502e 0%, #3d2c18 100%);
+            border-color: #ffd875;
+            color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .lineage-btn:active {
+            transform: translateY(1px);
+        }
+
+        .equip-slot {
+            background: radial-gradient(circle, #211c16 0%, #100d0a 100%);
+            border: 1px solid #59462b;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.85);
+            transition: all 0.15s ease;
+        }
+
+        .equip-slot:hover {
+            border-color: #eab308;
+            box-shadow: 0 0 8px rgba(234, 179, 8, 0.4), inset 0 2px 5px rgba(0,0,0,0.85);
+        }
+
+        .equip-slot.equipped {
+            border-color: #d97706;
+            background: radial-gradient(circle, #382814 0%, #17110a 100%);
+        }
+
+        .gold-glow {
+            text-shadow: 0 0 10px rgba(255, 205, 70, 0.7), 0 2px 4px rgba(0, 0, 0, 0.95);
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: crosshair;
+        }
+
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #120f0b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #6b532e;
+            border-radius: 3px;
+        }
+
+        /* 經典天堂風格簡約暗黑石雕登入介面 */
+        .classic-login-bg {
+            background:
+                radial-gradient(circle at 50% 35%, rgba(68, 45, 20, 0.35) 0%, rgba(5, 6, 9, 0.96) 70%),
+                linear-gradient(180deg, #06070a 0%, #0d0b09 50%, #050507 100%);
+        }
+
+        .classic-stone-box {
+            background: linear-gradient(180deg, #1b1815 0%, #0e0c0a 100%);
+            border: 2px solid #785f37;
+            box-shadow:
+                inset 0 0 0 1px #3a2e1b,
+                inset 0 0 24px rgba(0, 0, 0, 0.95),
+                0 20px 50px rgba(0, 0, 0, 0.95);
+        }
+
+        .classic-input {
+            background: #060504;
+            border: 1px solid #574426;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.95);
+            color: #f3e3c3;
+        }
+
+        .classic-input:focus {
+            border-color: #d4af37;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.95), 0 0 8px rgba(212, 175, 55, 0.35);
+        }
+
+        @keyframes torchFlicker {
+            0%, 100% { transform: scale(1) rotate(-1deg); opacity: 0.92; }
+            50% { transform: scale(1.08, 1.14) rotate(1deg); opacity: 1; }
+        }
+
+        .torch-flame {
+            animation: torchFlicker 0.18s infinite alternate;
+        }
+    </style>
+</head>
+<body class="relative select-none">
+
+    <!-- 經典天堂風格簡約登入畫面 -->
+    <div id="loginModal" class="fixed inset-0 z-50 flex flex-col items-center justify-between classic-login-bg py-10 px-4">
+        <!-- 頂部留白與伺服器燈號 -->
+        <div class="w-full max-w-md flex justify-end items-center text-[11px] text-stone-400 font-mono">
+            <span id="loginOnlineHint" class="flex items-center gap-1.5 bg-black/60 border border-stone-800 px-2.5 py-1 rounded">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                太陽神伺服器：連線就緒
+            </span>
+        </div>
+
+        <!-- 中央：Logo 與簡約石雕登入框 -->
+        <div class="flex flex-col items-center w-full max-w-sm my-auto">
+            <!-- 經典金屬浮雕感大標題【天啊~~】 -->
+            <div class="relative mb-8 text-center select-none">
+                <div class="text-[11px] tracking-[0.45em] text-amber-500/80 font-serif mb-1 uppercase">THE BLOOD PLEDGE</div>
+                <h1 class="serif-font text-5xl sm:text-6xl font-black tracking-widest bg-gradient-to-b from-amber-100 via-yellow-400 to-amber-700 bg-clip-text text-transparent drop-shadow-[0_5px_15px_rgba(0,0,0,0.95)]">
+                    【天啊~~】
+                </h1>
+                <div class="w-48 h-[2px] mx-auto mt-2 bg-gradient-to-r from-transparent via-amber-500 to-transparent"></div>
+            </div>
+
+            <!-- 簡約天堂石板輸入框 (左右配復古火炬光影) -->
+            <div class="relative w-full flex items-center justify-center">
+                <!-- 左側神殿火炬 -->
+                <div class="hidden sm:flex flex-col items-center mr-5 opacity-85">
+                    <div class="w-5 h-7 rounded-full bg-gradient-to-t from-orange-600 via-amber-400 to-yellow-200 blur-[1px] torch-flame shadow-[0_0_24px_#f59e0b]"></div>
+                    <div class="w-2 h-14 bg-gradient-to-b from-stone-600 to-stone-900 border border-amber-900/60"></div>
+                </div>
+
+                <!-- 登入石板主體 -->
+                <div class="classic-stone-box w-72 sm:w-80 p-6 rounded-sm flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-stone-800 pb-2 text-xs text-amber-200/80 serif-font">
+                        <span>伺服器：01. 奇岩王城</span>
+                        <span class="text-emerald-400">順暢</span>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <label class="text-xs text-stone-400 serif-font tracking-wider block">角色名稱 (ID)</label>
+                        <input id="nicknameInput" type="text" maxlength="12" placeholder="輸入暱稱直接登入..."
+                            class="classic-input w-full px-3 py-2 text-sm outline-none font-bold tracking-wider"
+                            value="">
+                    </div>
+
+                    <div class="flex gap-2 pt-1">
+                        <button id="enterWorldBtn" onclick="enterMultiplayerWorld()" class="lineage-btn flex-1 py-2 text-sm font-bold tracking-[0.25em] serif-font cursor-pointer">
+                            連 線 (Enter)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 右側神殿火炬 -->
+                <div class="hidden sm:flex flex-col items-center ml-5 opacity-85">
+                    <div class="w-5 h-7 rounded-full bg-gradient-to-t from-orange-600 via-amber-400 to-yellow-200 blur-[1px] torch-flame shadow-[0_0_24px_#f59e0b]"></div>
+                    <div class="w-2 h-14 bg-gradient-to-b from-stone-600 to-stone-900 border border-amber-900/60"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部極簡版權列 -->
+        <div class="text-[11px] text-stone-600 font-serif tracking-widest">
+            © 天啊~~ ONLINE ・ GLOBAL WEBSOCKET SERVER
+        </div>
+    </div>
+
+    <!-- 遊戲主畫布 -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 頂部懷舊橫幅標題與獵場召喚控制台 -->
+    <div class="fixed top-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center w-auto max-w-[96vw]">
+        <div class="lineage-panel px-4 py-1.5 flex flex-wrap items-center justify-center gap-2 sm:gap-3 pointer-events-auto">
+            <span class="text-amber-400 text-lg gold-glow"><i class="fa-solid fa-dragon"></i></span>
+            <h1 class="serif-font text-sm sm:text-lg font-black tracking-wider bg-gradient-to-b from-yellow-200 via-amber-400 to-amber-600 bg-clip-text text-transparent drop-shadow">
+                【天啊~~】
+            </h1>
+            <span class="bg-emerald-950/90 border border-emerald-500/70 px-2 py-0.5 rounded text-[11px] text-emerald-300 font-bold flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                線上人數: <span id="onlineCountBadge">1</span>
+            </span>
+            <div class="h-4 w-[1px] bg-amber-800/70 hidden sm:block"></div>
+            <div class="flex items-center gap-1 text-[11px]">
+                <span class="text-amber-300/80 hidden md:inline">召喚：</span>
+                <button onclick="spawnSpecificMonster('werewolf')" class="lineage-btn px-2 py-0.5 rounded text-amber-200 hover:text-white cursor-pointer">+狼人</button>
+                <button onclick="spawnSpecificMonster('shelob')" class="lineage-btn px-2 py-0.5 rounded text-red-300 hover:text-white cursor-pointer">+夏洛柏</button>
+                <button onclick="spawnSpecificMonster('croc')" class="lineage-btn px-2 py-0.5 rounded text-emerald-300 hover:text-white cursor-pointer">+鱷魚</button>
+                <button onclick="spawnSpecificMonster('drake')" class="lineage-btn px-2 py-0.5 rounded text-orange-300 font-bold hover:text-white cursor-pointer">+飛龍</button>
+                <button onclick="teleportToCastle()" class="lineage-btn px-2 py-0.5 rounded text-yellow-300 font-bold hover:text-white cursor-pointer" title="瞬間傳送至北方的奇岩王城">🏰傳送王城</button>
+            </div>
+            <div class="h-4 w-[1px] bg-amber-800/70 hidden sm:block"></div>
+            <button id="topAutoBattleBtn" onclick="toggleAutoBattle()" class="px-2.5 py-0.5 rounded text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer bg-stone-900/90 border-amber-700/80 text-amber-200">
+                <span id="topAutoDot" class="w-2 h-2 rounded-full bg-stone-500"></span>
+                <span id="topAutoText">自動狩獵: 關閉 (Z)</span>
+            </button>
+            <button id="topAutoMagicBtn" onclick="toggleAutoMagic()" class="px-2.5 py-0.5 rounded text-xs font-bold border transition-all flex items-center gap-1 cursor-pointer bg-sky-900/90 border-sky-400 text-sky-200 shadow-[0_0_10px_rgba(56,189,248,0.4)]">
+                <i class="fa-solid fa-wand-sparkles text-sky-300"></i>
+                <span id="topAutoMagicText">自動魔法: 開 (X)</span>
+            </button>
+        </div>
+        <div class="mt-1 px-3 py-0.5 bg-black/75 border border-amber-900/60 rounded text-[11px] text-amber-200/80 hidden lg:flex items-center gap-3 shadow">
+            <span><b class="text-yellow-300">[Enter鍵]</b> 開啟對話框打字聊天</span>
+            <span><b class="text-emerald-400">[Z/X鍵]</b> 自動狩獵 / 自動魔法</span>
+            <span><b class="text-sky-400">[5/6/7鍵]</b> 極道落雷 / 龍捲風 / 火球術</span>
+            <span><b class="text-amber-400">[雙擊背包道具]</b> 瞬間換裝/衝裝</span>
+        </div>
+    </div>
+
+    <!-- 左上角：角色狀態欄 -->
+    <div class="fixed top-16 sm:top-14 left-2 sm:left-4 z-20 w-64 sm:w-72 lineage-panel p-3 pointer-events-auto">
+        <div class="flex items-center gap-2.5 pb-2 mb-2 border-b border-amber-900/60">
+            <div class="w-11 h-11 rounded bg-gradient-to-br from-amber-700 to-stone-900 border border-amber-400 flex items-center justify-center relative shadow-inner shrink-0">
+                <i class="fa-solid fa-helmet-safety text-xl text-amber-200"></i>
+                <span id="hasteBadge" class="hidden absolute -bottom-1 -right-1 bg-emerald-600 text-[9px] text-white font-bold px-1 rounded border border-emerald-300">加速</span>
+                <span id="braveBadge" class="hidden absolute -top-1 -right-1 bg-red-600 text-[9px] text-white font-bold px-1 rounded border border-yellow-300">勇水</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between">
+                    <span id="uiPlayerName" class="serif-font font-bold text-amber-300 text-sm sm:text-base truncate">亞丁皇家騎士</span>
+                    <span class="text-xs bg-amber-950/90 border border-amber-600/70 px-1.5 py-0.5 rounded text-amber-300 font-bold">
+                        Lv.<span id="uiLevel">1</span>
+                    </span>
+                </div>
+                <div class="text-[11px] text-amber-200/70 flex items-center justify-between mt-0.5">
+                    <span id="uiRegionName">奇岩領地 (72x72 高低差世界)</span>
+                    <span class="text-yellow-400 font-semibold"><i class="fa-solid fa-coins mr-1"></i><span id="uiGold">1,000</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- HP / MP / EXP 條 -->
+        <div class="space-y-1.5 text-xs">
+            <div>
+                <div class="flex justify-between text-[11px] mb-0.5">
+                    <span class="text-red-300 font-semibold">體力 (HP)</span>
+                    <span class="font-mono text-white"><span id="uiHp">220</span> / <span id="uiMaxHp">220</span></span>
+                </div>
+                <div class="w-full h-2.5 bg-black/80 rounded overflow-hidden border border-stone-700">
+                    <div id="hpBar" class="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-400 transition-all duration-150" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between text-[11px] mb-0.5">
+                    <span class="text-sky-300 font-semibold">魔力 (MP)</span>
+                    <span class="font-mono text-white"><span id="uiMp">120</span> / <span id="uiMaxMp">120</span></span>
+                </div>
+                <div class="w-full h-2 bg-black/80 rounded overflow-hidden border border-stone-700">
+                    <div id="mpBar" class="h-full bg-gradient-to-r from-blue-800 via-sky-600 to-cyan-400 transition-all duration-150" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between text-[11px] mb-0.5">
+                    <span class="text-amber-300/90 font-semibold">經驗值 (EXP)</span>
+                    <span id="uiExpPercent" class="font-mono text-amber-200">0.0%</span>
+                </div>
+                <div class="w-full h-1.5 bg-black/80 rounded overflow-hidden border border-stone-700">
+                    <div id="expBar" class="h-full bg-gradient-to-r from-amber-600 via-yellow-400 to-amber-200 transition-all duration-200" style="width: 0%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 攻防與魔攻數值 -->
+        <div class="grid grid-cols-3 gap-1 mt-2.5 pt-2 border-t border-amber-900/60 text-[11px]">
+            <div class="bg-black/45 px-1.5 py-1 rounded border border-amber-950 flex flex-col items-center">
+                <span class="text-amber-200/60 text-[10px]">近戰傷害</span>
+                <span id="uiAtk" class="font-bold text-amber-300">27~36</span>
+            </div>
+            <div class="bg-black/45 px-1.5 py-1 rounded border border-amber-950 flex flex-col items-center">
+                <span class="text-amber-200/60 text-[10px]">物理防禦</span>
+                <span id="uiDef" class="font-bold text-emerald-400">-26</span>
+            </div>
+            <div class="bg-black/45 px-1.5 py-1 rounded border border-amber-950 flex flex-col items-center">
+                <span class="text-amber-200/60 text-[10px]">魔法增傷</span>
+                <span id="uiSp" class="font-bold text-sky-400">+25%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右上角：全身 9 部位紙娃娃裝備欄 & 無上限背包面板 -->
+    <div class="fixed top-16 sm:top-14 right-2 sm:right-4 z-20 flex flex-col items-end pointer-events-auto">
+        <div class="flex gap-1.5 mb-1.5">
+            <button onclick="toggleSound()" id="soundBtn" class="lineage-btn px-2.5 py-1.5 rounded text-xs flex items-center gap-1 cursor-pointer" title="音效開關">
+                <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+            </button>
+            <button onclick="toggleInventory()" class="lineage-btn px-3 py-1.5 rounded text-xs sm:text-sm font-bold flex items-center gap-1.5 cursor-pointer">
+                <i class="fa-solid fa-shield-halved text-amber-300"></i>
+                <span>裝備 / 無限背包 (I)</span>
+                <span id="invCountBadge" class="bg-amber-950 border border-amber-600 px-1.5 py-0.2 rounded text-[11px] text-amber-200">0 / ∞</span>
+            </button>
+        </div>
+
+        <!-- 裝備與背包視窗 -->
+        <div id="inventoryModal" class="lineage-panel w-76 sm:w-88 overflow-hidden transition-all duration-200">
+            <div class="lineage-header px-3 py-1.5 flex items-center justify-between text-xs sm:text-sm font-bold">
+                <span><i class="fa-solid fa-user-shield mr-1.5"></i>全身 9 部位裝備 ＆ 無限空間背包</span>
+                <button onclick="toggleInventory()" class="text-amber-200 hover:text-white px-1 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <div class="p-3 space-y-2.5">
+                <!-- 9大部位紙娃娃裝備格 (3x3 經典配置) -->
+                <div class="bg-black/55 p-2 rounded border border-amber-900/60">
+                    <div class="text-[10px] text-amber-300/80 mb-1.5 flex justify-between items-center">
+                        <span>【全身裝備部位】點擊或雙擊可卸下</span>
+                        <span class="text-emerald-400">雙擊背包裝備瞬間穿戴</span>
+                    </div>
+                    <div id="paperdollGrid" class="grid grid-cols-3 gap-1.5"></div>
+                </div>
+
+                <!-- 無上限背包物品網格 -->
+                <div>
+                    <div class="text-[11px] text-amber-300/90 mb-1 flex justify-between items-center">
+                        <span>背包道具 (<b class="text-yellow-300">連點兩下/單擊</b> 立即換裝或使用)</span>
+                        <span class="text-amber-400/90 font-mono">容量：無上限 ∞</span>
+                    </div>
+                    <div id="inventoryGrid" class="grid grid-cols-5 gap-1.5 max-h-44 overflow-y-auto p-1 bg-black/50 rounded border border-amber-950/80"></div>
+                </div>
+
+                <!-- 物品詳細說明區 -->
+                <div id="itemTooltip" class="bg-black/80 border border-amber-900/80 rounded p-2 text-xs min-h-[52px] flex flex-col justify-center">
+                    <div class="text-amber-200/80">💡 戰鬥中可直接<b>雙擊背包裝備</b>秒換！包含頭盔、耳環、項鍊、武器、身體、斗篷、手套、戒指、鞋子。</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 左下角：經典系統戰鬥、多人連線對話與 Enter 文字輸入框 -->
+    <div class="fixed bottom-16 sm:bottom-4 left-2 sm:left-4 z-20 w-76 sm:w-[420px] lineage-panel flex flex-col overflow-hidden pointer-events-auto">
+        <div class="lineage-header px-3 py-1 text-xs font-bold flex justify-between items-center">
+            <span><i class="fa-solid fa-comments mr-1.5"></i>【天啊~~】公頻聊天 ＆ 系統訊息</span>
+            <span id="netStatusLabel" class="text-[10px] text-emerald-300 font-mono">🟢 全球連線同步中</span>
+        </div>
+        <div id="chatLog" class="p-2.5 h-28 sm:h-36 overflow-y-auto text-xs space-y-1 font-mono bg-black/65 leading-relaxed">
+            <div class="text-amber-400">★ 歡迎來到【天啊~~】線上世界！</div>
+            <div class="text-emerald-400">💬 按【Enter 鍵】可打字與線上網友即時聊天！</div>
+        </div>
+        <!-- Enter 對話輸入列 -->
+        <div class="flex items-center bg-black/90 border-t border-amber-800/80 px-2 py-1 gap-1.5">
+            <span class="text-[11px] text-amber-400 font-bold shrink-0">[公頻]</span>
+            <input id="chatInput" type="text" maxlength="60" placeholder="按 Enter 輸入對話內容..."
+                class="flex-1 bg-transparent text-xs text-white placeholder-stone-500 outline-none font-mono">
+            <button onclick="submitChatMessage()" class="lineage-btn px-2.5 py-0.5 rounded text-[11px] font-bold shrink-0 cursor-pointer">發送</button>
+        </div>
+    </div>
+
+    <!-- 底部中央：喝水、三大魔法與動作快捷鍵欄 -->
+    <div class="fixed bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 z-20 lineage-panel px-2 py-1.5 flex items-center gap-1 sm:gap-1.5 pointer-events-auto max-w-[98vw] overflow-x-auto">
+        <button onclick="useQuickPotion('red')" class="equip-slot w-10 h-10 sm:w-11 sm:h-11 rounded flex flex-col items-center justify-center relative group cursor-pointer shrink-0" title="紅色藥水 (快捷鍵 1)">
+            <span class="text-base sm:text-lg">🧪</span>
+            <span class="text-[9px] text-amber-200/90 font-bold">紅水</span>
+            <span id="quickRedCount" class="absolute top-0 right-1 text-[9px] font-mono text-white font-bold">15</span>
+            <span class="absolute top-0 left-1 text-[8px] text-amber-400/80">1</span>
+        </button>
+
+        <button onclick="useQuickPotion('green')" class="equip-slot w-10 h-10 sm:w-11 sm:h-11 rounded flex flex-col items-center justify-center relative group cursor-pointer shrink-0" title="自我加速藥水 (快捷鍵 2)">
+            <span class="text-base sm:text-lg">🧪</span>
+            <span class="text-[9px] text-emerald-300 font-bold">綠水</span>
+            <span id="quickGreenCount" class="absolute top-0 right-1 text-[9px] font-mono text-white font-bold">3</span>
+            <span class="absolute top-0 left-1 text-[8px] text-amber-400/80">2</span>
+        </button>
+
+        <button onclick="useQuickPotion('brave')" class="equip-slot w-10 h-10 sm:w-11 sm:h-11 rounded flex flex-col items-center justify-center relative group cursor-pointer shrink-0" title="勇敢藥水 二段加速 (快捷鍵 3)">
+            <span class="text-base sm:text-lg">🍷</span>
+            <span class="text-[9px] text-red-400 font-bold">勇水</span>
+            <span id="quickBraveCount" class="absolute top-0 right-1 text-[9px] font-mono text-white font-bold">3</span>
+            <span class="absolute top-0 left-1 text-[8px] text-amber-400/80">3</span>
+        </button>
+
+        <button onclick="useQuickPotion('blue')" class="equip-slot w-10 h-10 sm:w-11 sm:h-11 rounded flex flex-col items-center justify-center relative group cursor-pointer shrink-0" title="藍色魔力藥水 (快捷鍵 4)">
+            <span class="text-base sm:text-lg">💧</span>
+            <span class="text-[9px] text-sky-300 font-bold">藍水</span>
+            <span id="quickBlueCount" class="absolute top-0 right-1 text-[9px] font-mono text-white font-bold">8</span>
+            <span class="absolute top-0 left-1 text-[8px] text-amber-400/80">4</span>
+        </button>
+
+        <div class="h-7 w-[1px] bg-amber-800/70 mx-0.5 shrink-0"></div>
+
+        <!-- 內建三大魔法快捷鍵：極道落雷、龍捲風、火球術 -->
+        <button onclick="castSpell('lightning')" class="equip-slot w-11 h-10 sm:w-12 sm:h-11 rounded flex flex-col items-center justify-center relative border-sky-500/70 hover:border-sky-300 cursor-pointer shrink-0 overflow-hidden" title="【極道落雷】消耗18MP (快捷鍵 5)">
+            <span class="text-base sm:text-lg">⚡</span>
+            <span class="text-[9px] text-sky-300 font-bold">極道落雷</span>
+            <span class="absolute top-0 left-1 text-[8px] text-sky-200 font-bold">5</span>
+            <div id="cdBar_lightning" class="absolute bottom-0 left-0 h-1 bg-sky-400 transition-all" style="width:0%"></div>
+        </button>
+
+        <button onclick="castSpell('tornado')" class="equip-slot w-11 h-10 sm:w-12 sm:h-11 rounded flex flex-col items-center justify-center relative border-emerald-500/70 hover:border-emerald-300 cursor-pointer shrink-0 overflow-hidden" title="【龍捲風】消耗22MP (快捷鍵 6)">
+            <span class="text-base sm:text-lg">🌪️</span>
+            <span class="text-[9px] text-emerald-300 font-bold">龍捲風</span>
+            <span class="absolute top-0 left-1 text-[8px] text-emerald-200 font-bold">6</span>
+            <div id="cdBar_tornado" class="absolute bottom-0 left-0 h-1 bg-emerald-400 transition-all" style="width:0%"></div>
+        </button>
+
+        <button onclick="castSpell('fireball')" class="equip-slot w-11 h-10 sm:w-12 sm:h-11 rounded flex flex-col items-center justify-center relative border-orange-500/70 hover:border-orange-300 cursor-pointer shrink-0 overflow-hidden" title="【火球術】消耗15MP (快捷鍵 7)">
+            <span class="text-base sm:text-lg">☄️</span>
+            <span class="text-[9px] text-orange-300 font-bold">火球術</span>
+            <span class="absolute top-0 left-1 text-[8px] text-orange-200 font-bold">7</span>
+            <div id="cdBar_fireball" class="absolute bottom-0 left-0 h-1 bg-orange-400 transition-all" style="width:0%"></div>
+        </button>
+
+        <div class="h-7 w-[1px] bg-amber-800/70 mx-0.5 shrink-0"></div>
+
+        <button onclick="triggerManualSwing()" class="equip-slot w-10 h-10 sm:w-11 sm:h-11 rounded flex flex-col items-center justify-center relative cursor-pointer shrink-0" title="原地揮劍攻擊 (Space)">
+            <span class="text-base sm:text-lg">⚔️</span>
+            <span class="text-[9px] text-amber-200/90 font-bold">揮刀</span>
+        </button>
+
+        <button id="bottomAutoBattleBtn" onclick="toggleAutoBattle()" class="equip-slot w-12 h-10 sm:w-13 sm:h-11 rounded flex flex-col items-center justify-center relative cursor-pointer border-amber-500 shrink-0" title="自動狩獵開關 (快捷鍵 Z)">
+            <span class="text-sm sm:text-base">🤖</span>
+            <span id="bottomAutoLabel" class="text-[9px] text-amber-300 font-bold">內掛:關</span>
+            <span class="absolute top-0 left-1 text-[8px] text-amber-300 font-bold">Z</span>
+        </button>
+    </div>
+
+    <script>
+        /**************************************************************
+         * 1. Web Audio API 懷舊音效與魔法轟鳴合成器
+         **************************************************************/
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+            playSwing(isBrave = false) {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(isBrave ? 330 : 250, now);
+                osc.frequency.exponentialRampToValueAtTime(55, now + 0.11);
+                gain.gain.setValueAtTime(0.11, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.11);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.11);
+            }
+            playHit(isCrit = false) {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = isCrit ? 'square' : 'triangle';
+                osc.frequency.setValueAtTime(isCrit ? 190 : 135, now);
+                osc.frequency.exponentialRampToValueAtTime(32, now + 0.14);
+                gain.gain.setValueAtTime(isCrit ? 0.2 : 0.13, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.14);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.14);
+            }
+            playLightning() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                [520, 260, 110].forEach((freq, i) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, now + i * 0.03);
+                    osc.frequency.exponentialRampToValueAtTime(42, now + 0.28 + i * 0.03);
+                    gain.gain.setValueAtTime(0.15, now + i * 0.03);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.28 + i * 0.03);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now + i * 0.03);
+                    osc.stop(now + 0.29 + i * 0.03);
+                });
+            }
+            playTornado() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(160, now);
+                osc.frequency.linearRampToValueAtTime(380, now + 0.22);
+                osc.frequency.linearRampToValueAtTime(120, now + 0.45);
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.45);
+            }
+            playFireball() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(220, now);
+                osc.frequency.exponentialRampToValueAtTime(38, now + 0.32);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.32);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.32);
+            }
+            playPickup() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(620, now);
+                osc.frequency.setValueAtTime(940, now + 0.06);
+                gain.gain.setValueAtTime(0.11, now);
+                gain.gain.linearRampToValueAtTime(0.01, now + 0.16);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.16);
+            }
+            playLevelUp() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const notes = [440, 554.37, 659.25, 880];
+                notes.forEach((freq, idx) => {
+                    const now = this.ctx.currentTime + idx * 0.08;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, now);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.linearRampToValueAtTime(0.01, now + 0.24);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.24);
+                });
+            }
+        }
+        const sound = new SoundEngine();
+
+        function toggleSound() {
+            sound.enabled = !sound.enabled;
+            const icon = document.getElementById('soundIcon');
+            icon.className = sound.enabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark text-red-400';
+        }
+        window.toggleSound = toggleSound;
+
+        /**************************************************************
+         * 2. 畫布、等距視角 (Isometric 2.5D) 座標轉換與 72x72 立體高低差大地圖
+         **************************************************************/
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const TILE_WIDTH = 64;
+        const TILE_HEIGHT = 32;
+        const ELEVATION_PX = 20; // 每 1 單位海拔高度對應的垂直像素落差
+        const MAP_SIZE = 72;     // 擴大為 72x72 超大立體世界地圖
+        const mapGrid = [];
+        const heightMap = [];    // 儲存每格海拔高度 (0: 低谷/盆地, 1: 平原台地, 2: 王城高地/峽谷高台, 3: 皇家內城聖壇)
+        const mapRamp = [];      // 儲存是否為可通行的石階斜坡 (連接不同高度層)
+        const mapFoliage = [];   // 僅保留極少數低調草葉/碎石，去除雜亂花朵
+        const mapTreeScale = []; // 儲存樹木尺寸，包含 1.8x~2.45x 參天巨木
+        const mapBuildings = []; // 儲存奇岩城堡主殿、箭塔、村莊木屋、鐵匠鋪與噴泉
+
+        function isInsideBuildingFootprint(gx, gy) {
+            for (const b of mapBuildings) {
+                if (gx >= b.x && gx < b.x + b.w && gy >= b.y && gy < b.y + b.h) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 取得任意世界座標 (含小數點插值) 的平滑地形海拔高度
+        function getTerrainElevation(wx, wy) {
+            const tx = Math.max(0, Math.min(MAP_SIZE - 1, Math.floor(wx)));
+            const ty = Math.max(0, Math.min(MAP_SIZE - 1, Math.floor(wy)));
+            const baseH = heightMap[ty]?.[tx] ?? 0;
+
+            // 若在石階斜坡上，根據格內座標做平滑高度過渡
+            if (mapRamp[ty]?.[tx]) {
+                const fy = wy - ty;
+                const fx = wx - tx;
+                const northH = heightMap[Math.max(0, ty - 1)]?.[tx] ?? baseH;
+                const southH = heightMap[Math.min(MAP_SIZE - 1, ty + 1)]?.[tx] ?? baseH;
+                const westH = heightMap[ty]?.[Math.max(0, tx - 1)] ?? baseH;
+                const eastH = heightMap[ty]?.[Math.min(MAP_SIZE - 1, tx + 1)] ?? baseH;
+
+                if (northH !== southH) {
+                    return northH * (1 - fy) + southH * fy;
+                }
+                if (westH !== eastH) {
+                    return westH * (1 - fx) + eastH * fx;
+                }
+            }
+            return baseH;
+        }
+
+        function initMap() {
+            mapBuildings.length = 0;
+
+            // 1. 建立 72x72 奇岩王城高地與中央村莊建築物清單
+            mapBuildings.push(
+                // 北方高地 (Elevation 3)：奇岩雄偉城堡主殿
+                { id: 'castle_keep', type: 'castle_keep', name: '奇岩王城主殿', x: 33, y: 5, w: 6, h: 4 },
+                // 城堡左右皇家高聳箭塔 (Elevation 2)
+                { id: 'tower_nw', type: 'guard_tower', name: '左翼皇家箭塔', x: 25, y: 7, w: 2, h: 2 },
+                { id: 'tower_ne', type: 'guard_tower', name: '右翼皇家箭塔', x: 45, y: 7, w: 2, h: 2 },
+                // 城堡南門雙子城門守衛塔 (Elevation 2)
+                { id: 'gate_w', type: 'gate_tower', name: '奇岩西城門塔', x: 31, y: 17, w: 2, h: 2 },
+                { id: 'gate_e', type: 'gate_tower', name: '奇岩東城門塔', x: 39, y: 17, w: 2, h: 2 },
+                // 中央村莊廣場台地 (Elevation 1)：矮人鐵匠鋪、吉倫魔法屋、亞丁旅店、聖光教堂鐘樓
+                { id: 'blacksmith', type: 'blacksmith', name: '矮人鐵匠鋪', x: 27, y: 31, w: 3, h: 2 },
+                { id: 'magic_shop', type: 'magic_shop', name: '吉倫魔法屋', x: 42, y: 31, w: 3, h: 2 },
+                { id: 'inn_house', type: 'cottage', name: '說話之島旅店', x: 27, y: 39, w: 3, h: 2 },
+                { id: 'chapel', type: 'chapel', name: '亞丁聖光鐘樓', x: 42, y: 39, w: 3, h: 2 },
+                // 中央神聖女神噴泉 (Elevation 1)
+                { id: 'fountain', type: 'fountain', name: '守護神噴泉', x: 35, y: 35, w: 2, h: 2 },
+                // 西方妖精古森瞭望塔 & 東方龍之谷前哨塔
+                { id: 'elven_tower', type: 'guard_tower', name: '妖精森林古塔', x: 11, y: 28, w: 2, h: 2 },
+                { id: 'dragon_tower', type: 'gate_tower', name: '龍之谷鎮龍塔', x: 58, y: 28, w: 2, h: 2 }
+            );
+
+            // 2. 初始化 72x72 海拔高度圖 (heightMap) 與石階斜坡 (mapRamp)
+            for (let y = 0; y < MAP_SIZE; y++) {
+                heightMap[y] = [];
+                mapRamp[y] = [];
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    let h = 0;
+                    mapRamp[y][x] = false;
+
+                    // 北方奇岩王城高地 (y: 2 ~ 18, x: 20 ~ 51) -> 海拔 2 階
+                    if (y >= 2 && y <= 18 && x >= 20 && x <= 51) {
+                        h = 2;
+                        // 王城主殿神聖高台 (y: 3 ~ 10, x: 30 ~ 41) -> 海拔 3 階
+                        if (y >= 3 && y <= 10 && x >= 30 && x <= 41) {
+                            h = 3;
+                        }
+                    }
+                    // 王城與中央村莊之間的皇家大道階梯台地 (y: 19 ~ 24, x: 28 ~ 43) -> 海拔 1 階
+                    else if (y >= 19 && y <= 24 && x >= 28 && x <= 43) {
+                        h = 1;
+                    }
+                    // 中央說話之島村莊石板台地 (y: 28 ~ 43, x: 25 ~ 46) -> 海拔 1 階
+                    else if (y >= 28 && y <= 43 && x >= 25 && x <= 46) {
+                        h = 1;
+                    }
+                    // 西方妖精古森高地丘陵 (x: 4 ~ 16, y: 18 ~ 42) -> 海拔 1~2 階
+                    else if (x >= 4 && x <= 16 && y >= 18 && y <= 42) {
+                        h = (x >= 7 && x <= 13 && y >= 24 && y <= 34) ? 2 : 1;
+                    }
+                    // 東方龍之谷熔岩峽谷高台 (x: 54 ~ 67, y: 16 ~ 46) -> 海拔 1~2 階
+                    else if (x >= 54 && x <= 67 && y >= 16 && y <= 46) {
+                        h = (x >= 57 && x <= 64 && y >= 22 && y <= 38) ? 2 : 1;
+                    }
+                    // 南方古戰場高台 (x: 29 ~ 42, y: 54 ~ 64) -> 海拔 1 階
+                    else if (x >= 29 && x <= 42 && y >= 54 && y <= 64) {
+                        h = 1;
+                    }
+
+                    heightMap[y][x] = h;
+                }
+            }
+
+            // 設定連接不同海拔高度的「石階斜坡 (Ramps/Stairs)」讓角色與怪物能順暢上下高台
+            for (let y = 1; y < MAP_SIZE - 1; y++) {
+                for (let x = 1; x < MAP_SIZE - 1; x++) {
+                    // 1. 王城主殿聖壇南向石階 (高 3 -> 高 2)
+                    if (y === 10 && x >= 34 && x <= 37) {
+                        heightMap[y][x] = 2.5;
+                        mapRamp[y][x] = true;
+                    }
+                    // 2. 奇岩王城南門大石階 (高 2 -> 高 1)
+                    if (y === 18 && x >= 34 && x <= 37) {
+                        heightMap[y][x] = 1.5;
+                        mapRamp[y][x] = true;
+                    }
+                    // 3. 皇家大道南端石階 (高 1 -> 高 0) & 村莊北門石階 (高 0 -> 高 1)
+                    if ((y === 24 || y === 28) && x >= 34 && x <= 37) {
+                        heightMap[y][x] = 0.5;
+                        mapRamp[y][x] = true;
+                    }
+                    // 4. 中央村莊南門、西門、東門石階 (高 1 <-> 高 0)
+                    if (y === 43 && x >= 34 && x <= 37) {
+                        heightMap[y][x] = 0.5;
+                        mapRamp[y][x] = true;
+                    }
+                    if ((x === 25 || x === 46) && y >= 34 && y <= 37) {
+                        heightMap[y][x] = 0.5;
+                        mapRamp[y][x] = true;
+                    }
+                    // 5. 西方妖精丘陵東側斜坡 (x: 16 及 x: 13)
+                    if ((x === 16 && y >= 28 && y <= 31) || (x === 13 && y >= 28 && y <= 30)) {
+                        heightMap[y][x] = x === 16 ? 0.5 : 1.5;
+                        mapRamp[y][x] = true;
+                    }
+                    // 6. 東方龍之谷峽谷西側斜坡 (x: 54 及 x: 57)
+                    if ((x === 54 && y >= 28 && y <= 31) || (x === 57 && y >= 28 && y <= 30)) {
+                        heightMap[y][x] = x === 54 ? 0.5 : 1.5;
+                        mapRamp[y][x] = true;
+                    }
+                    // 7. 南方古戰場北側石階 (y: 54)
+                    if (y === 54 && x >= 34 && x <= 37) {
+                        heightMap[y][x] = 0.5;
+                        mapRamp[y][x] = true;
+                    }
+                }
+            }
+
+            // 3. 初始化 72x72 地磚材質與參天巨木、極簡寫實植被
+            // 地磚代碼：0: 寫實草地, 1: 村莊/高台石板, 2: 深谷護城河/湖泊, 3: 森林樹木(含巨木), 4: 深色微風草地, 5: 皇家紅毯大道, 6: 城堡厚石牆, 7: 石階斜坡
+            for (let y = 0; y < MAP_SIZE; y++) {
+                mapGrid[y] = [];
+                mapFoliage[y] = [];
+                mapTreeScale[y] = [];
+
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    mapFoliage[y][x] = null;
+                    mapTreeScale[y][x] = 1.0;
+
+                    // 地圖外圍邊界巨木林帶
+                    if (x === 0 || y === 0 || x === MAP_SIZE - 1 || y === MAP_SIZE - 1) {
+                        mapGrid[y][x] = 3;
+                        mapTreeScale[y][x] = 1.55 + (Math.abs(Math.sin(x * 3 + y * 5)) * 0.65);
+                        continue;
+                    }
+
+                    // 石階斜坡優先標記為 7
+                    if (mapRamp[y][x]) {
+                        mapGrid[y][x] = 7;
+                        continue;
+                    }
+
+                    // 奇岩城堡外圍石造城牆 (x: 22~49, y: 4~17)，南門留有寬敞城門通道 (x: 33~38)
+                    const isCastleWallBorder = (
+                        ((y === 4 || y === 17) && x >= 22 && x <= 49) ||
+                        ((x === 22 || x === 49) && y >= 4 && y <= 17)
+                    );
+                    const isCastleGateOpening = (y === 17 && x >= 33 && x <= 38);
+
+                    if (isCastleWallBorder && !isCastleGateOpening) {
+                        mapGrid[y][x] = 6;
+                        continue;
+                    }
+
+                    // 奇岩王城至中央村莊中軸皇家紅毯大道 (x: 35~36, y: 9~42)
+                    if ((x === 35 || x === 36) && y >= 9 && y <= 42) {
+                        mapGrid[y][x] = 5;
+                        continue;
+                    }
+
+                    // 王城內庭與中央村莊石板廣場
+                    if ((x >= 23 && x <= 48 && y >= 5 && y <= 16) ||
+                        (x >= 26 && x <= 45 && y >= 29 && y <= 42) ||
+                        (x >= 33 && x <= 38 && y >= 17 && y <= 28)) {
+                        mapGrid[y][x] = 1;
+                        continue;
+                    }
+
+                    // 護城河與南北天然深谷湖泊 (僅在海拔 0 低地生成水域)
+                    if (heightMap[y][x] === 0 && (
+                        ((x >= 17 && x <= 19) && y >= 5 && y <= 17) ||
+                        ((x >= 52 && x <= 54) && y >= 5 && y <= 17) ||
+                        (Math.hypot(x - 16, y - 54) < 4.5) ||
+                        (Math.hypot(x - 55, y - 54) < 4.8)
+                    )) {
+                        mapGrid[y][x] = 2;
+                        continue;
+                    }
+
+                    // 若在建築物基底範圍內，設為石板地基
+                    if (isInsideBuildingFootprint(x, y)) {
+                        mapGrid[y][x] = 1;
+                        continue;
+                    }
+
+                    // 森林樹木分佈：降低總體密度讓視野開闊，但大幅提高「巨型神木 (1.75x ~ 2.45x)」比例
+                    const r = Math.random();
+                    const distFromTownCenter = Math.hypot(x - 36, y - 36);
+                    const isElvenForest = (x < 22 && y > 14 && y < 52);
+                    const treeChance = isElvenForest ? 0.11 : 0.065;
+
+                    if (r < treeChance && distFromTownCenter > 8.5) {
+                        mapGrid[y][x] = 3;
+                        const sizeRoll = Math.random();
+                        if (sizeRoll < 0.22) {
+                            // 小樹與年輕松木
+                            mapTreeScale[y][x] = 0.80 + Math.random() * 0.25;
+                        } else if (sizeRoll < 0.62) {
+                            // 標準森林大樹
+                            mapTreeScale[y][x] = 1.25 + Math.random() * 0.35;
+                        } else {
+                            // 參天巨木 / 千年神木 (1.75x ~ 2.45x)
+                            mapTreeScale[y][x] = 1.75 + Math.random() * 0.70;
+                        }
+                    } else if (r < 0.32) {
+                        // 深色靜謐草地 (不放雜亂花朵，僅偶爾有一兩株極低調的暗綠草葉或小石子)
+                        mapGrid[y][x] = 4;
+                        if (Math.random() < 0.14) {
+                            mapFoliage[y][x] = [{
+                                ox: (Math.random() - 0.5) * 18,
+                                oy: (Math.random() - 0.5) * 9,
+                                h: 3 + Math.random() * 2.5,
+                                isPebble: Math.random() < 0.45
+                            }];
+                        }
+                    } else {
+                        // 乾淨純粹的亞丁草地
+                        mapGrid[y][x] = 0;
+                    }
+                }
+            }
+        }
+
+        // 檢查目標座標是否可通行，並驗證「高低落差」(若非經由石階斜坡，不可直接跨越陡峭斷崖)
+        function isWalkable(wx, wy, isFlying = false, fromX = null, fromY = null) {
+            const tx = Math.floor(wx);
+            const ty = Math.floor(wy);
+            if (tx < 1 || ty < 1 || tx >= MAP_SIZE - 1 || ty >= MAP_SIZE - 1) return false;
+            if (isFlying) return true;
+            const tile = mapGrid[ty]?.[tx];
+            if (tile === 2 || tile === 3 || tile === 6) return false;
+            if (isInsideBuildingFootprint(tx, ty)) return false;
+
+            // 若有提供起點座標，檢查起點與目標格的海拔落差 (陡峭岩壁阻擋)
+            if (fromX !== null && fromY !== null) {
+                const ftx = Math.max(0, Math.min(MAP_SIZE - 1, Math.floor(fromX)));
+                const fty = Math.max(0, Math.min(MAP_SIZE - 1, Math.floor(fromY)));
+                if (ftx !== tx || fty !== ty) {
+                    const h1 = heightMap[fty]?.[ftx] ?? 0;
+                    const h2 = heightMap[ty]?.[tx] ?? 0;
+                    const onRamp = mapRamp[fty]?.[ftx] || mapRamp[ty]?.[tx];
+                    if (Math.abs(h1 - h2) > 0.65 && !onRamp) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        // 世界座標 (wx, wy) 轉螢幕像素座標，自動計入該處海拔高度 (Elevation)
+        function worldToScreen(wx, wy, camX = 0, camY = 0, customElev = null) {
+            const elev = customElev !== null ? customElev : getTerrainElevation(wx, wy);
+            const sx = (wx - wy) * (TILE_WIDTH / 2) - camX + canvas.width / 2;
+            const sy = (wx + wy) * (TILE_HEIGHT / 2) - elev * ELEVATION_PX - camY + canvas.height / 2;
+            return { x: sx, y: sy, elev };
+        }
+
+        // 螢幕點擊座標反推世界等距座標 (自動迭代校正海拔高度偏移)
+        function screenToWorld(sx, sy, camX = 0, camY = 0) {
+            const adjX = sx - canvas.width / 2 + camX;
+            let estElev = getTerrainElevation(player.x, player.y);
+            let wx = 0, wy = 0;
+            for (let i = 0; i < 3; i++) {
+                const adjY = sy - canvas.height / 2 + camY + estElev * ELEVATION_PX;
+                wx = (adjX / (TILE_WIDTH / 2) + adjY / (TILE_HEIGHT / 2)) / 2;
+                wy = (adjY / (TILE_HEIGHT / 2) - adjX / (TILE_WIDTH / 2)) / 2;
+                estElev = getTerrainElevation(wx, wy);
+            }
+            return { x: wx, y: wy };
+        }
+
+        /**************************************************************
+         * 3. 全身 9 部位裝備定義與玩家狀態 (Player & 9-Slot Equipment)
+         **************************************************************/
+        const EQUIP_SLOTS_META = [
+            { key: 'helmet',   label: '頭盔', emptyIcon: '🪖' },
+            { key: 'earring',  label: '耳環', emptyIcon: '💎' },
+            { key: 'necklace', label: '項鍊', emptyIcon: '📿' },
+            { key: 'weapon',   label: '武器', emptyIcon: '🗡️' },
+            { key: 'armor',    label: '身體', emptyIcon: '🛡️' },
+            { key: 'cloak',    label: '斗篷', emptyIcon: '🧣' },
+            { key: 'gloves',   label: '手套', emptyIcon: '🧤' },
+            { key: 'ring',     label: '戒指', emptyIcon: '💍' },
+            { key: 'boots',    label: '鞋子', emptyIcon: '👢' }
+        ];
+
+        const player = {
+            uid: 'p_' + Math.random().toString(36).slice(2, 10),
+            name: '亞丁皇家騎士',
+            x: 36.0,
+            y: 37.5,
+            targetX: 36.0,
+            targetY: 37.5,
+            dirX: 0,
+            dirY: 1,
+            facingAngle: Math.PI / 4,
+            walkCycle: 0,
+            isMoving: false,
+            level: 1,
+            hp: 220,
+            maxHp: 220,
+            mp: 120,
+            maxMp: 120,
+            exp: 0,
+            maxExp: 120,
+            baseAtkMin: 15,
+            baseAtkMax: 22,
+            baseDef: 3,
+            gold: 2000,
+            baseSpeed: 3.8,
+            hasteTimer: 0,      // 一段綠水
+            braveTimer: 0,      // 二段勇水
+            bluePotionTimer: 0, // 藍水加速回魔
+            mpRegenAccum: 0,
+            attackTarget: null,
+            attackCooldown: 0,
+            swingAnimTimer: 0,
+            swingCombo: 0,
+            levelUpBeamTimer: 0,
+            chatBubbleText: '',
+            chatBubbleTimer: 0,
+            autoBattle: false,  // 剛登入時預設手動，方便逛城堡或隨時按 Z 開啟內掛
+            autoMagic: true,    // 內掛自動施放三大魔法
+            autoStatusText: '搜尋獵物中...',
+            autoPotionCooldown: 0,
+            manualMoveOverrideTimer: 0,
+            stuckTimer: 0,
+            lastPosX: 36.0,
+            lastPosY: 37.5,
+            spellCooldowns: {
+                lightning: 0,
+                tornado: 0,
+                fireball: 0
+            },
+            equipped: {
+                helmet:   { id: 'eq_helm_1',  name: '+4 騎士面甲',       type: 'helmet',   def: 4,  atk: 0,  sp: 0,  icon: '🪖', desc: '防禦 -4 的標準亞丁騎士面甲' },
+                earring:  { id: 'eq_ear_1',   name: '靈魂耳環',          type: 'earring',  def: 1,  atk: 1,  sp: 5,  icon: '💎', desc: '防禦 -1、額外攻擊 +1、魔傷 +5%' },
+                necklace: { id: 'eq_neck_1',  name: '力量項鍊',          type: 'necklace', def: 1,  atk: 2,  sp: 0,  icon: '📿', desc: '防禦 -1、近戰傷害 +2' },
+                weapon:   { id: 'eq_weap_1',  name: '+6 大馬士革刀',     type: 'weapon',   def: 0,  atk: 9,  sp: 5,  enchant: 6, bladeColor: '#bae6fd', icon: '🗡️', desc: '額外攻擊 +9，不會壞刀的經典名劍' },
+                armor:    { id: 'eq_arm_1',   name: '+4 精靈鏈甲',       type: 'armor',    def: 7,  atk: 0,  sp: 0,  armorTint: '#cbd5e1', icon: '🛡️', desc: '防禦 -7，妖精森林鍛造的輕便鏈甲' },
+                cloak:    { id: 'eq_cloak_1', name: '+4 保護斗篷',       type: 'cloak',    def: 4,  atk: 0,  sp: 0,  capeColor: '#dc2626', icon: '🧣', desc: '防禦 -4，鮮紅色的亞丁騎士披風' },
+                gloves:   { id: 'eq_glove_1', name: '+4 力量手套',       type: 'gloves',   def: 2,  atk: 2,  sp: 0,  icon: '🧤', desc: '防禦 -2、近戰傷害 +2' },
+                ring:     { id: 'eq_ring_1',  name: '古皮戒指',          type: 'ring',     def: 1,  atk: 1,  sp: 10, icon: '💍', desc: '防禦 -1、攻擊 +1、魔法增傷 +10%' },
+                boots:    { id: 'eq_boot_1',  name: '+4 鋼鐵長靴',       type: 'boots',    def: 3,  atk: 0,  sp: 0,  icon: '👢', desc: '防禦 -3，堅固的鋼鐵戰靴' }
+            },
+            inventory: [
+                { id: 'pot_red',   name: '紅色藥水',           type: 'consumable', subType: 'red',   count: 15, icon: '🧪', desc: '雙擊或按1：恢復 65 點體力(HP)' },
+                { id: 'pot_green', name: '自我加速藥水',       type: 'consumable', subType: 'green', count: 3,  icon: '🧪', desc: '雙擊或按2：一段加速 60 秒' },
+                { id: 'pot_brave', name: '勇敢藥水',           type: 'consumable', subType: 'brave', count: 3,  icon: '🍷', desc: '雙擊或按3：騎士二段加速 45 秒' },
+                { id: 'pot_blue',  name: '藍色魔力藥水',       type: 'consumable', subType: 'blue',  count: 8,  icon: '💧', desc: '雙擊或按4：恢復 45 MP 並加速回魔' },
+                { id: 'zel_scroll',name: '對武器施法的卷軸',   type: 'scroll',     subType: 'dai',   count: 5,  icon: '📜', desc: '雙擊立即強化目前已裝備的主手武器 (+1)' },
+                { id: 'w_tsurugi', name: '+8 瑟魯基之劍',      type: 'weapon',     atk: 16, def: 0, sp: 10, enchant: 8, bladeColor: '#fde047', icon: '⚔️', desc: '雙擊換裝：額外攻擊 +16、魔法增傷 +10%' },
+                { id: 'h_bapho',   name: '+6 巴風特頭盔',      type: 'helmet',     def: 7,  atk: 2, sp: 15, icon: '👑', desc: '雙擊換裝：防禦 -7、攻擊 +2、魔傷 +15%' },
+                { id: 'a_muko',    name: '+7 武官護鎧',        type: 'armor',      def: 12, atk: 1, sp: 5,  armorTint: '#fbbf24', icon: '🥋', desc: '雙擊換裝：防禦 -12、攻擊 +1 的黃金聖鎧' },
+                { id: 'c_mr',      name: '+6 抗魔法斗篷',      type: 'cloak',      def: 6,  atk: 0, sp: 15, capeColor: '#2563eb', icon: '🧥', desc: '雙擊換裝：防禦 -6、魔法增傷 +15%' }
+            ]
+        };
+
+        const camera = { x: player.x, y: player.y, shakeTimer: 0, shakeIntensity: 0 };
+        const mouseState = { screenX: 0, screenY: 0, worldX: 24, worldY: 25, hoveredMonster: null };
+        const clickIndicators = [];
+        const floatingTexts = [];
+        const groundLoots = [];
+        const monsters = [];
+        const particles = [];
+        const activeSpells = [];
+        const remotePlayers = {};
+        window.player = player;
+
+        function getPlayerStats() {
+            let bonusAtk = 0;
+            let bonusDef = 0;
+            let bonusSp = 5;
+            for (const slot of EQUIP_SLOTS_META) {
+                const eq = player.equipped[slot.key];
+                if (eq) {
+                    bonusAtk += (eq.atk || 0);
+                    bonusDef += (eq.def || 0);
+                    bonusSp  += (eq.sp  || 0);
+                }
+            }
+            return {
+                minAtk: player.baseAtkMin + bonusAtk,
+                maxAtk: player.baseAtkMax + bonusAtk,
+                totalDef: player.baseDef + bonusDef,
+                spellPowerPct: bonusSp
+            };
+        }
+
+        function teleportToCastle() {
+            player.attackTarget = null;
+            player.x = 36.0;
+            player.y = 19.5;
+            player.targetX = 36.0;
+            player.targetY = 19.5;
+            sound.playLevelUp();
+            spawnHitSparks(player.x, player.y, '#38bdf8', 22, 30);
+            addFloatingText(player.x, player.y, '🏰 傳送至奇岩王城高地石階', '#fde047', 17);
+            addChatLog('✨ 使用了奇岩傳送術，已抵達北方高地的【奇岩雄偉城堡】南門大石階！', 'text-sky-300');
+        }
+        window.teleportToCastle = teleportToCastle;
+
+        /**************************************************************
+         * 4. 經典《天堂》五大怪物種類資料庫與建模參數
+         **************************************************************/
+        const MONSTER_TYPES = {
+            slime: {
+                type: 'slime',
+                name: '史萊姆',
+                level: 2,
+                maxHp: 55,
+                atkMin: 5,
+                atkMax: 9,
+                speed: 1.35,
+                aggroRange: 3.5,
+                attackRange: 1.25,
+                exp: 28,
+                scale: 1.0,
+                isFlying: false,
+                hitRadius: 24
+            },
+            werewolf: {
+                type: 'werewolf',
+                name: '狼人',
+                level: 6,
+                maxHp: 135,
+                atkMin: 12,
+                atkMax: 19,
+                speed: 2.35,
+                aggroRange: 4.8,
+                attackRange: 1.35,
+                exp: 68,
+                scale: 1.12,
+                isFlying: false,
+                hitRadius: 30
+            },
+            shelob: {
+                type: 'shelob',
+                name: '夏洛柏',
+                level: 8,
+                maxHp: 175,
+                atkMin: 15,
+                atkMax: 23,
+                speed: 2.1,
+                aggroRange: 5.0,
+                attackRange: 1.5,
+                exp: 95,
+                scale: 1.18,
+                isFlying: false,
+                hitRadius: 34
+            },
+            croc: {
+                type: 'croc',
+                name: '巨大鱷魚',
+                level: 9,
+                maxHp: 220,
+                atkMin: 17,
+                atkMax: 26,
+                speed: 1.75,
+                aggroRange: 4.5,
+                attackRange: 1.45,
+                exp: 115,
+                scale: 1.2,
+                isFlying: false,
+                hitRadius: 34
+            },
+            drake: {
+                type: 'drake',
+                name: '飛龍 (Boss)',
+                level: 15,
+                maxHp: 460,
+                atkMin: 26,
+                atkMax: 40,
+                speed: 2.5,
+                aggroRange: 6.2,
+                attackRange: 2.2,
+                exp: 320,
+                scale: 1.38,
+                isFlying: true,
+                hitRadius: 46
+            }
+        };
+
+        let monsterIdSeq = 1;
+
+        function spawnInitialMonsters() {
+            const initialPool = [
+                'slime', 'slime', 'slime', 'slime', 'slime', 'slime', 'slime',
+                'werewolf', 'werewolf', 'werewolf', 'werewolf', 'werewolf', 'werewolf', 'werewolf',
+                'shelob', 'shelob', 'shelob', 'shelob', 'shelob', 'shelob', 'shelob',
+                'croc', 'croc', 'croc', 'croc', 'croc', 'croc',
+                'drake', 'drake', 'drake', 'drake'
+            ];
+            initialPool.forEach(t => createMonster(t));
+        }
+
+        function createMonster(typeKey, customX = null, customY = null) {
+            const cfg = MONSTER_TYPES[typeKey] || MONSTER_TYPES.slime;
+            let gx = 18, gy = 42;
+
+            if (customX !== null && customY !== null) {
+                gx = customX;
+                gy = customY;
+            } else {
+                for (let tries = 0; tries < 100; tries++) {
+                    const rx = 3 + Math.floor(Math.random() * (MAP_SIZE - 6));
+                    const ry = 3 + Math.floor(Math.random() * (MAP_SIZE - 6));
+                    const distToPlayer = Math.hypot(rx - player.x, ry - player.y);
+                    // 避免怪物直接生在奇岩城堡內庭高地 (x: 21~50, y: 3~18)
+                    const inCastle = (rx >= 21 && rx <= 50 && ry >= 3 && ry <= 18);
+                    if (!inCastle && isWalkable(rx, ry, cfg.isFlying) && distToPlayer > 5.5) {
+                        gx = rx + 0.5;
+                        gy = ry + 0.5;
+                        break;
+                    }
+                }
+            }
+
+            monsters.push({
+                id: monsterIdSeq++,
+                type: cfg.type,
+                name: cfg.name,
+                level: cfg.level,
+                hp: cfg.maxHp,
+                maxHp: cfg.maxHp,
+                atkMin: cfg.atkMin,
+                atkMax: cfg.atkMax,
+                speed: cfg.speed,
+                aggroRange: cfg.aggroRange,
+                attackRange: cfg.attackRange,
+                exp: cfg.exp,
+                scale: cfg.scale,
+                isFlying: cfg.isFlying,
+                hitRadius: cfg.hitRadius,
+                x: gx,
+                y: gy,
+                homeX: gx,
+                homeY: gy,
+                targetX: gx,
+                targetY: gy,
+                dirX: 0,
+                dirY: 1,
+                walkPhase: Math.random() * Math.PI * 2,
+                wingPhase: Math.random() * Math.PI * 2,
+                idleTimer: 1 + Math.random() * 2,
+                attackCooldown: 0,
+                attackAnimTimer: 0,
+                hurtFlashTimer: 0
+            });
+        }
+
+        function spawnSpecificMonster(typeKey) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 2.6 + Math.random() * 1.4;
+            let tx = Math.max(2, Math.min(MAP_SIZE - 3, player.x + Math.cos(angle) * dist));
+            let ty = Math.max(2, Math.min(MAP_SIZE - 3, player.y + Math.sin(angle) * dist));
+            createMonster(typeKey, tx, ty);
+            const cfg = MONSTER_TYPES[typeKey];
+            addChatLog(`📢 已在附近召喚出【${cfg.name} Lv.${cfg.level}】！`, 'text-amber-300');
+            spawnHitSparks(tx, ty, '#fbbf24', 14);
+        }
+        window.spawnSpecificMonster = spawnSpecificMonster;
+
+        /**************************************************************
+         * 5. 內建三大魔法：【極道落雷】、【龍捲風】、【火球術】
+         **************************************************************/
+        const SPELL_CONFIG = {
+            lightning: { name: '極道落雷', mpCost: 18, cd: 1.8, baseMin: 48, baseMax: 72, range: 6.5 },
+            tornado:   { name: '龍捲風',   mpCost: 22, cd: 2.8, baseMin: 42, baseMax: 65, radius: 3.4 },
+            fireball:  { name: '火球術',   mpCost: 15, cd: 1.5, baseMin: 38, baseMax: 58, range: 6.5, blastRadius: 2.3 }
+        };
+
+        function castSpell(spellKey, isAutoTriggered = false) {
+            const cfg = SPELL_CONFIG[spellKey];
+            if (!cfg) return false;
+
+            if (player.spellCooldowns[spellKey] > 0) {
+                if (!isAutoTriggered) addChatLog(`⏳【${cfg.name}】冷卻中 (${player.spellCooldowns[spellKey].toFixed(1)}s)...`, 'text-stone-400');
+                return false;
+            }
+
+            if (player.mp < cfg.mpCost) {
+                if (!isAutoTriggered) addChatLog(`💧 魔力不足 (${player.mp}/${cfg.mpCost})，無法施放【${cfg.name}】！請喝藍水。`, 'text-sky-400');
+                return false;
+            }
+
+            let targetMonster = player.attackTarget && player.attackTarget.hp > 0 ? player.attackTarget : null;
+            if (!targetMonster || Math.hypot(targetMonster.x - player.x, targetMonster.y - player.y) > 7.5) {
+                let bestDist = 7.5;
+                for (const m of monsters) {
+                    if (m.hp <= 0) continue;
+                    const d = Math.hypot(m.x - player.x, m.y - player.y);
+                    if (d < bestDist) {
+                        bestDist = d;
+                        targetMonster = m;
+                    }
+                }
+            }
+
+            if ((spellKey === 'lightning' || spellKey === 'fireball') && !targetMonster) {
+                if (!isAutoTriggered) addChatLog(`🎯 視野範圍內沒有可鎖定施放【${cfg.name}】的怪物！`, 'text-amber-300');
+                return false;
+            }
+
+            player.mp -= cfg.mpCost;
+            player.spellCooldowns[spellKey] = cfg.cd;
+            player.swingAnimTimer = 0.28;
+
+            const stats = getPlayerStats();
+            const spMultiplier = 1 + (stats.spellPowerPct / 100);
+
+            if (spellKey === 'lightning') {
+                sound.playLightning();
+                camera.shakeTimer = 0.18;
+                camera.shakeIntensity = 6;
+                const tx = targetMonster.x;
+                const ty = targetMonster.y;
+                player.dirX = tx - player.x;
+                player.dirY = ty - player.y;
+
+                const mainBranches = buildLightningBoltPoints(tx, ty);
+                activeSpells.push({
+                    type: 'lightning',
+                    x: tx,
+                    y: ty,
+                    timer: 0.42,
+                    maxTimer: 0.42,
+                    branches: mainBranches
+                });
+
+                monsters.forEach(m => {
+                    if (m.hp <= 0) return;
+                    const d = Math.hypot(m.x - tx, m.y - ty);
+                    if (d <= 2.1) {
+                        const falloff = d < 0.5 ? 1.0 : 0.75;
+                        const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * spMultiplier * falloff);
+                        applyDamageToMonster(m, dmg, '⚡落雷', '#38bdf8');
+                    }
+                });
+                addFloatingText(player.x, player.y, '⚡ 極道落雷！', '#38bdf8', 16);
+
+            } else if (spellKey === 'tornado') {
+                sound.playTornado();
+                camera.shakeTimer = 0.22;
+                camera.shakeIntensity = 5;
+
+                activeSpells.push({
+                    type: 'tornado',
+                    x: player.x,
+                    y: player.y,
+                    timer: 0.75,
+                    maxTimer: 0.75
+                });
+
+                let hitCount = 0;
+                monsters.forEach(m => {
+                    if (m.hp <= 0) return;
+                    const d = Math.hypot(m.x - player.x, m.y - player.y);
+                    if (d <= cfg.radius) {
+                        hitCount++;
+                        const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * spMultiplier);
+                        applyDamageToMonster(m, dmg, '🌪️狂風', '#34d399');
+                        const ang = Math.atan2(m.y - player.y, m.x - player.x);
+                        const pushX = m.x + Math.cos(ang) * 0.55;
+                        const pushY = m.y + Math.sin(ang) * 0.55;
+                        if (isWalkable(pushX, pushY, m.isFlying)) {
+                            m.x = pushX;
+                            m.y = pushY;
+                        }
+                    }
+                });
+                addFloatingText(player.x, player.y, '🌪️ 龍捲風！', '#34d399', 16);
+
+            } else if (spellKey === 'fireball') {
+                sound.playFireball();
+                const tx = targetMonster.x;
+                const ty = targetMonster.y;
+                player.dirX = tx - player.x;
+                player.dirY = ty - player.y;
+
+                activeSpells.push({
+                    type: 'fireball',
+                    startX: player.x,
+                    startY: player.y,
+                    x: player.x,
+                    y: player.y,
+                    targetX: tx,
+                    targetY: ty,
+                    progress: 0,
+                    exploded: false,
+                    timer: 0.45,
+                    maxTimer: 0.45,
+                    spMultiplier
+                });
+                addFloatingText(player.x, player.y, '☄️ 火球術！', '#fb923c', 16);
+            }
+
+            updateStatusNumbersUI();
+            return true;
+        }
+        window.castSpell = castSpell;
+
+        function buildLightningBoltPoints(wx, wy) {
+            const bolts = [];
+            for (let b = 0; b < 3; b++) {
+                const pts = [];
+                const segments = 10;
+                for (let i = 0; i <= segments; i++) {
+                    const t = i / segments;
+                    const jitter = (i === 0 || i === segments) ? 0 : (Math.random() - 0.5) * 38;
+                    pts.push({ t, offsetX: jitter });
+                }
+                bolts.push(pts);
+            }
+            return bolts;
+        }
+
+        function applyDamageToMonster(m, dmg, tagText, colorHex) {
+            m.hp -= dmg;
+            m.hurtFlashTimer = 0.16;
+            spawnHitSparks(m.x, m.y, colorHex, 14, m.isFlying ? 32 : 12);
+            addFloatingText(m.x, m.y, `${tagText} -${dmg}`, colorHex, 16);
+            if (m.hp <= 0) {
+                handleMonsterDeath(m);
+            }
+        }
+
+        /**************************************************************
+         * 6. 粒子、掉寶表 (含 9 部位神裝) 與系統訊息
+         **************************************************************/
+        function addChatLog(htmlMsg, colorClass = 'text-stone-300') {
+            const log = document.getElementById('chatLog');
+            if (!log) return;
+            const div = document.createElement('div');
+            div.className = colorClass;
+            div.innerHTML = htmlMsg;
+            log.appendChild(div);
+            while (log.children.length > 45) {
+                log.removeChild(log.firstChild);
+            }
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function addFloatingText(wx, wy, text, color = '#ffffff', size = 14) {
+            floatingTexts.push({
+                wx,
+                wy,
+                text,
+                color,
+                size,
+                offsetY: 0,
+                alpha: 1.0,
+                life: 0.95
+            });
+        }
+
+        function spawnHitSparks(wx, wy, color = '#fbbf24', count = 10, heightOffset = 14) {
+            for (let i = 0; i < count; i++) {
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 25 + Math.random() * 65;
+                particles.push({
+                    wx,
+                    wy,
+                    z: heightOffset + Math.random() * 12,
+                    vx: Math.cos(ang) * spd,
+                    vy: Math.sin(ang) * spd * 0.6,
+                    vz: 40 + Math.random() * 70,
+                    gravity: 210,
+                    color,
+                    size: 2 + Math.random() * 2.8,
+                    life: 0.35 + Math.random() * 0.25,
+                    maxLife: 0.55
+                });
+            }
+        }
+
+        function spawnFireBreathParticles(fromX, fromY, toX, toY) {
+            const dx = toX - fromX;
+            const dy = toY - fromY;
+            const baseAng = Math.atan2(dy, dx);
+            const colors = ['#fef08a', '#fb923c', '#ef4444', '#dc2626'];
+            for (let i = 0; i < 24; i++) {
+                const spread = (Math.random() - 0.5) * 0.55;
+                const spd = 1.8 + Math.random() * 2.8;
+                particles.push({
+                    wx: fromX,
+                    wy: fromY,
+                    z: 36,
+                    worldVelX: Math.cos(baseAng + spread) * spd,
+                    worldVelY: Math.sin(baseAng + spread) * spd,
+                    vx: 0,
+                    vy: 0,
+                    vz: -35 + (Math.random() - 0.5) * 20,
+                    gravity: 0,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    size: 4 + Math.random() * 5,
+                    life: 0.45 + Math.random() * 0.2,
+                    maxLife: 0.65,
+                    isWorldSpace: true
+                });
+            }
+        }
+
+        function spawnSpiderWebEffect(fromX, fromY, toX, toY) {
+            for (let i = 0; i < 12; i++) {
+                const t = i / 12;
+                particles.push({
+                    wx: fromX + (toX - fromX) * t,
+                    wy: fromY + (toY - fromY) * t,
+                    z: 14,
+                    vx: (Math.random() - 0.5) * 18,
+                    vy: (Math.random() - 0.5) * 18,
+                    vz: 10,
+                    gravity: 40,
+                    color: i % 2 === 0 ? '#e5e7eb' : '#a3e635',
+                    size: 3.2,
+                    life: 0.4,
+                    maxLife: 0.4
+                });
+            }
+        }
+
+        const LOOT_POOL_9SLOTS = [
+            { id: 'h_wind',   name: '+6 風之頭盔',       type: 'helmet',   def: 6,  atk: 1, sp: 5,  icon: '🪖', desc: '防禦 -6、近戰攻擊 +1、魔傷 +5%' },
+            { id: 'h_bapho',  name: '+7 巴風特頭盔',     type: 'helmet',   def: 8,  atk: 3, sp: 15, icon: '👑', desc: '防禦 -8、近戰 +3、魔法增傷 +15%' },
+            { id: 'e_ice',    name: '冰之女王耳環',      type: 'earring',  def: 3,  atk: 2, sp: 12, icon: '💎', desc: '防禦 -3、近戰 +2、魔法增傷 +12%' },
+            { id: 'n_atul',   name: '阿吐巴妖魔項鍊',    type: 'necklace', def: 2,  atk: 4, sp: 8,  icon: '📿', desc: '防禦 -2、近戰傷害 +4、魔傷 +8%' },
+            { id: 'w_nihon',  name: '+8 日本劍',         type: 'weapon',   atk: 14, def: 0, sp: 5,  enchant: 8, bladeColor: '#fde047', icon: '⚔️', desc: '額外攻擊 +14，攻速流暢的東方名刀' },
+            { id: 'w_death',  name: '+9 死神之劍',       type: 'weapon',   atk: 24, def: 0, sp: 20, enchant: 9, bladeColor: '#f43f5e', icon: '🗡️', desc: '額外攻擊 +24、魔法增傷 +20% 的傳說神兵！' },
+            { id: 'a_dragon', name: '+8 古老的龍鱗盔甲', type: 'armor',    def: 16, atk: 2, sp: 10, armorTint: '#34d399', icon: '🐉', desc: '防禦 -16、攻擊 +2、魔傷 +10% 的頂級龍甲！' },
+            { id: 'c_silver', name: '+7 銀光斗篷',       type: 'cloak',    def: 8,  atk: 1, sp: 12, capeColor: '#9333ea', icon: '🧣', desc: '防禦 -8、攻擊 +1、魔傷 +12%' },
+            { id: 'g_crystal',name: '+6 水晶手套',       type: 'gloves',   def: 5,  atk: 3, sp: 5,  icon: '🧤', desc: '防禦 -5、近戰傷害 +3' },
+            { id: 'r_tele',   name: '瞬間移動控制戒指',  type: 'ring',     def: 2,  atk: 3, sp: 15, icon: '💍', desc: '防禦 -2、攻擊 +3、魔法增傷 +15%' },
+            { id: 'b_dark',   name: '+6 黑暗長靴',       type: 'boots',    def: 6,  atk: 2, sp: 5,  icon: '👢', desc: '防禦 -6、近戰傷害 +2' }
+        ];
+
+        function dropMonsterLoot(m) {
+            const isBoss = m.type === 'drake';
+            const goldAmt = Math.floor((18 + Math.random() * 35) * m.level * (isBoss ? 2.5 : 1));
+            groundLoots.push({
+                id: 'loot_' + Date.now() + '_' + Math.random(),
+                wx: m.x + (Math.random() - 0.5) * 0.45,
+                wy: m.y + (Math.random() - 0.5) * 0.45,
+                kind: 'gold',
+                amount: goldAmt,
+                name: `金幣 (${goldAmt})`,
+                icon: '🪙',
+                color: '#facc15'
+            });
+
+            const roll = Math.random();
+            let itemData = null;
+
+            if (isBoss || roll < 0.35) {
+                const subRoll = Math.random();
+                if (subRoll < 0.35) {
+                    itemData = { id: 'zel_scroll', name: '對武器施法的卷軸', type: 'scroll', subType: 'dai', count: 1, icon: '📜', desc: '雙擊強化目前裝備的主手武器 (+1)' };
+                } else {
+                    const eqTemplate = LOOT_POOL_9SLOTS[Math.floor(Math.random() * LOOT_POOL_9SLOTS.length)];
+                    itemData = { ...eqTemplate, id: eqTemplate.id + '_' + Date.now() + '_' + Math.floor(Math.random() * 999) };
+                }
+            } else if (roll < 0.72) {
+                const pRoll = Math.random();
+                if (pRoll < 0.35) {
+                    itemData = { id: 'pot_red', name: '紅色藥水', type: 'consumable', subType: 'red', count: 2, icon: '🧪', desc: '恢復 65 點體力(HP)' };
+                } else if (pRoll < 0.62) {
+                    itemData = { id: 'pot_blue', name: '藍色魔力藥水', type: 'consumable', subType: 'blue', count: 1, icon: '💧', desc: '恢復 45 MP 並加速回魔' };
+                } else if (pRoll < 0.82) {
+                    itemData = { id: 'pot_green', name: '自我加速藥水', type: 'consumable', subType: 'green', count: 1, icon: '🧪', desc: '一段加速 60 秒' };
+                } else {
+                    itemData = { id: 'pot_brave', name: '勇敢藥水', type: 'consumable', subType: 'brave', count: 1, icon: '🍷', desc: '騎士二段加速 45 秒' };
+                }
+            }
+
+            if (itemData) {
+                groundLoots.push({
+                    id: 'loot_' + Date.now() + '_' + Math.random(),
+                    wx: m.x + (Math.random() - 0.5) * 0.65,
+                    wy: m.y + (Math.random() - 0.5) * 0.65,
+                    kind: 'item',
+                    itemData,
+                    name: itemData.name,
+                    icon: itemData.icon,
+                    color: itemData.type === 'scroll' ? '#38bdf8' : (itemData.type === 'consumable' ? '#4ade80' : '#f43f5e')
+                });
+            }
+        }
+
+        function pickupLootItem(lootIndex) {
+            const loot = groundLoots[lootIndex];
+            if (!loot) return;
+
+            sound.playPickup();
+            if (loot.kind === 'gold') {
+                player.gold += loot.amount;
+                addFloatingText(player.x, player.y, `+${loot.amount} 金幣`, '#facc15', 14);
+                addChatLog(`獲得了 <span class="text-yellow-300 font-bold">${loot.name}</span>。`);
+            } else if (loot.kind === 'item') {
+                const item = loot.itemData;
+                if (item.type === 'consumable' || item.type === 'scroll') {
+                    const existing = player.inventory.find(i => i.name === item.name && i.type === item.type);
+                    if (existing) {
+                        existing.count = (existing.count || 1) + (item.count || 1);
+                    } else {
+                        player.inventory.push({ ...item });
+                    }
+                } else {
+                    player.inventory.push({ ...item });
+                }
+                addFloatingText(player.x, player.y, `獲得 ${item.name}`, loot.color, 14);
+                addChatLog(`獲得了 <span class="text-amber-300 font-bold">【${item.name}】</span> (已收入無限背包)！`);
+            }
+            groundLoots.splice(lootIndex, 1);
+            updateUI();
+        }
+
+        function pickupNearbyLoot() {
+            let picked = false;
+            for (let i = groundLoots.length - 1; i >= 0; i--) {
+                const d = Math.hypot(groundLoots[i].wx - player.x, groundLoots[i].wy - player.y);
+                if (d <= 2.3) {
+                    pickupLootItem(i);
+                    picked = true;
+                }
+            }
+            if (!picked) addChatLog('腳邊沒有可拾取的寶物。', 'text-stone-400');
+        }
+        window.pickupNearbyLoot = pickupNearbyLoot;
+
+        /**************************************************************
+         * 7. 9 部位裝備穿戴、無上限背包 UI 與戰鬥中雙擊秒換裝系統
+         **************************************************************/
+        const VALID_EQUIP_TYPES = new Set(EQUIP_SLOTS_META.map(s => s.key));
+
+        function updateStatusNumbersUI() {
+            const nameEl = document.getElementById('uiPlayerName');
+            if (nameEl) nameEl.textContent = player.name;
+            document.getElementById('uiLevel').textContent = player.level;
+            document.getElementById('uiGold').textContent = player.gold.toLocaleString();
+            document.getElementById('uiHp').textContent = Math.ceil(player.hp);
+            document.getElementById('uiMaxHp').textContent = player.maxHp;
+            document.getElementById('uiMp').textContent = Math.floor(player.mp);
+            document.getElementById('uiMaxMp').textContent = player.maxMp;
+
+            const hpPct = Math.max(0, Math.min(100, (player.hp / player.maxHp) * 100));
+            const mpPct = Math.max(0, Math.min(100, (player.mp / player.maxMp) * 100));
+            const expPct = Math.max(0, Math.min(100, (player.exp / player.maxExp) * 100));
+
+            document.getElementById('hpBar').style.width = `${hpPct}%`;
+            document.getElementById('mpBar').style.width = `${mpPct}%`;
+            document.getElementById('expBar').style.width = `${expPct}%`;
+            document.getElementById('uiExpPercent').textContent = `${expPct.toFixed(1)}%`;
+
+            const stats = getPlayerStats();
+            document.getElementById('uiAtk').textContent = `${stats.minAtk}~${stats.maxAtk}`;
+            document.getElementById('uiDef').textContent = `-${stats.totalDef}`;
+            document.getElementById('uiSp').textContent = `+${stats.spellPowerPct}%`;
+
+            document.getElementById('hasteBadge').classList.toggle('hidden', player.hasteTimer <= 0);
+            document.getElementById('braveBadge').classList.toggle('hidden', player.braveTimer <= 0);
+
+            const redPot = player.inventory.find(i => i.subType === 'red');
+            const greenPot = player.inventory.find(i => i.subType === 'green');
+            const bravePot = player.inventory.find(i => i.subType === 'brave');
+            const bluePot = player.inventory.find(i => i.subType === 'blue');
+            document.getElementById('quickRedCount').textContent = redPot ? redPot.count : 0;
+            document.getElementById('quickGreenCount').textContent = greenPot ? greenPot.count : 0;
+            document.getElementById('quickBraveCount').textContent = bravePot ? bravePot.count : 0;
+            document.getElementById('quickBlueCount').textContent = bluePot ? bluePot.count : 0;
+
+            document.getElementById('invCountBadge').textContent = `${player.inventory.length} / ∞`;
+        }
+
+        function renderEquipmentAndInventoryDOM() {
+            const pdGrid = document.getElementById('paperdollGrid');
+            if (pdGrid) {
+                pdGrid.innerHTML = '';
+                EQUIP_SLOTS_META.forEach(slotMeta => {
+                    const eq = player.equipped[slotMeta.key];
+                    const cell = document.createElement('div');
+                    cell.dataset.slotKey = slotMeta.key;
+                    cell.className = `equip-slot p-1.5 rounded flex items-center gap-1.5 cursor-pointer select-none ${eq ? 'equipped' : ''}`;
+                    cell.innerHTML = `
+                        <div class="w-8 h-8 rounded bg-black/60 flex items-center justify-center text-base shrink-0 border border-amber-900/50">
+                            ${eq ? eq.icon : `<span class="opacity-30">${slotMeta.emptyIcon}</span>`}
+                        </div>
+                        <div class="min-w-0 flex-1 leading-tight">
+                            <div class="text-[9px] text-amber-200/60">${slotMeta.label}</div>
+                            <div class="text-[11px] font-bold ${eq ? 'text-amber-300' : 'text-stone-500'} truncate">
+                                ${eq ? eq.name : '未裝備'}
+                            </div>
+                        </div>
+                    `;
+                    pdGrid.appendChild(cell);
+                });
+            }
+
+            const invGrid = document.getElementById('inventoryGrid');
+            if (invGrid) {
+                invGrid.innerHTML = '';
+                const totalCells = Math.max(15, Math.ceil((player.inventory.length + 5) / 5) * 5);
+
+                for (let i = 0; i < totalCells; i++) {
+                    const item = player.inventory[i];
+                    const cell = document.createElement('div');
+
+                    if (item) {
+                        const isEquippable = VALID_EQUIP_TYPES.has(item.type);
+                        cell.dataset.invIndex = i;
+                        cell.className = `equip-slot h-12 rounded flex flex-col items-center justify-center relative cursor-pointer group ${isEquippable ? 'border-amber-700/80' : ''}`;
+                        cell.innerHTML = `
+                            <span class="text-lg group-hover:scale-110 transition-transform pointer-events-none">${item.icon}</span>
+                            ${item.count && item.count > 1 ? `<span class="absolute bottom-0.5 right-1 text-[10px] font-mono font-bold text-white bg-black/75 px-1 rounded pointer-events-none">${item.count}</span>` : ''}
+                            ${isEquippable ? `<span class="absolute top-0.5 left-1 text-[8px] text-amber-300/90 font-bold pointer-events-none">${getSlotLabel(item.type)}</span>` : ''}
+                        `;
+                    } else {
+                        cell.className = 'equip-slot h-12 rounded flex items-center justify-center opacity-35';
+                    }
+                    invGrid.appendChild(cell);
+                }
+            }
+        }
+
+        function getSlotLabel(type) {
+            const found = EQUIP_SLOTS_META.find(s => s.key === type);
+            return found ? found.label : '';
+        }
+
+        function updateUI() {
+            updateStatusNumbersUI();
+            renderEquipmentAndInventoryDOM();
+        }
+
+        function initInventoryDelegatedEvents() {
+            const invGrid = document.getElementById('inventoryGrid');
+            const pdGrid = document.getElementById('paperdollGrid');
+            const tooltip = document.getElementById('itemTooltip');
+
+            let lastActivateTime = 0;
+            let lastActivateIndex = -1;
+
+            function triggerBagItemAt(idx) {
+                const now = performance.now();
+                if (idx === lastActivateIndex && now - lastActivateTime < 280) {
+                    return;
+                }
+                lastActivateIndex = idx;
+                lastActivateTime = now;
+                handleInventoryClick(idx);
+            }
+
+            if (invGrid) {
+                invGrid.addEventListener('click', (e) => {
+                    const cell = e.target.closest('[data-inv-index]');
+                    if (!cell) return;
+                    e.stopPropagation();
+                    const idx = parseInt(cell.dataset.invIndex, 10);
+                    triggerBagItemAt(idx);
+                });
+
+                invGrid.addEventListener('dblclick', (e) => {
+                    const cell = e.target.closest('[data-inv-index]');
+                    if (!cell) return;
+                    e.stopPropagation();
+                    e.preventDefault();
+                    const idx = parseInt(cell.dataset.invIndex, 10);
+                    triggerBagItemAt(idx);
+                });
+
+                invGrid.addEventListener('mouseover', (e) => {
+                    const cell = e.target.closest('[data-inv-index]');
+                    if (!cell || !tooltip) return;
+                    const idx = parseInt(cell.dataset.invIndex, 10);
+                    const item = player.inventory[idx];
+                    if (item) {
+                        const slotTag = getSlotLabel(item.type);
+                        tooltip.innerHTML = `
+                            <div class="font-bold text-amber-300 flex justify-between">
+                                <span>${item.name} ${slotTag ? `<span class="text-xs text-sky-300">[${slotTag}]</span>` : ''}</span>
+                                <span class="text-[10px] text-emerald-400">點擊/雙擊立即使用</span>
+                            </div>
+                            <div class="text-stone-300 text-[11px] mt-0.5">${item.desc || ''}</div>
+                        `;
+                    }
+                });
+            }
+
+            if (pdGrid) {
+                let lastUnequipTime = 0;
+                const handleSlotAction = (e) => {
+                    const cell = e.target.closest('[data-slot-key]');
+                    if (!cell) return;
+                    e.stopPropagation();
+                    const now = performance.now();
+                    if (now - lastUnequipTime < 250) return;
+                    lastUnequipTime = now;
+                    unequipSlot(cell.dataset.slotKey);
+                };
+                pdGrid.addEventListener('click', handleSlotAction);
+                pdGrid.addEventListener('dblclick', handleSlotAction);
+            }
+        }
+
+        function handleInventoryClick(index) {
+            const item = player.inventory[index];
+            if (!item) return;
+
+            if (item.type === 'consumable') {
+                consumePotionItem(item, index);
+            } else if (item.type === 'scroll' && item.subType === 'dai') {
+                useWeaponScroll(index);
+            } else if (VALID_EQUIP_TYPES.has(item.type)) {
+                const slotKey = item.type;
+                const prevEquipped = player.equipped[slotKey];
+                player.equipped[slotKey] = item;
+                player.inventory.splice(index, 1);
+                if (prevEquipped) {
+                    player.inventory.push(prevEquipped);
+                }
+                sound.playPickup();
+                addFloatingText(player.x, player.y, `裝備 ${item.name}`, '#fde047', 15);
+                addChatLog(`⚔️ 穿戴了【<span class="text-amber-300 font-bold">${item.name}</span>】(${getSlotLabel(slotKey)})！`);
+                updateUI();
+            }
+        }
+
+        function unequipSlot(slotKey) {
+            const current = player.equipped[slotKey];
+            if (!current) return;
+            player.inventory.push(current);
+            player.equipped[slotKey] = null;
+            sound.playPickup();
+            addChatLog(`卸下了【${current.name}】並放入無限背包。`);
+            updateUI();
+        }
+
+        function useWeaponScroll(invIndex) {
+            const scrollItem = player.inventory[invIndex];
+            const weapon = player.equipped.weapon;
+            if (!weapon) {
+                addChatLog('請先裝備一把主手武器，才能使用對武器施法的卷軸！', 'text-red-400');
+                return;
+            }
+
+            weapon.enchant = (weapon.enchant || 0) + 1;
+            weapon.atk += 2;
+            weapon.sp = (weapon.sp || 0) + 2;
+            const baseName = weapon.name.replace(/^\+\d+\s*/, '');
+            weapon.name = `+${weapon.enchant} ${baseName}`;
+
+            if (weapon.enchant >= 9) {
+                weapon.bladeColor = '#f43f5e';
+            } else if (weapon.enchant >= 7) {
+                weapon.bladeColor = '#fde047';
+            }
+
+            scrollItem.count -= 1;
+            if (scrollItem.count <= 0) player.inventory.splice(invIndex, 1);
+
+            sound.playLevelUp();
+            player.levelUpBeamTimer = 0.8;
+            spawnHitSparks(player.x, player.y, '#38bdf8', 25, 25);
+            addFloatingText(player.x, player.y, `✨ ${weapon.name} 強化成功！`, '#38bdf8', 16);
+            addChatLog(`📜【<span class="text-sky-300 font-bold">${weapon.name}</span>】一陣光芒閃過，武器強化成功！攻擊力與魔傷提升！`, 'text-amber-300');
+            updateUI();
+        }
+
+        function consumePotionItem(item, index) {
+            sound.playPickup();
+            if (item.subType === 'red') {
+                const heal = 65;
+                player.hp = Math.min(player.maxHp, player.hp + heal);
+                addFloatingText(player.x, player.y, `+${heal} HP`, '#4ade80', 15);
+                spawnHitSparks(player.x, player.y, '#f87171', 8, 20);
+            } else if (item.subType === 'green') {
+                player.hasteTimer = 60;
+                addFloatingText(player.x, player.y, `一段加速！`, '#34d399', 15);
+                spawnHitSparks(player.x, player.y, '#34d399', 14, 20);
+            } else if (item.subType === 'brave') {
+                player.braveTimer = 45;
+                addFloatingText(player.x, player.y, `🔥二段勇敢加速！`, '#f87171', 16);
+                spawnHitSparks(player.x, player.y, '#ef4444', 18, 22);
+            } else if (item.subType === 'blue') {
+                const mpGain = 45;
+                player.mp = Math.min(player.maxMp, player.mp + mpGain);
+                player.bluePotionTimer = 60;
+                addFloatingText(player.x, player.y, `+${mpGain} MP`, '#38bdf8', 15);
+                spawnHitSparks(player.x, player.y, '#38bdf8', 12, 22);
+            }
+
+            item.count -= 1;
+            if (item.count <= 0) {
+                player.inventory.splice(index, 1);
+            }
+            updateUI();
+        }
+
+        function useQuickPotion(subType) {
+            const idx = player.inventory.findIndex(i => i.type === 'consumable' && i.subType === subType);
+            if (idx !== -1) {
+                consumePotionItem(player.inventory[idx], idx);
+            } else {
+                addChatLog(`背包內已經沒有該藥水了！`, 'text-red-400');
+            }
+        }
+        window.useQuickPotion = useQuickPotion;
+
+        function toggleInventory() {
+            const modal = document.getElementById('inventoryModal');
+            modal.classList.toggle('hidden');
+        }
+        window.toggleInventory = toggleInventory;
+
+        function toggleAutoBattle() {
+            player.autoBattle = !player.autoBattle;
+            sound.init();
+            sound.playPickup();
+            if (player.autoBattle) {
+                player.manualMoveOverrideTimer = 0;
+                addChatLog('🤖【自動狩獵已開啟】自動尋怪、放魔法、撿寶與喝水，戰鬥中可直接雙擊背包秒換裝！', 'text-emerald-400 font-bold');
+                addFloatingText(player.x, player.y, '⚡ 自動狩獵 ON', '#34d399', 16);
+            } else {
+                player.attackTarget = null;
+                player.targetX = player.x;
+                player.targetY = player.y;
+                addChatLog('🛑【自動狩獵已暫停】切換為手動控制模式。', 'text-amber-300');
+                addFloatingText(player.x, player.y, '自動狩獵 OFF', '#fbbf24', 15);
+            }
+            updateAutoBattleUI();
+        }
+        window.toggleAutoBattle = toggleAutoBattle;
+
+        function toggleAutoMagic() {
+            player.autoMagic = !player.autoMagic;
+            sound.playPickup();
+            addChatLog(player.autoMagic
+                ? '✨【自動魔法已開啟】內掛狩獵時將自動施放極道落雷、龍捲風與火球術！'
+                : '💤【自動魔法已關閉】內掛狩獵時僅使用普攻揮劍。', 'text-sky-300');
+            updateAutoBattleUI();
+        }
+        window.toggleAutoMagic = toggleAutoMagic;
+
+        function updateAutoBattleUI() {
+            const topBtn = document.getElementById('topAutoBattleBtn');
+            const topDot = document.getElementById('topAutoDot');
+            const topText = document.getElementById('topAutoText');
+            const bottomBtn = document.getElementById('bottomAutoBattleBtn');
+            const bottomLabel = document.getElementById('bottomAutoLabel');
+
+            if (player.autoBattle) {
+                if (topBtn) topBtn.className = 'px-2.5 py-0.5 rounded text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer bg-emerald-900/90 border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.5)]';
+                if (topDot) topDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-ping';
+                if (topText) topText.textContent = '自動狩獵: 開啟中 (Z)';
+                if (bottomBtn) bottomBtn.className = 'equip-slot w-12 h-10 sm:w-13 sm:h-11 rounded flex flex-col items-center justify-center relative cursor-pointer border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.45)] shrink-0';
+                if (bottomLabel) {
+                    bottomLabel.textContent = '內掛:開';
+                    bottomLabel.className = 'text-[9px] text-emerald-300 font-bold';
+                }
+            } else {
+                if (topBtn) topBtn.className = 'px-2.5 py-0.5 rounded text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer bg-stone-900/90 border-amber-700/80 text-amber-200/80';
+                if (topDot) topDot.className = 'w-2 h-2 rounded-full bg-stone-500';
+                if (topText) topText.textContent = '自動狩獵: 關閉 (Z)';
+                if (bottomBtn) bottomBtn.className = 'equip-slot w-12 h-10 sm:w-13 sm:h-11 rounded flex flex-col items-center justify-center relative cursor-pointer border-stone-600 opacity-80 shrink-0';
+                if (bottomLabel) {
+                    bottomLabel.textContent = '內掛:關';
+                    bottomLabel.className = 'text-[9px] text-stone-400 font-bold';
+                }
+            }
+
+            const magicBtn = document.getElementById('topAutoMagicBtn');
+            const magicText = document.getElementById('topAutoMagicText');
+            if (magicBtn && magicText) {
+                if (player.autoMagic) {
+                    magicBtn.className = 'px-2.5 py-0.5 rounded text-xs font-bold border transition-all flex items-center gap-1 cursor-pointer bg-sky-900/90 border-sky-400 text-sky-200 shadow-[0_0_10px_rgba(56,189,248,0.4)]';
+                    magicText.textContent = '自動魔法: 開 (X)';
+                } else {
+                    magicBtn.className = 'px-2.5 py-0.5 rounded text-xs font-bold border transition-all flex items-center gap-1 cursor-pointer bg-stone-900/90 border-stone-600 text-stone-400';
+                    magicText.textContent = '自動魔法: 關 (X)';
+                }
+            }
+        }
+
+        function runAutoBattleAI(dt) {
+            if (!player.autoBattle) return;
+
+            if (player.autoPotionCooldown > 0) {
+                player.autoPotionCooldown = Math.max(0, player.autoPotionCooldown - dt);
+            }
+
+            if (player.hp < player.maxHp * 0.68 && player.autoPotionCooldown <= 0) {
+                const redIdx = player.inventory.findIndex(i => i.type === 'consumable' && i.subType === 'red');
+                if (redIdx !== -1) {
+                    consumePotionItem(player.inventory[redIdx], redIdx);
+                    player.autoPotionCooldown = 0.85;
+                } else if (player.gold >= 30) {
+                    player.gold -= 30;
+                    player.hp = Math.min(player.maxHp, player.hp + 65);
+                    player.autoPotionCooldown = 1.0;
+                    addFloatingText(player.x, player.y, '+65 HP (內掛補給)', '#4ade80', 13);
+                    updateStatusNumbersUI();
+                }
+            }
+
+            if (player.mp < player.maxMp * 0.45 && player.autoPotionCooldown <= 0) {
+                const blueIdx = player.inventory.findIndex(i => i.type === 'consumable' && i.subType === 'blue');
+                if (blueIdx !== -1) {
+                    consumePotionItem(player.inventory[blueIdx], blueIdx);
+                    player.autoPotionCooldown = 1.0;
+                }
+            }
+
+            if (player.hasteTimer <= 0) {
+                const greenIdx = player.inventory.findIndex(i => i.type === 'consumable' && i.subType === 'green');
+                if (greenIdx !== -1) consumePotionItem(player.inventory[greenIdx], greenIdx);
+            }
+            if (player.braveTimer <= 0) {
+                const braveIdx = player.inventory.findIndex(i => i.type === 'consumable' && i.subType === 'brave');
+                if (braveIdx !== -1) consumePotionItem(player.inventory[braveIdx], braveIdx);
+            }
+
+            if (player.manualMoveOverrideTimer > 0) {
+                player.manualMoveOverrideTimer = Math.max(0, player.manualMoveOverrideTimer - dt);
+                player.autoStatusText = '手動走位中...';
+                return;
+            }
+
+            if (groundLoots.length > 0) {
+                let nearestLoot = null;
+                let minLootDist = Infinity;
+                for (const loot of groundLoots) {
+                    const d = Math.hypot(loot.wx - player.x, loot.wy - player.y);
+                    if (d < minLootDist) {
+                        minLootDist = d;
+                        nearestLoot = loot;
+                    }
+                }
+                if (nearestLoot && minLootDist <= 9.0) {
+                    player.attackTarget = null;
+                    player.targetX = nearestLoot.wx;
+                    player.targetY = nearestLoot.wy;
+                    player.autoStatusText = `自動拾取: ${nearestLoot.name}`;
+                    return;
+                }
+            }
+
+            if (!player.attackTarget || player.attackTarget.hp <= 0) {
+                let bestMonster = null;
+                let bestScore = Infinity;
+
+                for (const m of monsters) {
+                    if (m.hp <= 0) continue;
+                    const dist = Math.hypot(m.x - player.x, m.y - player.y);
+                    const isAttackingMe = dist <= m.aggroRange ? -2.5 : 0;
+                    const score = dist + isAttackingMe;
+                    if (score < bestScore) {
+                        bestScore = score;
+                        bestMonster = m;
+                    }
+                }
+                player.attackTarget = bestMonster;
+            }
+
+            if (player.attackTarget) {
+                player.autoStatusText = `鎖定: ${player.attackTarget.name}`;
+
+                if (player.autoMagic && player.mp >= 15) {
+                    const distToTarget = Math.hypot(player.attackTarget.x - player.x, player.attackTarget.y - player.y);
+                    const nearbyCount = monsters.filter(m => m.hp > 0 && Math.hypot(m.x - player.x, m.y - player.y) <= 3.3).length;
+
+                    if (nearbyCount >= 2 && player.spellCooldowns.tornado <= 0 && player.mp >= 22) {
+                        castSpell('tornado', true);
+                    } else if (distToTarget <= 6.2 && player.spellCooldowns.lightning <= 0 && player.mp >= 18) {
+                        castSpell('lightning', true);
+                    } else if (distToTarget <= 6.2 && player.spellCooldowns.fireball <= 0 && player.mp >= 15) {
+                        castSpell('fireball', true);
+                    }
+                }
+            } else {
+                player.autoStatusText = '搜尋獵物中...';
+            }
+        }
+
+        /**************************************************************
+         * 8. 滑鼠點擊與鍵盤控制
+         **************************************************************/
+        function findMonsterAtScreenPos(sx, sy) {
+            for (let i = monsters.length - 1; i >= 0; i--) {
+                const m = monsters[i];
+                const sp = worldToScreen(m.x, m.y, camera.x, camera.y);
+                const yCenterOffset = m.isFlying ? -38 : -18;
+                const dist = Math.hypot(sx - sp.x, sy - (sp.y + yCenterOffset));
+                if (dist <= m.hitRadius) return m;
+            }
+            return null;
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            mouseState.screenX = e.clientX;
+            mouseState.screenY = e.clientY;
+            const w = screenToWorld(e.clientX, e.clientY, camera.x, camera.y);
+            mouseState.worldX = w.x;
+            mouseState.worldY = w.y;
+            mouseState.hoveredMonster = findMonsterAtScreenPos(e.clientX, e.clientY);
+            canvas.style.cursor = mouseState.hoveredMonster ? 'pointer' : 'crosshair';
+        });
+
+        canvas.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0) return;
+            sound.init();
+
+            const clickedMonster = findMonsterAtScreenPos(e.clientX, e.clientY);
+            if (clickedMonster) {
+                player.attackTarget = clickedMonster;
+                player.manualMoveOverrideTimer = 0;
+                clickIndicators.push({ wx: clickedMonster.x, wy: clickedMonster.y, radius: 4, maxRadius: 26, color: '#ef4444', alpha: 1 });
+                return;
+            }
+
+            const w = screenToWorld(e.clientX, e.clientY, camera.x, camera.y);
+            const clampedX = Math.max(1.2, Math.min(MAP_SIZE - 1.2, w.x));
+            const clampedY = Math.max(1.2, Math.min(MAP_SIZE - 1.2, w.y));
+
+            if (isWalkable(clampedX, clampedY)) {
+                player.attackTarget = null;
+                player.targetX = clampedX;
+                player.targetY = clampedY;
+                if (player.autoBattle) {
+                    player.manualMoveOverrideTimer = 1.6;
+                }
+                clickIndicators.push({ wx: clampedX, wy: clampedY, radius: 2, maxRadius: 22, color: '#facc15', alpha: 1 });
+            } else {
+                clickIndicators.push({ wx: clampedX, wy: clampedY, radius: 4, maxRadius: 16, color: '#ef4444', alpha: 0.9 });
+            }
+        });
+
+        function triggerManualSwing() {
+            let nearest = null;
+            let minDist = 1.95;
+            for (const m of monsters) {
+                const d = Math.hypot(m.x - player.x, m.y - player.y);
+                if (d < minDist) {
+                    minDist = d;
+                    nearest = m;
+                }
+            }
+            if (nearest) {
+                player.attackTarget = nearest;
+                performPlayerAttack(nearest);
+            } else if (player.attackCooldown <= 0) {
+                player.swingAnimTimer = 0.25;
+                player.swingCombo = (player.swingCombo + 1) % 2;
+                player.attackCooldown = getPlayerAttackInterval();
+                sound.playSwing(player.braveTimer > 0);
+            }
+        }
+        window.triggerManualSwing = triggerManualSwing;
+
+        function getPlayerAttackInterval() {
+            let interval = 0.56;
+            if (player.hasteTimer > 0) interval *= 0.78;
+            if (player.braveTimer > 0) interval *= 0.72;
+            return interval;
+        }
+
+        function performPlayerAttack(target) {
+            if (!target || player.attackCooldown > 0) return;
+
+            player.attackCooldown = getPlayerAttackInterval();
+            player.swingAnimTimer = 0.26;
+            player.swingCombo = (player.swingCombo + 1) % 2;
+
+            player.dirX = target.x - player.x;
+            player.dirY = target.y - player.y;
+
+            const stats = getPlayerStats();
+            const isCrit = Math.random() < 0.26;
+            let dmg = Math.floor(stats.minAtk + Math.random() * (stats.maxAtk - stats.minAtk + 1));
+            if (isCrit) dmg = Math.floor(dmg * 1.55);
+
+            sound.playSwing(player.braveTimer > 0);
+            sound.playHit(isCrit);
+
+            target.hp -= dmg;
+            target.hurtFlashTimer = 0.16;
+
+            if (isCrit) {
+                camera.shakeTimer = 0.12;
+                camera.shakeIntensity = 4;
+            }
+
+            const weaponColor = player.equipped.weapon ? player.equipped.weapon.bladeColor : '#fbbf24';
+            spawnHitSparks(target.x, target.y, isCrit ? '#f43f5e' : weaponColor, isCrit ? 16 : 9, target.isFlying ? 32 : 12);
+            addFloatingText(target.x, target.y, isCrit ? `暴擊 -${dmg}!` : `-${dmg}`, isCrit ? '#fde047' : '#ffffff', isCrit ? 17 : 14);
+
+            if (target.hp <= 0) {
+                handleMonsterDeath(target);
+            }
+        }
+
+        function handleMonsterDeath(target) {
+            const idx = monsters.indexOf(target);
+            if (idx === -1) return;
+
+            spawnHitSparks(target.x, target.y, '#ef4444', 22, target.isFlying ? 30 : 12);
+            dropMonsterLoot(target);
+
+            const expGain = target.exp;
+            player.exp += expGain;
+            addChatLog(`擊敗了【${target.name}】，獲得經驗值 <span class="text-emerald-400 font-bold">+${expGain}</span>！`);
+
+            const respawnType = target.type;
+            monsters.splice(idx, 1);
+            if (player.attackTarget === target) player.attackTarget = null;
+
+            if (player.exp >= player.maxExp) {
+                player.exp -= player.maxExp;
+                player.level += 1;
+                player.maxExp = Math.floor(player.maxExp * 1.38);
+                player.maxHp += 35;
+                player.hp = player.maxHp;
+                player.maxMp += 18;
+                player.mp = player.maxMp;
+                player.baseAtkMin += 2;
+                player.baseAtkMax += 3;
+                player.baseDef += 1;
+                player.levelUpBeamTimer = 1.6;
+                sound.playLevelUp();
+                addFloatingText(player.x, player.y, `🎉 等級提升 Lv.${player.level}！`, '#fde047', 18);
+                addChatLog(`✨ 恭喜升級！達到 <span class="text-yellow-300 font-bold">Lv.${player.level}</span>，體力、魔力與基礎攻防全面提升！`, 'text-amber-300');
+            }
+
+            updateStatusNumbersUI();
+
+            setTimeout(() => {
+                if (monsters.length < 22) createMonster(respawnType);
+            }, 3500);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            const loginModal = document.getElementById('loginModal');
+            if (loginModal && !loginModal.classList.contains('hidden')) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    enterMultiplayerWorld();
+                }
+                return;
+            }
+
+            const chatInput = document.getElementById('chatInput');
+            const isChatFocused = (document.activeElement === chatInput);
+
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (isChatFocused) {
+                    submitChatMessage();
+                    chatInput.blur();
+                } else {
+                    chatInput.focus();
+                }
+                return;
+            }
+
+            if (isChatFocused) {
+                if (e.key === 'Escape') {
+                    chatInput.blur();
+                }
+                return;
+            }
+
+            if (e.code === 'Space') {
+                e.preventDefault();
+                triggerManualSwing();
+            } else if (e.key === 'z' || e.key === 'Z') {
+                toggleAutoBattle();
+            } else if (e.key === 'x' || e.key === 'X') {
+                toggleAutoMagic();
+            } else if (e.key === 'f' || e.key === 'F') {
+                pickupNearbyLoot();
+            } else if (e.key === 'i' || e.key === 'I') {
+                toggleInventory();
+            } else if (e.key === '1') {
+                useQuickPotion('red');
+            } else if (e.key === '2') {
+                useQuickPotion('green');
+            } else if (e.key === '3') {
+                useQuickPotion('brave');
+            } else if (e.key === '4') {
+                useQuickPotion('blue');
+            } else if (e.key === '5') {
+                castSpell('lightning');
+            } else if (e.key === '6') {
+                castSpell('tornado');
+            } else if (e.key === '7') {
+                castSpell('fireball');
+            }
+        });
+
+        /**************************************************************
+         * 8.5 按 Enter 即時文字對話 & 多人即時連線系統 (全球公開 WebSocket + Cloud + BroadcastChannel)
+         **************************************************************/
+        let bcChannel = null;
+        try {
+            bcChannel = new BroadcastChannel('tiana_lineage_mmo_v2');
+            bcChannel.onmessage = (ev) => {
+                handleIncomingNetworkPacket(ev.data);
+            };
+        } catch (err) {}
+
+        // 內建全球免架站公開 WebSocket 轉發引擎 (使用 WSS 加密連線，放到 GitHub Pages / Netlify / Vercel 即可全球網友直接同房連線)
+        let publicWsClient = null;
+        const PUBLIC_ROOM_TOPIC = 'tiana_rpg_25d_global_room_v2/players';
+
+        function initPublicWebSocketRelay() {
+            if (typeof mqtt === 'undefined') return;
+            const hintEl = document.getElementById('loginOnlineHint');
+            const netLabel = document.getElementById('netStatusLabel');
+
+            try {
+                // 使用支援全球 WSS 的高可用公開 Broker 作為免後端 WebSocket 即時封包轉發站
+                publicWsClient = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+                    clientId: 'tiana_' + player.uid + '_' + Math.floor(Math.random() * 9999),
+                    clean: true,
+                    connectTimeout: 5000,
+                    reconnectPeriod: 3000
+                });
+
+                publicWsClient.on('connect', () => {
+                    publicWsClient.subscribe(PUBLIC_ROOM_TOPIC, { qos: 0 });
+                    if (hintEl) {
+                        hintEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> 奇岩伺服器：全球 WSS 已連線';
+                    }
+                    if (netLabel) {
+                        netLabel.textContent = '🟢 全球 WebSocket 已連線';
+                    }
+                    broadcastPlayerState('join');
+                });
+
+                publicWsClient.on('message', (topic, payload) => {
+                    if (topic !== PUBLIC_ROOM_TOPIC) return;
+                    try {
+                        const pkt = JSON.parse(payload.toString());
+                        handleIncomingNetworkPacket(pkt);
+                    } catch (e) {}
+                });
+            } catch (err) {
+                console.warn('Public WebSocket fallback:', err);
+            }
+        }
+
+        function enterMultiplayerWorld() {
+            const input = document.getElementById('nicknameInput');
+            const rawName = (input ? input.value : '').trim();
+            player.name = rawName.length > 0 ? rawName : ('騎士' + Math.floor(100 + Math.random() * 899));
+
+            document.getElementById('loginModal').classList.add('hidden');
+            sound.init();
+            sound.playLevelUp();
+
+            player.chatBubbleText = `安安！我是 ${player.name}`;
+            player.chatBubbleTimer = 5.0;
+
+            addChatLog(`👑 歡迎【<span class="text-yellow-300 font-bold">${escapeHtml(player.name)}</span>】進入【天啊~~】奇岩伺服器！`, 'text-amber-300');
+
+            broadcastPlayerState('join');
+            if (window.syncPlayerToCloud) {
+                window.syncPlayerToCloud(true);
+            }
+            updateUI();
+        }
+        window.enterMultiplayerWorld = enterMultiplayerWorld;
+
+        function submitChatMessage() {
+            const chatInput = document.getElementById('chatInput');
+            if (!chatInput) return;
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            chatInput.value = '';
+            player.chatBubbleText = text;
+            player.chatBubbleTimer = 6.0;
+
+            const safeName = escapeHtml(player.name);
+            const safeText = escapeHtml(text);
+            addChatLog(`<span class="text-yellow-300 font-bold">[公頻] ${safeName}:</span> <span class="text-white">${safeText}</span>`, 'text-white');
+
+            broadcastPlayerState('chat', text);
+            if (window.syncPlayerToCloud) {
+                window.syncPlayerToCloud(true);
+            }
+        }
+        window.submitChatMessage = submitChatMessage;
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function buildNetworkSnapshot(eventType = 'sync', extraText = '') {
+            return {
+                eventType,
+                uid: player.uid,
+                name: player.name,
+                x: Number(player.x.toFixed(2)),
+                y: Number(player.y.toFixed(2)),
+                dirX: Number(player.dirX.toFixed(2)),
+                dirY: Number(player.dirY.toFixed(2)),
+                isMoving: player.isMoving,
+                level: player.level,
+                hp: Math.ceil(player.hp),
+                maxHp: player.maxHp,
+                swingAnimTimer: player.swingAnimTimer,
+                armorTint: player.equipped.armor ? (player.equipped.armor.armorTint || '#cbd5e1') : '#64748b',
+                capeColor: player.equipped.cloak ? (player.equipped.cloak.capeColor || '#dc2626') : '#991b1b',
+                bladeColor: player.equipped.weapon ? (player.equipped.weapon.bladeColor || '#bae6fd') : '#bae6fd',
+                weaponEnchant: player.equipped.weapon ? (player.equipped.weapon.enchant || 0) : 0,
+                chatBubbleText: player.chatBubbleTimer > 0 ? player.chatBubbleText : '',
+                extraText,
+                ts: Date.now()
+            };
+        }
+
+        function broadcastPlayerState(eventType = 'sync', extraText = '') {
+            const pkt = buildNetworkSnapshot(eventType, extraText);
+            if (bcChannel) {
+                try { bcChannel.postMessage(pkt); } catch (e) {}
+            }
+            if (publicWsClient && publicWsClient.connected) {
+                try {
+                    publicWsClient.publish(PUBLIC_ROOM_TOPIC, JSON.stringify(pkt), { qos: 0 });
+                } catch (e) {}
+            }
+        }
+
+        function handleIncomingNetworkPacket(pkt) {
+            if (!pkt || !pkt.uid || pkt.uid === player.uid) return;
+
+            const isNew = !remotePlayers[pkt.uid];
+            const rp = remotePlayers[pkt.uid] || {
+                uid: pkt.uid,
+                name: pkt.name || '神秘騎士',
+                x: pkt.x || 24,
+                y: pkt.y || 25,
+                targetX: pkt.x || 24,
+                targetY: pkt.y || 25,
+                dirX: pkt.dirX || 0,
+                dirY: pkt.dirY || 1,
+                walkCycle: 0,
+                isMoving: false,
+                level: pkt.level || 1,
+                hp: pkt.hp || 200,
+                maxHp: pkt.maxHp || 200,
+                swingAnimTimer: 0,
+                armorTint: '#cbd5e1',
+                capeColor: '#dc2626',
+                bladeColor: '#bae6fd',
+                weaponEnchant: 6,
+                chatBubbleText: '',
+                chatBubbleTimer: 0,
+                lastSeen: Date.now()
+            };
+
+            rp.name = pkt.name || rp.name;
+            rp.targetX = pkt.x ?? rp.targetX;
+            rp.targetY = pkt.y ?? rp.targetY;
+            rp.dirX = pkt.dirX ?? rp.dirX;
+            rp.dirY = pkt.dirY ?? rp.dirY;
+            rp.isMoving = Boolean(pkt.isMoving);
+            rp.level = pkt.level || rp.level;
+            rp.hp = pkt.hp ?? rp.hp;
+            rp.maxHp = pkt.maxHp || rp.maxHp;
+            if (pkt.swingAnimTimer > 0.05) rp.swingAnimTimer = 0.26;
+            rp.armorTint = pkt.armorTint || rp.armorTint;
+            rp.capeColor = pkt.capeColor || rp.capeColor;
+            rp.bladeColor = pkt.bladeColor || rp.bladeColor;
+            rp.weaponEnchant = pkt.weaponEnchant ?? rp.weaponEnchant;
+            rp.lastSeen = Date.now();
+
+            if (pkt.chatBubbleText && pkt.chatBubbleText !== rp.chatBubbleText) {
+                rp.chatBubbleText = pkt.chatBubbleText;
+                rp.chatBubbleTimer = 5.5;
+            }
+
+            if (pkt.eventType === 'chat' && pkt.extraText) {
+                rp.chatBubbleText = pkt.extraText;
+                rp.chatBubbleTimer = 6.0;
+                addChatLog(`<span class="text-sky-300 font-bold">[公頻] ${escapeHtml(rp.name)}:</span> <span class="text-white">${escapeHtml(pkt.extraText)}</span>`, 'text-white');
+            } else if (isNew || pkt.eventType === 'join') {
+                addChatLog(`🟢 玩家【<span class="text-emerald-300 font-bold">${escapeHtml(rp.name)}</span>】連線進入了奇岩領地！`, 'text-emerald-400');
+            }
+
+            remotePlayers[pkt.uid] = rp;
+        }
+
+        window.buildNetworkSnapshot = buildNetworkSnapshot;
+        window.handleIncomingNetworkPacket = handleIncomingNetworkPacket;
+
+        /**************************************************************
+         * 9. 遊戲主迴圈更新 (Update Logic)
+         **************************************************************/
+        let netSyncAccum = 0;
+
+        function updateGame(dt) {
+            if (player.attackCooldown > 0) player.attackCooldown = Math.max(0, player.attackCooldown - dt);
+            if (player.swingAnimTimer > 0) player.swingAnimTimer = Math.max(0, player.swingAnimTimer - dt);
+            if (player.levelUpBeamTimer > 0) player.levelUpBeamTimer = Math.max(0, player.levelUpBeamTimer - dt);
+            if (player.chatBubbleTimer > 0) player.chatBubbleTimer = Math.max(0, player.chatBubbleTimer - dt);
+            if (camera.shakeTimer > 0) camera.shakeTimer = Math.max(0, camera.shakeTimer - dt);
+
+            netSyncAccum += dt;
+            if (netSyncAccum >= 0.12) {
+                netSyncAccum = 0;
+                broadcastPlayerState('sync');
+            }
+
+            const nowMs = Date.now();
+            let onlineTotal = 1;
+            for (const uid in remotePlayers) {
+                const rp = remotePlayers[uid];
+                if (nowMs - rp.lastSeen > 25000) {
+                    delete remotePlayers[uid];
+                    continue;
+                }
+                onlineTotal++;
+                if (rp.swingAnimTimer > 0) rp.swingAnimTimer = Math.max(0, rp.swingAnimTimer - dt);
+                if (rp.chatBubbleTimer > 0) rp.chatBubbleTimer = Math.max(0, rp.chatBubbleTimer - dt);
+
+                const rdx = rp.targetX - rp.x;
+                const rdy = rp.targetY - rp.y;
+                const rdist = Math.hypot(rdx, rdy);
+                if (rdist > 0.03) {
+                    rp.x += rdx * Math.min(1, dt * 10);
+                    rp.y += rdy * Math.min(1, dt * 10);
+                    rp.walkCycle += dt * 12;
+                    rp.isMoving = true;
+                } else {
+                    rp.isMoving = false;
+                }
+            }
+            const badgeEl = document.getElementById('onlineCountBadge');
+            if (badgeEl) badgeEl.textContent = onlineTotal;
+
+            ['lightning', 'tornado', 'fireball'].forEach(k => {
+                if (player.spellCooldowns[k] > 0) {
+                    player.spellCooldowns[k] = Math.max(0, player.spellCooldowns[k] - dt);
+                }
+                const bar = document.getElementById(`cdBar_${k}`);
+                if (bar) {
+                    const pct = (player.spellCooldowns[k] / SPELL_CONFIG[k].cd) * 100;
+                    bar.style.width = `${pct}%`;
+                }
+            });
+
+            if (player.hasteTimer > 0) {
+                player.hasteTimer = Math.max(0, player.hasteTimer - dt);
+                if (player.hasteTimer === 0) updateStatusNumbersUI();
+            }
+            if (player.braveTimer > 0) {
+                player.braveTimer = Math.max(0, player.braveTimer - dt);
+                if (player.braveTimer === 0) updateStatusNumbersUI();
+            }
+            if (player.bluePotionTimer > 0) {
+                player.bluePotionTimer = Math.max(0, player.bluePotionTimer - dt);
+            }
+
+            player.mpRegenAccum += dt;
+            if (player.mpRegenAccum >= 1.0) {
+                player.mpRegenAccum = 0;
+                const regenAmt = player.bluePotionTimer > 0 ? 6 : 2;
+                if (player.mp < player.maxMp) {
+                    player.mp = Math.min(player.maxMp, player.mp + regenAmt);
+                    updateStatusNumbersUI();
+                }
+            }
+
+            runAutoBattleAI(dt);
+
+            let speedMult = 1.0;
+            if (player.hasteTimer > 0) speedMult *= 1.32;
+            if (player.braveTimer > 0) speedMult *= 1.28;
+            const currentSpeed = player.baseSpeed * speedMult;
+
+            if (player.attackTarget) {
+                if (player.attackTarget.hp <= 0) {
+                    player.attackTarget = null;
+                } else {
+                    const dist = Math.hypot(player.attackTarget.x - player.x, player.attackTarget.y - player.y);
+                    const stopRange = player.attackTarget.isFlying ? 1.65 : 1.35;
+                    if (dist <= stopRange) {
+                        player.targetX = player.x;
+                        player.targetY = player.y;
+                        performPlayerAttack(player.attackTarget);
+                    } else {
+                        player.targetX = player.attackTarget.x;
+                        player.targetY = player.attackTarget.y;
+                    }
+                }
+            }
+
+            const dx = player.targetX - player.x;
+            const dy = player.targetY - player.y;
+            const distToTarget = Math.hypot(dx, dy);
+
+            if (distToTarget > 0.05) {
+                player.isMoving = true;
+                player.walkCycle += dt * (11 * speedMult);
+                player.dirX = dx / distToTarget;
+                player.dirY = dy / distToTarget;
+
+                const step = Math.min(distToTarget, currentSpeed * dt);
+                const nextX = player.x + player.dirX * step;
+                const nextY = player.y + player.dirY * step;
+
+                if (isWalkable(nextX, nextY, false, player.x, player.y)) {
+                    player.x = nextX;
+                    player.y = nextY;
+                } else if (isWalkable(nextX, player.y, false, player.x, player.y)) {
+                    player.x = nextX;
+                } else if (isWalkable(player.x, nextY, false, player.x, player.y)) {
+                    player.y = nextY;
+                } else {
+                    const baseAngle = Math.atan2(player.dirY, player.dirX);
+                    const detourAngles = [0.6, -0.6, 1.15, -1.15, 1.65, -1.65];
+                    let moved = false;
+                    for (const offset of detourAngles) {
+                        const testX = player.x + Math.cos(baseAngle + offset) * step;
+                        const testY = player.y + Math.sin(baseAngle + offset) * step;
+                        if (isWalkable(testX, testY, false, player.x, player.y)) {
+                            player.x = testX;
+                            player.y = testY;
+                            moved = true;
+                            break;
+                        }
+                    }
+                    if (!moved && !player.autoBattle) {
+                        player.targetX = player.x;
+                        player.targetY = player.y;
+                    }
+                }
+
+                if (player.autoBattle) {
+                    const movedDelta = Math.hypot(player.x - player.lastPosX, player.y - player.lastPosY);
+                    if (movedDelta < 0.004) {
+                        player.stuckTimer += dt;
+                        if (player.stuckTimer > 1.0) {
+                            player.attackTarget = null;
+                            player.stuckTimer = 0;
+                        }
+                    } else {
+                        player.stuckTimer = 0;
+                    }
+                    player.lastPosX = player.x;
+                    player.lastPosY = player.y;
+                }
+            } else {
+                player.isMoving = false;
+            }
+
+            for (let i = groundLoots.length - 1; i >= 0; i--) {
+                if (Math.hypot(groundLoots[i].wx - player.x, groundLoots[i].wy - player.y) < 0.85) {
+                    pickupLootItem(i);
+                }
+            }
+
+            const stats = getPlayerStats();
+            for (const m of monsters) {
+                m.walkPhase += dt * (m.type === 'shelob' ? 14 : 8);
+                m.wingPhase += dt * 11;
+                if (m.attackCooldown > 0) m.attackCooldown = Math.max(0, m.attackCooldown - dt);
+                if (m.attackAnimTimer > 0) m.attackAnimTimer = Math.max(0, m.attackAnimTimer - dt);
+                if (m.hurtFlashTimer > 0) m.hurtFlashTimer = Math.max(0, m.hurtFlashTimer - dt);
+
+                const distToPlayer = Math.hypot(player.x - m.x, player.y - m.y);
+
+                if (distToPlayer <= m.aggroRange) {
+                    if (distToPlayer > m.attackRange) {
+                        const mdx = (player.x - m.x) / distToPlayer;
+                        const mdy = (player.y - m.y) / distToPlayer;
+                        m.dirX = mdx;
+                        m.dirY = mdy;
+                        const nx = m.x + mdx * m.speed * dt;
+                        const ny = m.y + mdy * m.speed * dt;
+                        if (isWalkable(nx, ny, m.isFlying, m.x, m.y)) {
+                            m.x = nx;
+                            m.y = ny;
+                        }
+                    } else {
+                        m.dirX = player.x - m.x;
+                        m.dirY = player.y - m.y;
+                        if (m.attackCooldown <= 0) {
+                            m.attackCooldown = m.type === 'drake' ? 1.65 : 1.25;
+                            m.attackAnimTimer = 0.35;
+
+                            if (m.type === 'drake') {
+                                spawnFireBreathParticles(m.x, m.y, player.x, player.y);
+                            } else if (m.type === 'shelob') {
+                                spawnSpiderWebEffect(m.x, m.y, player.x, player.y);
+                            }
+
+                            const rawDmg = Math.floor(m.atkMin + Math.random() * (m.atkMax - m.atkMin + 1));
+                            const finalDmg = Math.max(1, rawDmg - Math.floor(stats.totalDef * 0.55));
+                            player.hp = Math.max(0, player.hp - finalDmg);
+                            sound.playHit(false);
+                            addFloatingText(player.x, player.y, `-${finalDmg}`, '#ef4444', 15);
+
+                            if (player.hp <= 0) {
+                                player.hp = player.maxHp;
+                                player.x = 36.0;
+                                player.y = 37.5;
+                                player.targetX = 36.0;
+                                player.targetY = 37.5;
+                                player.attackTarget = null;
+                                addChatLog('💀 你受到重創，已被亞丁守護神傳送回中央廣場並完全恢復體力！', 'text-red-400 font-bold');
+                            }
+                            updateStatusNumbersUI();
+                        }
+                    }
+                } else {
+                    m.idleTimer -= dt;
+                    if (m.idleTimer <= 0) {
+                        m.idleTimer = 2.0 + Math.random() * 2.8;
+                        const ang = Math.random() * Math.PI * 2;
+                        const d = 1.5 + Math.random() * 2.5;
+                        const tx = m.homeX + Math.cos(ang) * d;
+                        const ty = m.homeY + Math.sin(ang) * d;
+                        if (isWalkable(tx, ty, m.isFlying, m.x, m.y)) {
+                            m.targetX = tx;
+                            m.targetY = ty;
+                        }
+                    }
+                    const pdx = m.targetX - m.x;
+                    const pdy = m.targetY - m.y;
+                    const pdist = Math.hypot(pdx, pdy);
+                    if (pdist > 0.1) {
+                        m.dirX = pdx / pdist;
+                        m.dirY = pdy / pdist;
+                        const nx = m.x + m.dirX * m.speed * 0.55 * dt;
+                        const ny = m.y + m.dirY * m.speed * 0.55 * dt;
+                        if (isWalkable(nx, ny, m.isFlying, m.x, m.y)) {
+                            m.x = nx;
+                            m.y = ny;
+                        }
+                    }
+                }
+            }
+
+            // 更新三大魔法飛行與範圍爆炸動畫
+            for (let i = activeSpells.length - 1; i >= 0; i--) {
+                const sp = activeSpells[i];
+                if (sp.type === 'fireball' && !sp.exploded) {
+                    sp.progress += dt * 3.1;
+                    if (sp.progress >= 1) {
+                        sp.progress = 1;
+                        sp.exploded = true;
+                        camera.shakeTimer = 0.16;
+                        camera.shakeIntensity = 5;
+                        spawnHitSparks(sp.targetX, sp.targetY, '#f97316', 24, 18);
+
+                        const cfg = SPELL_CONFIG.fireball;
+                        monsters.forEach(m => {
+                            if (m.hp <= 0) return;
+                            const d = Math.hypot(m.x - sp.targetX, m.y - sp.targetY);
+                            if (d <= cfg.blastRadius) {
+                                const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * sp.spMultiplier);
+                                applyDamageToMonster(m, dmg, '☄️烈焰', '#fb923c');
+                            }
+                        });
+                    } else {
+                        sp.x = sp.startX + (sp.targetX - sp.startX) * sp.progress;
+                        sp.y = sp.startY + (sp.targetY - sp.startY) * sp.progress;
+                    }
+                } else {
+                    sp.timer -= dt;
+                    if (sp.timer <= 0) activeSpells.splice(i, 1);
+                }
+            }
+
+            // 更新點擊波紋、粒子與浮動文字
+            for (let i = clickIndicators.length - 1; i >= 0; i--) {
+                const ci = clickIndicators[i];
+                ci.radius += (ci.maxRadius - ci.radius) * 10 * dt;
+                ci.alpha -= dt * 2.2;
+                if (ci.alpha <= 0) clickIndicators.splice(i, 1);
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life -= dt;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                if (p.isWorldSpace) {
+                    p.wx += p.worldVelX * dt;
+                    p.wy += p.worldVelY * dt;
+                    p.z = Math.max(4, p.z + p.vz * dt);
+                } else {
+                    p.vz -= p.gravity * dt;
+                    p.z = Math.max(0, p.z + p.vz * dt);
+                }
+            }
+
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                const ft = floatingTexts[i];
+                ft.life -= dt;
+                ft.offsetY -= 28 * dt;
+                ft.alpha = Math.min(1, ft.life * 1.6);
+                if (ft.life <= 0) floatingTexts.splice(i, 1);
+            }
+
+            // 相機平滑跟隨玩家所在的世界與海拔位置
+            const targetScreen = worldToScreen(player.x, player.y, 0, 0);
+            const idealCamX = targetScreen.x - canvas.width / 2;
+            const idealCamY = targetScreen.y - canvas.height / 2;
+            camera.x += (idealCamX - camera.x) * Math.min(1, dt * 8);
+            camera.y += (idealCamY - camera.y) * Math.min(1, dt * 8);
+
+            if (camera.shakeTimer > 0) {
+                camera.x += (Math.random() - 0.5) * camera.shakeIntensity * 2;
+                camera.y += (Math.random() - 0.5) * camera.shakeIntensity * 2;
+            }
+        }
+
+        /**************************************************************
+         * 10. 畫布自適應與等距視角渲染引擎
+         **************************************************************/
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            const targetScreen = worldToScreen(player.x, player.y, 0, 0);
+            camera.x = targetScreen.x - canvas.width / 2;
+            camera.y = targetScreen.y - canvas.height / 2;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function getScreenDirectionVector(dirX, dirY) {
+            const sx = (dirX - dirY);
+            const sy = (dirX + dirY) * 0.5;
+            const len = Math.hypot(sx, sy) || 1;
+            return { sx: sx / len, sy: sy / len };
+        }
+
+        // 繪製單格等距地磚，並自動根據周圍高度差繪製「3D 立體斷崖岩壁 / 城台石壁」與「石階斜坡紋理」
+        function drawIsoTile(gx, gy, fillStyle, strokeStyle = 'rgba(0,0,0,0.22)') {
+            const tileElev = heightMap[gy]?.[gx] ?? 0;
+            const isRampTile = mapRamp[gy]?.[gx] ?? false;
+            const center = worldToScreen(gx + 0.5, gy + 0.5, camera.x, camera.y, tileElev);
+            const hw = TILE_WIDTH / 2;
+            const hh = TILE_HEIGHT / 2;
+
+            // 若此格海拔大於 0，檢查其西南方 (gx, gy+1) 與東南方 (gx+1, gy) 是否有高低落差，繪製立體岩壁側面
+            if (tileElev > 0) {
+                const southElev = heightMap[Math.min(MAP_SIZE - 1, gy + 1)]?.[gx] ?? 0;
+                const eastElev = heightMap[gy]?.[Math.min(MAP_SIZE - 1, gx + 1)] ?? 0;
+                const isMasonryCliff = (gx >= 20 && gx <= 51 && gy <= 45); // 王城與村莊台地使用整齐石塊護坡，野外使用自然岩壁
+
+                // 左下側面 (朝向 y+1 的西南斷崖)
+                if (tileElev > southElev) {
+                    const dropPx = (tileElev - southElev) * ELEVATION_PX;
+                    ctx.fillStyle = isMasonryCliff ? '#475569' : '#3f3cbb';
+                    ctx.fillStyle = isMasonryCliff ? '#475569' : '#44403c';
+                    ctx.beginPath();
+                    ctx.moveTo(center.x - hw, center.y);
+                    ctx.lineTo(center.x, center.y + hh);
+                    ctx.lineTo(center.x, center.y + hh + dropPx);
+                    ctx.lineTo(center.x - hw, center.y + dropPx);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(15, 23, 42, 0.65)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // 岩壁橫向層理線
+                    if (dropPx >= 18) {
+                        ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+                        ctx.beginPath();
+                        ctx.moveTo(center.x - hw, center.y + dropPx * 0.5);
+                        ctx.lineTo(center.x, center.y + hh + dropPx * 0.5);
+                        ctx.stroke();
+                    }
+                }
+
+                // 右下側面 (朝向 x+1 的東南斷崖)
+                if (tileElev > eastElev) {
+                    const dropPx = (tileElev - eastElev) * ELEVATION_PX;
+                    ctx.fillStyle = isMasonryCliff ? '#334155' : '#292524';
+                    ctx.beginPath();
+                    ctx.moveTo(center.x, center.y + hh);
+                    ctx.lineTo(center.x + hw, center.y);
+                    ctx.lineTo(center.x + hw, center.y + dropPx);
+                    ctx.lineTo(center.x, center.y + hh + dropPx);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.strokeStyle = 'rgba(15, 23, 42, 0.75)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                }
+            }
+
+            // 繪製地磚頂面菱形
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y - hh);
+            ctx.lineTo(center.x + hw, center.y);
+            ctx.lineTo(center.x, center.y + hh);
+            ctx.lineTo(center.x - hw, center.y);
+            ctx.closePath();
+
+            ctx.fillStyle = fillStyle;
+            ctx.fill();
+            if (strokeStyle) {
+                ctx.strokeStyle = strokeStyle;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            // 若為連接高低差的「石階斜坡 (Stairs/Ramp)」，繪製立體石階踏步條紋
+            if (isRampTile) {
+                ctx.save();
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 1.6;
+                for (let s = -2; s <= 2; s++) {
+                    const offset = s * 5;
+                    ctx.beginPath();
+                    ctx.moveTo(center.x - 14 + offset * 0.5, center.y + offset * 0.45);
+                    ctx.lineTo(center.x + 14 + offset * 0.5, center.y - offset * 0.45);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            // 高台邊緣亮邊高光，強化高低落差立體視覺
+            if (tileElev >= 1) {
+                const northElev = heightMap[Math.max(0, gy - 1)]?.[gx] ?? tileElev;
+                const westElev = heightMap[gy]?.[Math.max(0, gx - 1)] ?? tileElev;
+                if (tileElev > northElev || tileElev > westElev) {
+                    ctx.strokeStyle = 'rgba(254, 243, 199, 0.22)';
+                    ctx.lineWidth = 1.5;
+                    ctx.beginPath();
+                    ctx.moveTo(center.x - hw, center.y);
+                    ctx.lineTo(center.x, center.y - hh);
+                    ctx.lineTo(center.x + hw, center.y);
+                    ctx.stroke();
+                }
+            }
+
+            return center;
+        }
+
+        // 繪製大、中、小與「參天巨型神木 (1.8x~2.45x)」森林樹木
+        function drawTreeAt(gx, gy, now) {
+            const center = worldToScreen(gx + 0.5, gy + 0.5, camera.x, camera.y);
+            const scale = mapTreeScale[gy]?.[gx] || 1.0;
+            const isGiantTree = scale >= 1.75;
+            const sway = Math.sin(now * 0.0018 + gx * 0.7) * (isGiantTree ? 1.6 : 2.0) * scale;
+
+            ctx.save();
+            ctx.translate(center.x, center.y);
+            ctx.scale(scale, scale);
+
+            // 厚重立體樹影
+            ctx.fillStyle = isGiantTree ? 'rgba(0, 0, 0, 0.52)' : 'rgba(0, 0, 0, 0.40)';
+            ctx.beginPath();
+            ctx.ellipse(3, 4, isGiantTree ? 26 : 21, isGiantTree ? 13 : 10.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 盤根與立體粗糙樹幹 (巨木具備向外延伸的抓地老根與分岔枝幹)
+            ctx.fillStyle = isGiantTree ? '#3b2314' : '#452c1e';
+            ctx.beginPath();
+            if (isGiantTree) {
+                ctx.moveTo(-12, 5);
+                ctx.lineTo(-7, -4);
+                ctx.lineTo(-5.5, -36);
+                ctx.lineTo(5.5, -36);
+                ctx.lineTo(7, -4);
+                ctx.lineTo(12, 5);
+                ctx.lineTo(3, 3);
+                ctx.lineTo(-3, 3);
+            } else {
+                ctx.moveTo(-6.5, 2);
+                ctx.lineTo(-3.8, -28);
+                ctx.lineTo(3.8, -28);
+                ctx.lineTo(6.5, 2);
+            }
+            ctx.closePath();
+            ctx.fill();
+
+            // 樹幹高光紋理
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+            ctx.fillRect(-2, -28, 2.2, 26);
+
+            // 根據座標決定樹種色調 (蒼翠千年巨木、深林古松、少數金秋古樹)
+            const treeVariant = (gx * 7 + gy * 13) % 11;
+            const layers = treeVariant === 0
+                ? [
+                    { ox: -10, dy: -28, r: 18, c1: '#92400e', c2: '#451a03' },
+                    { ox: 10, dy: -30, r: 17, c1: '#b45309', c2: '#78350f' },
+                    { ox: 0, dy: -36, r: 22, c1: '#b45309', c2: '#78350f' },
+                    { ox: -4, dy: -47, r: 17, c1: '#d97706', c2: '#92400e' },
+                    { ox: 2, dy: -56, r: 12, c1: '#f59e0b', c2: '#b45309' }
+                  ]
+                : [
+                    { ox: -11, dy: -28, r: 18, c1: '#14532d', c2: '#052e16' },
+                    { ox: 11, dy: -30, r: 17, c1: '#14532d', c2: '#052e16' },
+                    { ox: 0, dy: -35, r: 22, c1: '#166534', c2: '#052e16' },
+                    { ox: -3, dy: -46, r: 18, c1: '#15803d', c2: '#14532d' },
+                    { ox: 2, dy: -56, r: 13, c1: '#22c55e', c2: '#166534' }
+                  ];
+
+            layers.forEach((l, i) => {
+                const lx = (l.ox || 0) + sway * (i * 0.25);
+                const grad = ctx.createRadialGradient(
+                    lx - 4, l.dy - 4, 2,
+                    lx, l.dy, l.r
+                );
+                grad.addColorStop(0, l.c1);
+                grad.addColorStop(1, l.c2);
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(lx, l.dy, l.r, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            ctx.restore();
+        }
+
+        function drawCastleWallBlock(gx, gy) {
+            const c = worldToScreen(gx + 0.5, gy + 0.5, camera.x, camera.y);
+            const hw = TILE_WIDTH / 2;
+            const hh = TILE_HEIGHT / 2;
+            const wallH = 38;
+
+            ctx.save();
+            ctx.fillStyle = '#64748b';
+            ctx.beginPath();
+            ctx.moveTo(c.x - hw, c.y);
+            ctx.lineTo(c.x, c.y + hh);
+            ctx.lineTo(c.x, c.y + hh - wallH);
+            ctx.lineTo(c.x - hw, c.y - wallH);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#334155';
+            ctx.stroke();
+
+            ctx.fillStyle = '#475569';
+            ctx.beginPath();
+            ctx.moveTo(c.x, c.y + hh);
+            ctx.lineTo(c.x + hw, c.y);
+            ctx.lineTo(c.x + hw, c.y - wallH);
+            ctx.lineTo(c.x, c.y + hh - wallH);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.beginPath();
+            ctx.moveTo(c.x, c.y - hh - wallH);
+            ctx.lineTo(c.x + hw, c.y - wallH);
+            ctx.lineTo(c.x, c.y + hh - wallH);
+            ctx.lineTo(c.x - hw, c.y - wallH);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillRect(c.x - 6, c.y - wallH - 8, 12, 6);
+            ctx.restore();
+        }
+
+        function drawBuildingStructure(b, now) {
+            const centerWorldX = b.x + b.w / 2;
+            const centerWorldY = b.y + b.h / 2;
+            const sp = worldToScreen(centerWorldX, centerWorldY, camera.x, camera.y);
+
+            ctx.save();
+            ctx.translate(sp.x, sp.y);
+
+            if (b.type === 'castle_keep') {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath();
+                ctx.ellipse(0, 12, 135, 65, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#64748b';
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 2;
+                ctx.fillRect(-95, -105, 190, 110);
+                ctx.strokeRect(-95, -105, 190, 110);
+
+                [-82, 52].forEach(tx => {
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(tx, -145, 30, 150);
+                    ctx.strokeRect(tx, -145, 30, 150);
+                    ctx.fillStyle = '#1d4ed8';
+                    ctx.beginPath();
+                    ctx.moveTo(tx - 5, -145);
+                    ctx.lineTo(tx + 15, -190);
+                    ctx.lineTo(tx + 35, -145);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                });
+
+                ctx.fillStyle = '#991b1b';
+                ctx.beginPath();
+                ctx.moveTo(-65, -105);
+                ctx.lineTo(0, -175);
+                ctx.lineTo(65, -105);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = '#090a0f';
+                ctx.beginPath();
+                ctx.arc(0, 5, 24, Math.PI, 0, false);
+                ctx.fill();
+                ctx.strokeStyle = '#facc15';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                const wave = Math.sin(now * 0.006) * 5;
+                ctx.fillStyle = '#dc2626';
+                ctx.beginPath();
+                ctx.moveTo(0, -175);
+                ctx.lineTo(0, -205);
+                ctx.lineTo(26, -198 + wave);
+                ctx.lineTo(0, -188);
+                ctx.fill();
+
+                ctx.font = 'bold 13px "Noto Serif TC", serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#fde047';
+                ctx.fillText('👑 奇岩王城主殿', 0, -212);
+            } else if (b.type === 'guard_tower' || b.type === 'gate_tower') {
+                ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                ctx.beginPath();
+                ctx.ellipse(0, 6, 36, 18, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#64748b';
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1.8;
+                ctx.fillRect(-22, -88, 44, 92);
+                ctx.strokeRect(-22, -88, 44, 92);
+
+                ctx.fillStyle = b.type === 'gate_tower' ? '#991b1b' : '#1e40af';
+                ctx.beginPath();
+                ctx.moveTo(-28, -88);
+                ctx.lineTo(0, -128);
+                ctx.lineTo(28, -88);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillText(b.name, 0, -134);
+            } else if (b.type === 'fountain') {
+                ctx.fillStyle = '#64748b';
+                ctx.strokeStyle = '#cbd5e1';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 38, 19, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+
+                const waterPulse = Math.sin(now * 0.005) * 2;
+                ctx.fillStyle = '#0284c7';
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 31, 15, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(-5, -28, 10, 28);
+                ctx.fillStyle = '#7dd3fc';
+                for (let i = -1; i <= 1; i++) {
+                    ctx.beginPath();
+                    ctx.arc(i * 8, -28 + waterPulse, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#7dd3fc';
+                ctx.fillText('⛲ ' + b.name, 0, -42);
+            } else {
+                ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                ctx.beginPath();
+                ctx.ellipse(0, 8, 52, 26, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = b.type === 'chapel' ? '#cbd5e1' : '#78350f';
+                ctx.strokeStyle = '#292524';
+                ctx.lineWidth = 1.8;
+                ctx.fillRect(-38, -54, 76, 58);
+                ctx.strokeRect(-38, -54, 76, 58);
+
+                ctx.fillStyle = '#451a03';
+                ctx.fillRect(-8, -24, 16, 28);
+                ctx.fillStyle = '#fef08a';
+                ctx.fillRect(-26, -38, 12, 12);
+                ctx.fillRect(14, -38, 12, 12);
+
+                const roofColors = {
+                    blacksmith: '#44403c',
+                    magic_shop: '#581c87',
+                    cottage: '#9a3412',
+                    chapel: '#1e3a8a'
+                };
+                ctx.fillStyle = roofColors[b.type] || '#9a3412';
+                ctx.beginPath();
+                ctx.moveTo(-46, -52);
+                ctx.lineTo(0, -88);
+                ctx.lineTo(46, -52);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                if (b.type === 'blacksmith') {
+                    ctx.fillStyle = '#f97316';
+                    ctx.beginPath();
+                    ctx.arc(24, -12, 6 + Math.sin(now * 0.01) * 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#fde047';
+                ctx.fillText('🏠 ' + b.name, 0, -94);
+            }
+
+            ctx.restore();
+        }
+
+        function drawChatBubble(spX, topY, text) {
+            if (!text) return;
+            ctx.save();
+            ctx.font = 'bold 12px "Noto Sans TC", sans-serif';
+            const paddingX = 10;
+            const textW = ctx.measureText(text).width;
+            const boxW = textW + paddingX * 2;
+            const boxH = 24;
+            const bx = spX - boxW / 2;
+            const by = topY - boxH;
+
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.roundRect(bx, by, boxW, boxH, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.beginPath();
+            ctx.moveTo(spX - 5, by + boxH);
+            ctx.lineTo(spX, by + boxH + 6);
+            ctx.lineTo(spX + 5, by + boxH);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, spX, by + boxH / 2);
+            ctx.restore();
+        }
+
+        function drawTargetLockRing(spX, spY, radius, color, now) {
+            ctx.save();
+            ctx.translate(spX, spY);
+            ctx.scale(1, 0.5);
+            ctx.rotate(now * 0.003);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
+            ctx.setLineDash([8, 6]);
+            ctx.beginPath();
+            ctx.arc(0, 0, radius, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        function drawRemotePlayer(rp, now) {
+            const sp = worldToScreen(rp.x, rp.y, camera.x, camera.y);
+            const { sx } = getScreenDirectionVector(rp.dirX, rp.dirY);
+            const facingRight = sx >= 0 ? 1 : -1;
+            const stride = rp.isMoving ? Math.sin(rp.walkCycle) : 0;
+            const walkBob = rp.isMoving ? Math.abs(Math.cos(rp.walkCycle)) * 3.5 : Math.sin(now * 0.004) * 1.0;
+
+            ctx.save();
+            drawTargetLockRing(sp.x, sp.y + 3, 18, 'rgba(56, 189, 248, 0.65)', now);
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.beginPath();
+            ctx.ellipse(sp.x, sp.y + 3, 14, 7, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.translate(sp.x, sp.y - walkBob);
+            ctx.save();
+            ctx.scale(facingRight, 1);
+
+            ctx.fillStyle = rp.capeColor || '#dc2626';
+            ctx.beginPath();
+            ctx.moveTo(-6, -28);
+            ctx.lineTo(6, -28);
+            ctx.lineTo(10, -3);
+            ctx.lineTo(-10, -3);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = rp.armorTint || '#cbd5e1';
+            ctx.fillRect(-5 - stride * 4, -12, 4.5, 11);
+            ctx.fillRect(1 + stride * 4, -12, 4.5, 11);
+
+            ctx.fillStyle = rp.armorTint || '#cbd5e1';
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.2;
+            ctx.fillRect(-7, -28, 14, 16);
+            ctx.strokeRect(-7, -28, 14, 16);
+
+            ctx.beginPath();
+            ctx.arc(0, -34, 6.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.save();
+            ctx.translate(6, -22);
+            const swingAng = rp.swingAnimTimer > 0 ? Math.sin(rp.swingAnimTimer * 20) * 1.5 : -0.3;
+            ctx.rotate(swingAng);
+            ctx.fillStyle = rp.bladeColor || '#bae6fd';
+            ctx.fillRect(0, -22, 3.5, 24);
+            ctx.restore();
+
+            ctx.restore();
+            ctx.restore();
+
+            const barW = 44;
+            const barH = 4;
+            const bx = sp.x - barW / 2;
+            const by = sp.y - 54;
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(bx, by, barW * Math.max(0, Math.min(1, rp.hp / rp.maxHp)), barH);
+
+            ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+            ctx.textAlign = 'center';
+            const label = `Lv.${rp.level} ${rp.name}`;
+            ctx.fillStyle = '#000';
+            ctx.fillText(label, sp.x + 1, by - 5);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillText(label, sp.x, by - 6);
+
+            if (rp.chatBubbleTimer > 0 && rp.chatBubbleText) {
+                drawChatBubble(sp.x, by - 22, rp.chatBubbleText);
+            }
+        }
+
+        function drawMonster(m, now) {
+            const sp = worldToScreen(m.x, m.y, camera.x, camera.y);
+            const isTarget = player.attackTarget === m;
+            const isHover = mouseState.hoveredMonster === m;
+            const { sx, sy } = getScreenDirectionVector(m.dirX, m.dirY);
+            const facingRight = sx >= 0 ? 1 : -1;
+
+            if (isTarget || isHover) {
+                drawTargetLockRing(sp.x, sp.y + 2, 22 * m.scale, isTarget ? '#ef4444' : '#facc15', now);
+            }
+
+            ctx.save();
+            ctx.translate(sp.x, sp.y);
+            ctx.scale(m.scale, m.scale);
+
+            if (m.hurtFlashTimer > 0) {
+                ctx.filter = 'brightness(2.3) contrast(1.4)';
+            }
+
+            if (m.type === 'slime') {
+                const bounce = Math.abs(Math.sin(m.walkPhase)) * 6;
+                const squashX = 1 + Math.sin(m.walkPhase) * 0.14;
+                const squashY = 1 - Math.sin(m.walkPhase) * 0.12;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.38)';
+                ctx.beginPath();
+                ctx.ellipse(0, 3, 15 * squashX, 7, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.save();
+                ctx.translate(0, -bounce);
+                ctx.scale(squashX, squashY);
+
+                const grad = ctx.createRadialGradient(-4, -14, 2, 0, -8, 18);
+                grad.addColorStop(0, '#86efac');
+                grad.addColorStop(0.55, '#22c55e');
+                grad.addColorStop(1, '#14532d');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(0, -10, 15, Math.PI, 0, false);
+                ctx.bezierCurveTo(15, -2, 10, 4, 0, 4);
+                ctx.bezierCurveTo(-10, 4, -15, -2, -15, -10);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+
+                ctx.fillStyle = '#052e16';
+                ctx.beginPath();
+                ctx.arc(-4 * facingRight, -11, 2.2, 0, Math.PI * 2);
+                ctx.arc(4 * facingRight, -11, 2.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+            } else if (m.type === 'werewolf') {
+                const stride = Math.sin(m.walkPhase) * 6;
+                const bob = Math.abs(Math.cos(m.walkPhase)) * 3;
+                const lunge = m.attackAnimTimer > 0 ? Math.sin((m.attackAnimTimer / 0.35) * Math.PI) * 10 : 0;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                ctx.beginPath();
+                ctx.ellipse(0, 4, 16, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.save();
+                ctx.scale(facingRight, 1);
+                ctx.translate(lunge, -bob);
+
+                ctx.strokeStyle = '#3f2e21';
+                ctx.lineWidth = 5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-6, -15);
+                ctx.quadraticCurveTo(-16, -18 + stride * 0.4, -22, -12);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#4a3525';
+                ctx.lineWidth = 4.5;
+                ctx.beginPath();
+                ctx.moveTo(-4, -14);
+                ctx.lineTo(-6 - stride * 0.6, -6);
+                ctx.lineTo(-3 - stride * 0.8, 2);
+                ctx.moveTo(4, -14);
+                ctx.lineTo(2 + stride * 0.6, -6);
+                ctx.lineTo(6 + stride * 0.8, 2);
+                ctx.stroke();
+
+                const furGrad = ctx.createLinearGradient(0, -36, 0, -12);
+                furGrad.addColorStop(0, '#78553a');
+                furGrad.addColorStop(1, '#3b2818');
+                ctx.fillStyle = furGrad;
+                ctx.beginPath();
+                ctx.moveTo(-10, -32);
+                ctx.lineTo(11, -30);
+                ctx.lineTo(7, -12);
+                ctx.lineTo(-7, -12);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.fillStyle = '#5c4028';
+                ctx.beginPath();
+                ctx.arc(4, -35, 7.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.moveTo(6, -38);
+                ctx.lineTo(17, -34);
+                ctx.lineTo(6, -29);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(0, -40);
+                ctx.lineTo(-2, -49);
+                ctx.lineTo(4, -41);
+                ctx.moveTo(5, -40);
+                ctx.lineTo(6, -49);
+                ctx.lineTo(9, -40);
+                ctx.fill();
+
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(7, -36, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+
+                const clawSwing = m.attackAnimTimer > 0 ? Math.sin(m.attackAnimTimer * 18) * 1.1 : stride * 0.08;
+                ctx.save();
+                ctx.translate(6, -27);
+                ctx.rotate(clawSwing);
+                ctx.strokeStyle = '#6b4c32';
+                ctx.lineWidth = 4.5;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.lineTo(10, 6);
+                ctx.stroke();
+                ctx.strokeStyle = '#e5e7eb';
+                ctx.lineWidth = 1.4;
+                ctx.beginPath();
+                ctx.moveTo(10, 4); ctx.lineTo(16, 6);
+                ctx.moveTo(10, 6); ctx.lineTo(16, 9);
+                ctx.moveTo(9, 8);  ctx.lineTo(15, 12);
+                ctx.stroke();
+                ctx.restore();
+
+                if (m.attackAnimTimer > 0.12) {
+                    ctx.strokeStyle = 'rgba(239, 68, 68, 0.85)';
+                    ctx.lineWidth = 2;
+                    for (let c = -1; c <= 1; c++) {
+                        ctx.beginPath();
+                        ctx.arc(14, -22 + c * 5, 12, -0.7, 0.7);
+                        ctx.stroke();
+                    }
+                }
+                ctx.restore();
+
+            } else if (m.type === 'shelob') {
+                const breathe = 1 + Math.sin(now * 0.005) * 0.05;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.beginPath();
+                ctx.ellipse(0, 4, 24, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                for (let side of [-1, 1]) {
+                    for (let leg = 0; leg < 4; leg++) {
+                        const phase = m.walkPhase + leg * 1.3 + (side === 1 ? 0 : Math.PI);
+                        const lift = Math.max(0, Math.sin(phase)) * 5;
+                        const sweep = Math.cos(phase) * 4;
+
+                        const hipX = side * 6;
+                        const hipY = -12 + (leg - 1.5) * 3;
+                        const kneeX = side * (16 + (leg === 1 || leg === 2 ? 4 : 0)) + sweep * 0.5;
+                        const kneeY = -24 + (leg - 1.5) * 4 - lift;
+                        const footX = side * (25 + (leg === 1 || leg === 2 ? 4 : 0)) + sweep;
+                        const footY = -2 + (leg - 1.5) * 5 - lift * 0.6;
+
+                        ctx.strokeStyle = '#1c1917';
+                        ctx.lineWidth = 3;
+                        ctx.lineJoin = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(hipX, hipY);
+                        ctx.lineTo(kneeX, kneeY);
+                        ctx.lineTo(footX, footY);
+                        ctx.stroke();
+
+                        ctx.strokeStyle = '#dc2626';
+                        ctx.lineWidth = 1.4;
+                        ctx.beginPath();
+                        ctx.moveTo(hipX, hipY);
+                        ctx.lineTo(kneeX, kneeY);
+                        ctx.stroke();
+                    }
+                }
+
+                ctx.save();
+                ctx.scale(breathe, breathe);
+                const abdGrad = ctx.createRadialGradient(-4, -22, 3, -4, -18, 16);
+                abdGrad.addColorStop(0, '#450a0a');
+                abdGrad.addColorStop(0.6, '#1c1917');
+                abdGrad.addColorStop(1, '#09090b');
+                ctx.fillStyle = abdGrad;
+                ctx.beginPath();
+                ctx.ellipse(-5 * facingRight, -18, 15, 12, -0.15 * facingRight, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath();
+                ctx.arc(-6 * facingRight, -21, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                ctx.fillStyle = '#27272a';
+                ctx.beginPath();
+                ctx.arc(6 * facingRight, -13, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#f43f5e';
+                for (let e = -2; e <= 2; e++) {
+                    ctx.beginPath();
+                    ctx.arc(11 * facingRight + e * 1.2, -15 + Math.abs(e) * 0.8, 1.3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+            } else if (m.type === 'croc') {
+                const tailWave = Math.sin(m.walkPhase) * 8;
+                const jawOpen = m.attackAnimTimer > 0 ? 0.45 : 0.05;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.42)';
+                ctx.beginPath();
+                ctx.ellipse(0, 4, 26, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.save();
+                ctx.scale(facingRight, 1);
+
+                ctx.strokeStyle = '#14532d';
+                ctx.lineWidth = 7;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-12, -8);
+                ctx.quadraticCurveTo(-24, -8 + tailWave * 0.5, -34, -4 + tailWave);
+                ctx.stroke();
+
+                const crocGrad = ctx.createLinearGradient(0, -18, 0, -2);
+                crocGrad.addColorStop(0, '#166534');
+                crocGrad.addColorStop(0.7, '#15803d');
+                crocGrad.addColorStop(1, '#a3e635');
+                ctx.fillStyle = crocGrad;
+                ctx.beginPath();
+                ctx.ellipse(-2, -9, 17, 7.5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#052e16';
+                for (let s = -12; s <= 6; s += 5) {
+                    ctx.beginPath();
+                    ctx.moveTo(s, -15);
+                    ctx.lineTo(s + 2.5, -20);
+                    ctx.lineTo(s + 5, -15);
+                    ctx.fill();
+                }
+
+                const step = Math.sin(m.walkPhase) * 4;
+                ctx.fillStyle = '#14532d';
+                ctx.fillRect(-10 + step, -5, 5, 7);
+                ctx.fillRect(6 - step, -5, 5, 7);
+
+                ctx.save();
+                ctx.translate(12, -10);
+                ctx.fillStyle = '#15803d';
+                ctx.fillRect(0, 0, 15, 4);
+                ctx.rotate(-jawOpen);
+                ctx.fillStyle = '#166534';
+                ctx.fillRect(0, -5, 16, 5.5);
+                ctx.fillStyle = '#fef9c3';
+                for (let t = 3; t < 15; t += 4) {
+                    ctx.beginPath();
+                    ctx.moveTo(t, 0.5);
+                    ctx.lineTo(t + 1.5, 4);
+                    ctx.lineTo(t + 3, 0.5);
+                    ctx.fill();
+                }
+                ctx.restore();
+
+                ctx.fillStyle = '#facc15';
+                ctx.beginPath();
+                ctx.arc(13, -15, 2.2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+            } else if (m.type === 'drake') {
+                const hoverZ = 34 + Math.sin(m.wingPhase) * 6;
+                const wingFlap = Math.sin(m.wingPhase) * 22;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.45)';
+                ctx.beginPath();
+                ctx.ellipse(0, 6, 26, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.save();
+                ctx.translate(0, -hoverZ);
+                ctx.scale(facingRight, 1);
+
+                ctx.fillStyle = '#7f1d1d';
+                ctx.strokeStyle = '#450a0a';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-4, -14);
+                ctx.lineTo(-22, -36 - wingFlap * 0.7);
+                ctx.lineTo(-34, -18 - wingFlap * 0.4);
+                ctx.quadraticCurveTo(-18, -8, -4, -8);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.strokeStyle = '#991b1b';
+                ctx.lineWidth = 5;
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(-12, -6);
+                ctx.quadraticCurveTo(-28, 2, -38, 8 + Math.sin(m.wingPhase) * 5);
+                ctx.stroke();
+
+                const bodyGrad = ctx.createRadialGradient(2, -12, 3, 0, -10, 20);
+                bodyGrad.addColorStop(0, '#f97316');
+                bodyGrad.addColorStop(0.5, '#dc2626');
+                bodyGrad.addColorStop(1, '#7f1d1d');
+                ctx.fillStyle = bodyGrad;
+                ctx.beginPath();
+                ctx.ellipse(0, -10, 17, 10, -0.2, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#dc2626';
+                ctx.lineWidth = 7;
+                ctx.beginPath();
+                ctx.moveTo(10, -14);
+                ctx.quadraticCurveTo(18, -24, 22, -22);
+                ctx.stroke();
+
+                ctx.fillStyle = '#b91c1c';
+                ctx.beginPath();
+                ctx.moveTo(18, -28);
+                ctx.lineTo(33, -22);
+                ctx.lineTo(20, -16);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.strokeStyle = '#fef08a';
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.moveTo(20, -26);
+                ctx.lineTo(13, -34);
+                ctx.stroke();
+
+                ctx.fillStyle = '#fef08a';
+                ctx.beginPath();
+                ctx.arc(24, -23, 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                const wingGrad = ctx.createLinearGradient(0, -40, 0, 0);
+                wingGrad.addColorStop(0, '#ef4444');
+                wingGrad.addColorStop(1, '#991b1b');
+                ctx.fillStyle = wingGrad;
+                ctx.beginPath();
+                ctx.moveTo(2, -14);
+                ctx.lineTo(-10, -42 + wingFlap);
+                ctx.lineTo(-28, -24 + wingFlap * 0.7);
+                ctx.quadraticCurveTo(-14, -14, -8, -4);
+                ctx.quadraticCurveTo(-2, -10, 2, -10);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#fca5a5';
+                ctx.lineWidth = 1.2;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            ctx.restore();
+
+            const topOffset = m.isFlying ? -88 : -48 * m.scale;
+            const barW = m.type === 'drake' ? 54 : 38;
+            const barH = 4.5;
+            const bx = sp.x - barW / 2;
+            const by = sp.y + topOffset;
+
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+            const hpRatio = Math.max(0, m.hp / m.maxHp);
+            ctx.fillStyle = hpRatio > 0.5 ? '#22c55e' : (hpRatio > 0.25 ? '#eab308' : '#ef4444');
+            ctx.fillRect(bx, by, barW * hpRatio, barH);
+
+            if (isTarget || isHover || m.hp < m.maxHp || m.type === 'drake') {
+                ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#000';
+                ctx.fillText(`Lv.${m.level} ${m.name}`, sp.x + 1, by - 4);
+                ctx.fillStyle = m.type === 'drake' ? '#fb923c' : (isTarget ? '#fca5a5' : '#fde047');
+                ctx.fillText(`Lv.${m.level} ${m.name}`, sp.x, by - 5);
+            }
+        }
+
+        function drawPlayer(now) {
+            const sp = worldToScreen(player.x, player.y, camera.x, camera.y);
+            const { sx, sy } = getScreenDirectionVector(player.dirX, player.dirY);
+            const facingRight = sx >= 0 ? 1 : -1;
+            const facingBack = sy < -0.15;
+
+            const stride = player.isMoving ? Math.sin(player.walkCycle) : 0;
+            const walkBob = player.isMoving ? Math.abs(Math.cos(player.walkCycle)) * 3.8 : Math.sin(now * 0.004) * 1.1;
+
+            ctx.save();
+
+            if (player.hasteTimer > 0) {
+                drawTargetLockRing(sp.x, sp.y + 3, 19, 'rgba(52, 211, 153, 0.65)', now);
+            }
+            if (player.braveTimer > 0) {
+                drawTargetLockRing(sp.x, sp.y + 3, 24, 'rgba(239, 68, 68, 0.75)', -now * 1.4);
+            }
+
+            ctx.fillStyle = 'rgba(0,0,0,0.48)';
+            ctx.beginPath();
+            ctx.ellipse(sp.x, sp.y + 3, 15, 7.5, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.translate(sp.x, sp.y - walkBob);
+
+            const armorColor = player.equipped.armor ? (player.equipped.armor.armorTint || '#cbd5e1') : '#64748b';
+            const capeColor = player.equipped.cloak ? (player.equipped.cloak.capeColor || '#dc2626') : '#7f1d1d';
+            const bladeColor = player.equipped.weapon ? (player.equipped.weapon.bladeColor || '#bae6fd') : '#94a3b8';
+            const enchantLv = player.equipped.weapon ? (player.equipped.weapon.enchant || 0) : 0;
+
+            ctx.save();
+            ctx.scale(facingRight, 1);
+
+            const drawCape = () => {
+                if (!player.equipped.cloak) return;
+                const capeWave = Math.sin(now * 0.008 + (player.isMoving ? player.walkCycle : 0)) * (player.isMoving ? 6 : 2.5);
+                const capeGrad = ctx.createLinearGradient(0, -32, -14, 0);
+                capeGrad.addColorStop(0, capeColor);
+                capeGrad.addColorStop(1, '#1e1b4b');
+                ctx.fillStyle = capeGrad;
+                ctx.beginPath();
+                ctx.moveTo(-6, -30);
+                ctx.lineTo(4, -30);
+                ctx.quadraticCurveTo(-10 - (player.isMoving ? 6 : 1), -14, -12 + capeWave, -2);
+                ctx.lineTo(-2 + capeWave * 0.5, -1);
+                ctx.closePath();
+                ctx.fill();
+            };
+
+            if (!facingBack) drawCape();
+
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(-3, -13);
+            ctx.lineTo(-3 - stride * 7, -2);
+            ctx.stroke();
+
+            ctx.strokeStyle = armorColor;
+            ctx.lineWidth = 5.2;
+            ctx.beginPath();
+            ctx.moveTo(3, -13);
+            ctx.lineTo(3 + stride * 7, -2);
+            ctx.stroke();
+
+            ctx.fillStyle = player.equipped.boots ? '#475569' : '#292524';
+            ctx.fillRect(-6 - stride * 7, -3, 6, 4);
+            ctx.fillRect(0 + stride * 7, -3, 6, 4);
+
+            const chestGrad = ctx.createLinearGradient(-8, -31, 8, -12);
+            chestGrad.addColorStop(0, '#f8fafc');
+            chestGrad.addColorStop(0.45, armorColor);
+            chestGrad.addColorStop(1, '#334155');
+            ctx.fillStyle = chestGrad;
+            ctx.beginPath();
+            ctx.moveTo(-8, -30);
+            ctx.lineTo(8, -30);
+            ctx.lineTo(6, -13);
+            ctx.lineTo(-6, -13);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            ctx.fillStyle = '#ca8a04';
+            ctx.fillRect(-6.5, -16, 13, 3);
+
+            ctx.fillStyle = armorColor;
+            ctx.beginPath();
+            ctx.arc(-8, -28, 4.5, 0, Math.PI * 2);
+            ctx.arc(8, -28, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            if (facingBack) drawCape();
+
+            ctx.save();
+            ctx.translate(-7, -21);
+            ctx.fillStyle = '#1e3a8a';
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 1.8;
+            ctx.beginPath();
+            ctx.moveTo(-6, -8);
+            ctx.lineTo(5, -8);
+            ctx.lineTo(5, 2);
+            ctx.quadraticCurveTo(0, 10, -6, 2);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.strokeStyle = '#fde047';
+            ctx.lineWidth = 1.4;
+            ctx.beginPath();
+            ctx.moveTo(-0.5, -5); ctx.lineTo(-0.5, 5);
+            ctx.moveTo(-4, -1);   ctx.lineTo(3, -1);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.fillStyle = player.equipped.helmet ? '#e2e8f0' : '#fcd34d';
+            ctx.beginPath();
+            ctx.arc(0, -37, 7, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1.3;
+            ctx.stroke();
+
+            if (!facingBack && player.equipped.helmet) {
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(1, -39, 5, 2);
+                ctx.fillRect(3, -39, 2, 6);
+            }
+
+            const plumeColor = (player.equipped.helmet && player.equipped.helmet.name.includes('巴風特')) ? '#a855f7' : '#ef4444';
+            ctx.fillStyle = plumeColor;
+            ctx.beginPath();
+            ctx.moveTo(0, -43);
+            ctx.quadraticCurveTo(-8, -51, -13 - Math.sin(now * 0.01) * 2, -41);
+            ctx.quadraticCurveTo(-5, -42, 0, -43);
+            ctx.fill();
+
+            ctx.save();
+            ctx.translate(6, -24);
+            let weaponAngle = -0.35 + stride * 0.15;
+            if (player.swingAnimTimer > 0) {
+                const p = 1 - (player.swingAnimTimer / 0.26);
+                weaponAngle = player.swingCombo === 0
+                    ? (-1.6 + p * 3.1)
+                    : (1.4 - p * 3.0);
+            }
+            ctx.rotate(weaponAngle);
+
+            ctx.fillStyle = '#78350f';
+            ctx.fillRect(-1.5, 0, 3, 6);
+            ctx.fillStyle = '#facc15';
+            ctx.fillRect(-5, -2, 10, 2.8);
+
+            if (enchantLv >= 7) {
+                ctx.shadowColor = bladeColor;
+                ctx.shadowBlur = enchantLv >= 9 ? 14 : 8;
+            }
+            ctx.fillStyle = bladeColor;
+            ctx.beginPath();
+            ctx.moveTo(-2.2, -2);
+            ctx.lineTo(2.2, -2);
+            ctx.lineTo(1.2, -24);
+            ctx.lineTo(0, -29);
+            ctx.lineTo(-1.2, -24);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            if (player.swingAnimTimer > 0) {
+                ctx.strokeStyle = enchantLv >= 9 ? 'rgba(244, 63, 94, 0.78)' : (enchantLv >= 7 ? 'rgba(253, 224, 71, 0.75)' : 'rgba(186, 230, 253, 0.7)');
+                ctx.lineWidth = 7;
+                ctx.beginPath();
+                ctx.arc(0, 0, 23, -1.9, -0.4);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            ctx.restore();
+            ctx.restore();
+
+            if (player.levelUpBeamTimer > 0) {
+                ctx.save();
+                const alpha = Math.min(1, player.levelUpBeamTimer);
+                const grad = ctx.createLinearGradient(sp.x, sp.y - 160, sp.x, sp.y + 10);
+                grad.addColorStop(0, 'rgba(253, 224, 71, 0)');
+                grad.addColorStop(0.6, `rgba(253, 224, 71, ${alpha * 0.45})`);
+                grad.addColorStop(1, `rgba(250, 204, 21, ${alpha * 0.85})`);
+                ctx.fillStyle = grad;
+                ctx.fillRect(sp.x - 24, sp.y - 160, 48, 168);
+                ctx.restore();
+            }
+
+            const barW = 46;
+            const barH = 4.5;
+            const bx = sp.x - barW / 2;
+            const by = sp.y - 60;
+            ctx.fillStyle = 'rgba(0,0,0,0.8)';
+            ctx.fillRect(bx - 1, by - 1, barW + 2, barH + 2);
+            ctx.fillStyle = '#22c55e';
+            ctx.fillRect(bx, by, barW * (player.hp / player.maxHp), barH);
+
+            ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+            ctx.textAlign = 'center';
+            const title = `Lv.${player.level} ${player.name}`;
+            ctx.fillStyle = '#000';
+            ctx.fillText(title, sp.x + 1, by - 5);
+            ctx.fillStyle = '#fde047';
+            ctx.fillText(title, sp.x, by - 6);
+
+            if (player.chatBubbleTimer > 0 && player.chatBubbleText) {
+                drawChatBubble(sp.x, by - (player.autoBattle ? 36 : 20), player.chatBubbleText);
+            }
+
+            if (player.autoBattle) {
+                const tagText = `🤖 ${player.autoStatusText}`;
+                ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
+                const tw = ctx.measureText(tagText).width + 12;
+                ctx.fillStyle = 'rgba(6, 78, 59, 0.88)';
+                ctx.strokeStyle = '#34d399';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(sp.x - tw / 2, by - 34, tw, 16, 4);
+                ctx.fill();
+                ctx.stroke();
+                ctx.fillStyle = '#a7f3d0';
+                ctx.fillText(tagText, sp.x, by - 22);
+            }
+        }
+
+        function drawActiveSpells(now) {
+            for (const sp of activeSpells) {
+                if (sp.type === 'lightning') {
+                    const pos = worldToScreen(sp.x, sp.y, camera.x, camera.y);
+                    const alpha = sp.timer / sp.maxTimer;
+
+                    ctx.save();
+                    ctx.translate(pos.x, pos.y);
+                    ctx.scale(1, 0.5);
+                    const ringGrad = ctx.createRadialGradient(0, 0, 4, 0, 0, 68);
+                    ringGrad.addColorStop(0, `rgba(224, 242, 254, ${alpha * 0.95})`);
+                    ringGrad.addColorStop(0.5, `rgba(56, 189, 248, ${alpha * 0.6})`);
+                    ringGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+                    ctx.fillStyle = ringGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 68, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+
+                    ctx.save();
+                    sp.branches.forEach((pts, bIdx) => {
+                        ctx.strokeStyle = bIdx === 0 ? `rgba(255,255,255,${alpha})` : `rgba(56, 189, 248, ${alpha * 0.9})`;
+                        ctx.lineWidth = bIdx === 0 ? 4.5 : 2.5;
+                        ctx.shadowColor = '#38bdf8';
+                        ctx.shadowBlur = 16;
+                        ctx.beginPath();
+                        pts.forEach((pt, idx) => {
+                            const lx = pos.x + pt.offsetX;
+                            const ly = (pos.y - 340) + pt.t * 340;
+                            if (idx === 0) ctx.moveTo(lx, ly);
+                            else ctx.lineTo(lx, ly);
+                        });
+                        ctx.stroke();
+                    });
+                    ctx.restore();
+
+                } else if (sp.type === 'tornado') {
+                    const pos = worldToScreen(sp.x, sp.y, camera.x, camera.y);
+                    const alpha = sp.timer / sp.maxTimer;
+
+                    ctx.save();
+                    for (let r = 0; r < 14; r++) {
+                        const ratio = r / 13;
+                        const yOff = -ratio * 115;
+                        const radiusX = 18 + ratio * 65;
+                        const radiusY = radiusX * 0.46;
+                        const rot = now * 0.015 + r * 0.55;
+
+                        ctx.strokeStyle = r % 2 === 0
+                            ? `rgba(167, 243, 208, ${alpha * 0.78})`
+                            : `rgba(56, 189, 248, ${alpha * 0.65})`;
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.ellipse(
+                            pos.x + Math.sin(rot) * 5,
+                            pos.y + yOff,
+                            radiusX,
+                            radiusY,
+                            0,
+                            rot % Math.PI,
+                            (rot % Math.PI) + Math.PI * 1.45
+                        );
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+
+                } else if (sp.type === 'fireball') {
+                    if (!sp.exploded) {
+                        const pos = worldToScreen(sp.x, sp.y, camera.x, camera.y);
+                        const arcLift = Math.sin(sp.progress * Math.PI) * 55;
+                        ctx.save();
+                        const fbGrad = ctx.createRadialGradient(pos.x, pos.y - 24 - arcLift, 2, pos.x, pos.y - 24 - arcLift, 18);
+                        fbGrad.addColorStop(0, '#ffffff');
+                        fbGrad.addColorStop(0.4, '#fde047');
+                        fbGrad.addColorStop(0.8, '#f97316');
+                        fbGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+                        ctx.fillStyle = fbGrad;
+                        ctx.beginPath();
+                        ctx.arc(pos.x, pos.y - 24 - arcLift, 18, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    } else {
+                        const pos = worldToScreen(sp.targetX, sp.targetY, camera.x, camera.y);
+                        const alpha = sp.timer / sp.maxTimer;
+                        const radius = (1 - alpha) * 85 + 20;
+                        ctx.save();
+                        ctx.translate(pos.x, pos.y);
+                        ctx.scale(1, 0.55);
+                        const expGrad = ctx.createRadialGradient(0, 0, 5, 0, 0, radius);
+                        expGrad.addColorStop(0, `rgba(254, 240, 138, ${alpha})`);
+                        expGrad.addColorStop(0.5, `rgba(249, 115, 22, ${alpha * 0.85})`);
+                        expGrad.addColorStop(1, 'rgba(220, 38, 38, 0)');
+                        ctx.fillStyle = expGrad;
+                        ctx.beginPath();
+                        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+            }
+        }
+
+        function renderGame(now) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 更新左上角目前所在區域與海拔標示
+            const playerElev = Math.round(getTerrainElevation(player.x, player.y));
+            const regionEl = document.getElementById('uiRegionName');
+            if (regionEl) {
+                let regionTitle = '說話之島平原';
+                if (player.y <= 19 && player.x >= 20 && player.x <= 51) regionTitle = '奇岩王城高地';
+                else if (player.x <= 18) regionTitle = '妖精古森神木區';
+                else if (player.x >= 53) regionTitle = '龍之谷峽谷高台';
+                else if (player.y >= 50) regionTitle = '亞丁南方古戰場';
+                regionEl.textContent = `${regionTitle} (高度:${playerElev}階)`;
+            }
+
+            // 1. 渲染等距視角精緻地磚與立體斷崖高低差 (支援視野裁剪提升 72x72 大地圖流暢度)
+            for (let y = 0; y < MAP_SIZE; y++) {
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    const tileElev = heightMap[y][x];
+                    const testPos = worldToScreen(x + 0.5, y + 0.5, camera.x, camera.y, tileElev);
+                    if (testPos.x < -110 || testPos.x > canvas.width + 110 || testPos.y < -110 || testPos.y > canvas.height + 190) {
+                        continue;
+                    }
+
+                    const tile = mapGrid[y][x];
+                    const isChecker = (x + y) % 2 === 0;
+                    // 根據海拔高度賦予微幅光影明暗層次，讓高低落差一目了然
+                    const elevBright = tileElev * 7;
+                    let fill = isChecker
+                        ? `rgb(${26 + elevBright}, ${52 + elevBright}, ${31 + elevBright})`
+                        : `rgb(${22 + elevBright}, ${45 + elevBright}, ${27 + elevBright})`;
+
+                    if (tile === 1 || tile === 6) {
+                        fill = isChecker
+                            ? `rgb(${78 + elevBright}, ${74 + elevBright}, ${69 + elevBright})`
+                            : `rgb(${64 + elevBright}, ${60 + elevBright}, ${56 + elevBright})`;
+                    } else if (tile === 2) {
+                        const wave = Math.sin(now * 0.003 + x + y) * 12;
+                        fill = `rgb(12, ${68 + wave}, 105)`;
+                    } else if (tile === 4) {
+                        fill = isChecker
+                            ? `rgb(${32 + elevBright}, ${58 + elevBright}, ${34 + elevBright})`
+                            : `rgb(${28 + elevBright}, ${50 + elevBright}, ${30 + elevBright})`;
+                    } else if (tile === 5) {
+                        fill = isChecker ? '#991b1b' : '#7f1d1d'; // 奇岩王城皇家紅毯大道
+                    } else if (tile === 7) {
+                        fill = '#64748b'; // 石階斜坡材質
+                    }
+
+                    const c = drawIsoTile(x, y, fill);
+
+                    // 石板雕紋、皇家紅毯金邊與極簡低調的地表紋理 (不再有凌亂花朵)
+                    if (tile === 1 && isChecker) {
+                        ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+                        ctx.strokeRect(c.x - 8, c.y - 4, 16, 8);
+                    } else if (tile === 5) {
+                        ctx.strokeStyle = 'rgba(250, 204, 21, 0.42)';
+                        ctx.strokeRect(c.x - 10, c.y - 5, 20, 10);
+                    }
+
+                    const foliageList = mapFoliage[y]?.[x];
+                    if (foliageList) {
+                        for (const f of foliageList) {
+                            const fx = c.x + f.ox;
+                            const fy = c.y + f.oy;
+                            if (f.isPebble) {
+                                ctx.fillStyle = 'rgba(148, 163, 184, 0.35)';
+                                ctx.fillRect(fx, fy, 2.5, 1.8);
+                            } else {
+                                ctx.strokeStyle = 'rgba(74, 124, 89, 0.55)';
+                                ctx.lineWidth = 1.1;
+                                ctx.beginPath();
+                                ctx.moveTo(fx, fy);
+                                ctx.lineTo(fx, fy - f.h);
+                                ctx.stroke();
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. 滑鼠懸停格子指示框
+            const hx = Math.floor(mouseState.worldX);
+            const hy = Math.floor(mouseState.worldY);
+            if (hx >= 1 && hy >= 1 && hx < MAP_SIZE - 1 && hy < MAP_SIZE - 1) {
+                const walkable = isWalkable(hx, hy);
+                drawIsoTile(
+                    hx,
+                    hy,
+                    walkable ? 'rgba(250, 204, 21, 0.14)' : 'rgba(239, 68, 68, 0.22)',
+                    walkable ? 'rgba(250, 204, 21, 0.65)' : 'rgba(239, 68, 68, 0.7)'
+                );
+            }
+
+            // 3. 點擊地面水波紋
+            for (const ci of clickIndicators) {
+                const sp = worldToScreen(ci.wx, ci.wy, camera.x, camera.y);
+                ctx.save();
+                ctx.translate(sp.x, sp.y);
+                ctx.scale(1, 0.5);
+                ctx.strokeStyle = ci.color;
+                ctx.globalAlpha = Math.max(0, ci.alpha);
+                ctx.lineWidth = 2.2;
+                ctx.beginPath();
+                ctx.arc(0, 0, ci.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 4. 地面掉落寶物
+            for (const loot of groundLoots) {
+                const sp = worldToScreen(loot.wx, loot.wy, camera.x, camera.y);
+                const floatY = Math.sin(now * 0.005 + loot.wx) * 3;
+
+                const grad = ctx.createRadialGradient(sp.x, sp.y, 1, sp.x, sp.y, 18);
+                grad.addColorStop(0, 'rgba(250, 204, 21, 0.6)');
+                grad.addColorStop(1, 'rgba(250, 204, 21, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(sp.x, sp.y, 18, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.font = '17px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(loot.icon, sp.x, sp.y - 3 + floatY);
+
+                ctx.font = 'bold 11px "Noto Sans TC", sans-serif';
+                ctx.fillStyle = '#000';
+                ctx.fillText(loot.name, sp.x + 1, sp.y + 13);
+                ctx.fillStyle = loot.color;
+                ctx.fillText(loot.name, sp.x, sp.y + 12);
+            }
+
+            // 5. 收集所有立體物件依等距深度 (x+y) 排序
+            const renderables = [];
+
+            for (let y = 0; y < MAP_SIZE; y++) {
+                for (let x = 0; x < MAP_SIZE; x++) {
+                    if (mapGrid[y][x] === 3) {
+                        renderables.push({ depth: x + y + 0.5, type: 'tree', gx: x, gy: y });
+                    } else if (mapGrid[y][x] === 6) {
+                        renderables.push({ depth: x + y + 0.5, type: 'wall', gx: x, gy: y });
+                    }
+                }
+            }
+
+            for (const b of mapBuildings) {
+                renderables.push({
+                    depth: (b.x + b.w * 0.6) + (b.y + b.h * 0.6),
+                    type: 'building',
+                    obj: b
+                });
+            }
+
+            for (const m of monsters) {
+                renderables.push({ depth: m.x + m.y, type: 'monster', obj: m });
+            }
+
+            for (const uid in remotePlayers) {
+                const rp = remotePlayers[uid];
+                renderables.push({ depth: rp.x + rp.y, type: 'remotePlayer', obj: rp });
+            }
+
+            renderables.push({ depth: player.x + player.y, type: 'player' });
+
+            renderables.sort((a, b) => a.depth - b.depth);
+
+            for (const item of renderables) {
+                if (item.type === 'tree') {
+                    drawTreeAt(item.gx, item.gy, now);
+                } else if (item.type === 'wall') {
+                    drawCastleWallBlock(item.gx, item.gy);
+                } else if (item.type === 'building') {
+                    drawBuildingStructure(item.obj, now);
+                } else if (item.type === 'monster') {
+                    drawMonster(item.obj, now);
+                } else if (item.type === 'remotePlayer') {
+                    drawRemotePlayer(item.obj, now);
+                } else if (item.type === 'player') {
+                    drawPlayer(now);
+                }
+            }
+
+            // 6. 渲染三大魔法特效
+            drawActiveSpells(now);
+
+            // 7. 渲染戰鬥火花與吐息粒子
+            for (const p of particles) {
+                const sp = worldToScreen(p.wx, p.wy, camera.x, camera.y);
+                const px = sp.x + (p.isWorldSpace ? 0 : p.vx * (p.maxLife - p.life));
+                const py = sp.y - p.z + (p.isWorldSpace ? 0 : p.vy * (p.maxLife - p.life));
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(px, py, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            // 8. 浮動傷害數字與提示
+            for (const ft of floatingTexts) {
+                const sp = worldToScreen(ft.wx, ft.wy, camera.x, camera.y);
+                ctx.save();
+                ctx.font = `900 ${ft.size}px "Noto Sans TC", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.globalAlpha = ft.alpha;
+                ctx.fillStyle = '#000000';
+                ctx.fillText(ft.text, sp.x + 1.5, sp.y - 48 + ft.offsetY + 1.5);
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, sp.x, sp.y - 48 + ft.offsetY);
+                ctx.restore();
+            }
+
+            ctx.restore();
+        }
+
+        /**************************************************************
+         * 11. 啟動遊戲主迴圈
+         **************************************************************/
+        let lastFrameTime = performance.now();
+
+        function gameLoop(now) {
+            const dt = Math.min(0.1, (now - lastFrameTime) / 1000);
+            lastFrameTime = now;
+
+            updateGame(dt);
+            renderGame(now);
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function () {
+            initMap();
+            initInventoryDelegatedEvents();
+            spawnInitialMonsters();
+            initPublicWebSocketRelay();
+            updateUI();
+            updateAutoBattleUI();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+
+    <!-- 雲端即時多人連線模組 (Firestore WebSocket 長連線 + BroadcastChannel 雙引擎即時同步) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        (async function initCloudMultiplayer() {
+            const hintEl = document.getElementById('loginOnlineHint');
+            const netLabel = document.getElementById('netStatusLabel');
+
+            if (typeof __firebase_config === 'undefined' || !__firebase_config) {
+                if (hintEl) hintEl.textContent = '🟢 本機多視窗即時連線就緒';
+                return;
+            }
+
+            try {
+                const firebaseConfig = JSON.parse(__firebase_config);
+                const appId = typeof __app_id !== 'undefined' ? __app_id : 'play-lineage-25d';
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
+                const db = getFirestore(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                let currentUser = null;
+                onAuthStateChanged(auth, (u) => {
+                    currentUser = u;
+                    if (u && window.player) {
+                        window.player.uid = u.uid;
+                        if (hintEl) hintEl.textContent = '🟢 雲端伺服器已連線';
+                        if (netLabel) netLabel.textContent = '🟢 雲端跨裝置即時連線中';
+                    }
+                });
+
+                const playersCol = collection(db, 'artifacts', appId, 'public', 'data', 'online_players');
+                onSnapshot(playersCol, (snap) => {
+                    snap.docChanges().forEach((change) => {
+                        const data = change.doc.data();
+                        if (data && data.uid && window.player && data.uid !== window.player.uid && window.handleIncomingNetworkPacket) {
+                            window.handleIncomingNetworkPacket(data);
+                        }
+                    });
+                }, (err) => {
+                    console.warn('Multiplayer listener notice:', err);
+                });
+
+                window.syncPlayerToCloud = async function (force = false) {
+                    if (!currentUser || !window.buildNetworkSnapshot) return;
+                    try {
+                        const pDoc = doc(db, 'artifacts', appId, 'public', 'data', 'online_players', currentUser.uid);
+                        const snapData = window.buildNetworkSnapshot(force ? 'join' : 'sync');
+                        await setDoc(pDoc, snapData);
+                    } catch (e) {}
+                };
+
+                setInterval(() => {
+                    if (window.syncPlayerToCloud) window.syncPlayerToCloud(false);
+                }, 450);
+            } catch (e) {
+                if (hintEl) hintEl.textContent = '🟢 多視窗即時同步模式';
+            }
+        })();
+    </script>
+</body>
+</html>
