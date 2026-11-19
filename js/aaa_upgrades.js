@@ -695,38 +695,140 @@ export function createSpellVfxEngine({ scene, TEX, worldY, vfxList }) {
         });
     }
 
-    // (7) 法師技能 — 落石術 (天降巨岩重擊 + 暈眩震波)
+    // (7) 法師技能 — 落石術 (真正有感的天降巨岩：9 顆清晰巨石錯落砸下 + 地面落點影 + 彈跳碎石塵霧 + 衝擊震波)
     function spawnRockFall3D(wx, wy) {
         const group = new THREE.Group();
         const ty = worldY(wx, wy);
-        const rockMat = new THREE.MeshStandardMaterial({ color: 0x57534e, roughness: 0.95, flatShading: true });
+        const rockMat = new THREE.MeshStandardMaterial({
+            color: 0x8a7968, emissive: 0x3b2414, emissiveIntensity: 0.45,
+            roughness: 0.92, metalness: 0.08, flatShading: true
+        });
+        const rubbleMat = new THREE.MeshStandardMaterial({ color: 0x6b5e52, roughness: 0.95, flatShading: true });
+
         const rocks = [];
-        for (let i = 0; i < 6; i++) {
-            const r = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45 + Math.random() * 0.35, 0), rockMat);
-            const ox = (Math.random() - 0.5) * 3.4, oz = (Math.random() - 0.5) * 3.4;
-            const sy = ty + 7.5 + Math.random() * 3.5;
-            r.position.set(wx + ox, sy, wy + oz);
+        const rubble = [];
+        for (let i = 0; i < 9; i++) {
+            const rad = 0.42 + Math.random() * 0.34;
+            const r = new THREE.Mesh(new THREE.DodecahedronGeometry(rad, 0), rockMat);
+            const ang = (i / 9) * TAU + Math.random() * 0.4;
+            const dist = i === 0 ? 0.1 : (0.65 + Math.random() * 2.15);
+            const ox = Math.cos(ang) * dist, oz = Math.sin(ang) * dist;
+            const groundY = worldY(wx + ox, wy + oz);
+            const startY = groundY + 5.2 + Math.random() * 3.0;
+            r.position.set(wx + ox, startY, wy + oz);
+            r.scale.set(1.0 + Math.random() * 0.35, 0.85 + Math.random() * 0.35, 1.0 + Math.random() * 0.35);
             group.add(r);
-            rocks.push({ r, sy, targetY: ty + 0.35, rot: 3 + Math.random() * 5 });
+
+            // 地面落點陰影預警圓
+            const shadMat = new THREE.MeshBasicMaterial({ color: 0x090705, transparent: true, opacity: 0.5, depthWrite: false });
+            const shad = new THREE.Mesh(new THREE.CircleGeometry(rad * 1.1, 12), shadMat);
+            shad.rotation.x = -Math.PI / 2; shad.position.set(wx + ox, groundY + 0.06, wy + oz);
+            group.add(shad);
+
+            rocks.push({
+                r, shad, shadMat, ox, oz, groundY, startY, rad,
+                delay: i * 0.045, landed: false,
+                rotX: 3 + Math.random() * 5, rotZ: 3 + Math.random() * 5
+            });
         }
-        const shockMat = new THREE.MeshBasicMaterial({ map: TEX.ring, color: new THREE.Color(2.4, 1.7, 0.8), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
-        const shock = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 5.6), shockMat);
+
+        const shockMat = new THREE.MeshBasicMaterial({ map: TEX.ring, color: new THREE.Color(2.6, 1.8, 0.9), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+        const shock = new THREE.Mesh(new THREE.PlaneGeometry(6.2, 6.2), shockMat);
         shock.rotation.x = -Math.PI / 2; shock.position.set(wx, ty + 0.1, wy);
         group.add(shock);
+
+        const impactLight = new THREE.PointLight(0xf59e0b, 0, 12, 1.8);
+        impactLight.position.set(wx, ty + 1.5, wy);
+        group.add(impactLight);
+
         scene.add(group);
+        const totalLife = 1.45;
         vfxList.push({
-            group, life: 0.88, maxLife: 0.88,
+            group, life: totalLife, maxLife: totalLife,
             update(dt, p) {
-                const fallP = clamp(p / 0.38, 0, 1);
+                const elapsed = p * totalLife;
+                let anyJustLanded = false;
                 for (const rk of rocks) {
-                    rk.r.position.y = lerp(rk.sy, rk.targetY, fallP * fallP);
-                    rk.r.rotation.x += dt * rk.rot; rk.r.rotation.z += dt * rk.rot;
-                    if (p > 0.72) rk.r.scale.setScalar(Math.max(0.01, (1 - p) / 0.28));
+                    const localT = elapsed - rk.delay;
+                    if (localT < 0) { rk.r.visible = false; continue; }
+                    rk.r.visible = true;
+                    const fallDur = 0.34;
+                    if (localT < fallDur) {
+                        const f = localT / fallDur;
+                        rk.r.position.y = lerp(rk.startY, rk.groundY + rk.rad * 0.55, f * f);
+                        rk.r.rotation.x += dt * rk.rotX; rk.r.rotation.z += dt * rk.rotZ;
+                        rk.shad.scale.setScalar(0.35 + f * 0.75);
+                    } else {
+                        if (!rk.landed) {
+                            rk.landed = true;
+                            anyJustLanded = true;
+                            // 砸地瞬間噴出 3 顆彈跳碎石
+                            for (let c = 0; c < 3; c++) {
+                                const chunk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.14 + Math.random() * 0.1, 0), rubbleMat);
+                                chunk.position.set(wx + rk.ox, rk.groundY + 0.25, wy + rk.oz);
+                                group.add(chunk);
+                                const ca = Math.random() * TAU, cspd = 1.8 + Math.random() * 2.6;
+                                rubble.push({ m: chunk, vx: Math.cos(ca) * cspd, vy: 2.6 + Math.random() * 2.4, vz: Math.sin(ca) * cspd, gy: rk.groundY });
+                            }
+                        }
+                        // 落地微彈後停留在地面，最後 0.35s 下沉消失
+                        const postT = localT - fallDur;
+                        const bounce = postT < 0.18 ? Math.sin((postT / 0.18) * Math.PI) * 0.28 : 0;
+                        const sink = p > 0.74 ? ((p - 0.74) / 0.26) * 0.9 : 0;
+                        rk.r.position.y = rk.groundY + rk.rad * 0.55 + bounce - sink;
+                        rk.shadMat.opacity = p > 0.74 ? (1 - (p - 0.74) / 0.26) * 0.5 : 0.5;
+                    }
                 }
-                if (p >= 0.36) {
-                    const sp = (p - 0.36) / 0.64;
-                    shock.scale.setScalar(0.35 + sp * 1.15);
+                if (anyJustLanded) impactLight.intensity = 12;
+                impactLight.intensity = Math.max(0, impactLight.intensity - dt * 24);
+
+                for (const ch of rubble) {
+                    ch.vy -= 11.5 * dt;
+                    ch.m.position.x += ch.vx * dt;
+                    ch.m.position.y = Math.max(ch.gy + 0.08, ch.m.position.y + ch.vy * dt);
+                    ch.m.position.z += ch.vz * dt;
+                    ch.m.rotation.x += dt * 7; ch.m.rotation.z += dt * 5;
+                    if (p > 0.78) ch.m.scale.setScalar(Math.max(0.01, (1 - p) / 0.22));
+                }
+
+                if (elapsed >= 0.32 && elapsed < 1.05) {
+                    const sp = (elapsed - 0.32) / 0.73;
+                    shock.scale.setScalar(0.3 + sp * 1.2);
                     shockMat.opacity = (1 - sp) * 0.85;
+                } else {
+                    shockMat.opacity = 0;
+                }
+            }
+        });
+    }
+
+    // (9) 法師普攻 — 遠距離飛射小光彈 (3D 魔力能量球)
+    function spawnMageOrb3D(sx, sy, tx, ty) {
+        const group = new THREE.Group();
+        const orbMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 1.3, 4.2), transparent: true, opacity: 1, toneMapped: false });
+        const orb = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), orbMat);
+        const haloMat = new THREE.SpriteMaterial({ map: TEX.glow, color: new THREE.Color(1.8, 0.9, 3.8), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9, toneMapped: false });
+        const halo = new THREE.Sprite(haloMat);
+        halo.scale.set(0.75, 0.75, 1);
+        const holder = new THREE.Group();
+        holder.add(orb, halo);
+        group.add(holder);
+        scene.add(group);
+
+        const dist = Math.hypot(tx - sx, ty - sy);
+        const flyLife = clamp(0.16 + dist * 0.032, 0.22, 0.42);
+        vfxList.push({
+            group, life: flyLife + 0.14, maxLife: flyLife + 0.14,
+            update(dt, p) {
+                const elapsed = p * (flyLife + 0.14);
+                const f = Math.min(1, elapsed / flyLife);
+                const cx = lerp(sx, tx, f), cy = lerp(sy, ty, f);
+                holder.position.set(cx, worldY(cx, cy) + 1.25 + Math.sin(f * Math.PI) * 0.22, cy);
+                if (elapsed > flyLife) {
+                    const bp = (elapsed - flyLife) / 0.14;
+                    holder.scale.setScalar(1 + bp * 1.4);
+                    orbMat.opacity = 1 - bp;
+                    haloMat.opacity = (1 - bp) * 0.9;
                 }
             }
         });
@@ -774,6 +876,6 @@ export function createSpellVfxEngine({ scene, TEX, worldY, vfxList }) {
 
     return {
         spawn3DLightning, spawn3DTornado, createFireballMesh, spawn3DFireExplosion,
-        spawnFlameLine3D, spawnIceLance3D, spawnHealAura3D, spawnRockFall3D, spawnVoidThunder3D
+        spawnFlameLine3D, spawnIceLance3D, spawnHealAura3D, spawnRockFall3D, spawnVoidThunder3D, spawnMageOrb3D
     };
 }

@@ -574,18 +574,20 @@ export function createModelFactory(sharedTEX) {
         wDag.visible = false;
         swordGroup.add(wDag);
 
-        // (E) 巴風特魔導權杖 (staff) — 羊角魔杖 + 懸浮魔能晶球 (雙手持握不拿盾)
+        // (E) 魔導長法杖 (staff) — 長度直達地面、底部包鐵杖尖、頂部高過頭頂的鑲嵌晶球 (不拿盾)
         const wStaff = new THREE.Group();
-        addM(wStaff, new THREE.CylinderGeometry(0.028, 0.034, 1.75, 10), M.darkSteel, 0, 0.55, 0);
-        addM(wStaff, new THREE.TorusGeometry(0.045, 0.01, 6, 12), M.gold, 0, 1.28, 0).rotation.x = Math.PI / 2;
+        addM(wStaff, new THREE.CylinderGeometry(0.026, 0.032, 2.35, 10), M.darkSteel, 0, 0.25, 0);
+        addM(wStaff, new THREE.ConeGeometry(0.032, 0.14, 8), M.gold, 0, -0.96, 0).rotation.x = Math.PI; // 觸地金屬杖尾
+        addM(wStaff, new THREE.TorusGeometry(0.044, 0.01, 6, 12), M.gold, 0, 1.24, 0).rotation.x = Math.PI / 2;
+        addM(wStaff, new THREE.TorusGeometry(0.038, 0.008, 6, 12), M.gold, 0, 0.35, 0).rotation.x = Math.PI / 2;
         for (const s of [-1, 1]) {
-            const prong = addM(wStaff, new THREE.TorusGeometry(0.15, 0.022, 6, 12, Math.PI * 1.1), M.gold, s * 0.11, 1.5, 0);
+            const prong = addM(wStaff, new THREE.TorusGeometry(0.16, 0.022, 6, 12, Math.PI * 1.15), M.gold, s * 0.11, 1.48, 0);
             prong.rotation.z = s > 0 ? -0.4 : Math.PI + 0.4;
         }
-        const orbGeo = new THREE.OctahedronGeometry(0.13, 1);
-        addM(wStaff, orbGeo, bladeMat, 0, 1.56, 0, false);
+        const orbGeo = new THREE.OctahedronGeometry(0.135, 1);
+        addM(wStaff, orbGeo, bladeMat, 0, 1.54, 0, false);
         const orbAura = new THREE.Mesh(orbGeo, bladeAuraMat);
-        orbAura.position.set(0, 1.56, 0); orbAura.scale.setScalar(1.32);
+        orbAura.position.set(0, 1.54, 0); orbAura.scale.setScalar(1.3);
         wStaff.add(orbAura);
         wStaff.visible = false;
         swordGroup.add(wStaff);
@@ -787,8 +789,8 @@ export function createModelFactory(sharedTEX) {
         addM(mageArmR, new THREE.CapsuleGeometry(0.04, 0.22, 8, 10), M.skin, 0.04, -0.36, 0.08).rotation.x = -0.45;
 
         const mageStaffHolder = new THREE.Group();
-        mageStaffHolder.position.set(0.05, -0.46, 0.14);
-        mageStaffHolder.rotation.x = 0.35;
+        mageStaffHolder.position.set(0.06, -0.42, 0.14);
+        mageStaffHolder.rotation.x = 0.06; // 垂直長法杖自然觸地
         mageArmR.add(mageStaffHolder);
         const mageStaff = wStaff.clone();
         mageStaff.visible = true;
@@ -798,8 +800,8 @@ export function createModelFactory(sharedTEX) {
             map: sharedTEX.glow, color: new THREE.Color(1.8, 0.8, 3.8),
             blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0, toneMapped: false
         }));
-        staffCastGlow.scale.set(0.6, 0.6, 1);
-        staffCastGlow.position.set(0, 1.56, 0);
+        staffCastGlow.scale.set(0.55, 0.55, 1);
+        staffCastGlow.position.set(0, 1.54, 0);
         mageStaffHolder.add(staffCastGlow);
 
         // 將原本騎士軀幹與雙腿歸類到 knightMeshGroup 方便一鍵切換
@@ -936,6 +938,10 @@ export function createModelFactory(sharedTEX) {
             rig.mageMeshGroup.visible = isMage;
 
             if (isMage && rig.mageTorso) {
+                // 法師絕對不顯示劍氣月牙弧！
+                rig.slashMat.opacity = 0;
+                rig.slashInnerMat.opacity = 0;
+
                 // 1. 優雅走路邁步 & 跳躍姿勢 + 飄逸長髮擺動
                 if (jumpZ > 0.05) {
                     rig.mageLegL.rotation.x = -0.4;
@@ -947,45 +953,40 @@ export function createModelFactory(sharedTEX) {
                 rig.mageHair.rotation.x = (state.isMoving ? 0.35 : 0.08) + Math.sin(t * 4.5) * 0.08;
                 rig.mageHair.rotation.z = Math.sin(t * 3.2) * 0.06;
 
-                // 2. 施法舉杖揮舞動作 vs 近距離緩慢沉重揮舞權杖動作
+                // 2. 施法舉杖丟光彈/法術 vs 近距離緩慢揮舞長法杖 (無劍氣！)
                 if (state.castAnimTimer > 0) {
-                    const cp = 1 - clamp(state.castAnimTimer / 0.46, 0, 1);
+                    const cp = 1 - clamp(state.castAnimTimer / 0.42, 0, 1);
                     const env = Math.sin(cp * Math.PI);
-                    // 高舉魔杖施法並向前揮出魔力波！
-                    rig.mageTorso.rotation.x = lerp(-0.16, 0.14, smooth(cp));
-                    rig.mageTorso.rotation.y = lerp(-0.28, 0.32, smooth(cp));
-                    rig.mageArmR.rotation.x = lerp(-2.35, -0.55, smooth(cp));
-                    rig.mageArmR.rotation.z = lerp(0.35, -0.25, smooth(cp));
-                    rig.mageStaffHolder.rotation.x = lerp(0.15, 1.05, smooth(cp));
-                    rig.mageArmL.rotation.x = lerp(-1.25, -0.75, smooth(cp));
-                    rig.mageArmL.rotation.z = -0.35;
+                    rig.mageTorso.rotation.x = lerp(-0.14, 0.12, smooth(cp));
+                    rig.mageTorso.rotation.y = lerp(-0.22, 0.28, smooth(cp));
+                    rig.mageArmR.rotation.x = lerp(-1.85, -0.45, smooth(cp));
+                    rig.mageArmR.rotation.z = lerp(0.28, -0.18, smooth(cp));
+                    rig.mageStaffHolder.rotation.x = lerp(0.1, 0.85, smooth(cp));
+                    rig.mageArmL.rotation.x = lerp(-1.15, -0.65, smooth(cp));
+                    rig.mageArmL.rotation.z = -0.32;
                     if (rig.staffCastGlow) {
-                        rig.staffCastGlow.material.opacity = env * 0.95;
-                        const gs = 0.45 + env * 0.95;
+                        rig.staffCastGlow.material.opacity = env * 0.9;
+                        const gs = 0.38 + env * 0.65;
                         rig.staffCastGlow.scale.set(gs, gs, 1);
                     }
                 } else if (state.swingAnimTimer > 0) {
-                    // 近距離緩慢沉重揮舞權杖打擊 + 附帶可見的 3D 揮擊光弧！
-                    const sp = 1 - clamp(state.swingAnimTimer / 0.44, 0, 1);
+                    // 近距離緩慢揮舞長法杖 (純粹法杖揮動，完全不帶劍氣)
+                    const sp = 1 - clamp(state.swingAnimTimer / 0.46, 0, 1);
                     const env = Math.sin(sp * Math.PI);
                     const cdir = (state.swingCombo % 2 === 0) ? 1 : -1;
-                    rig.mageTorso.rotation.y = lerp(-0.65 * cdir, 0.72 * cdir, smooth(sp));
-                    rig.mageTorso.rotation.x = env * 0.18;
-                    rig.mageArmR.rotation.x = lerp(-2.05, 0.78, smooth(sp));
-                    rig.mageArmR.rotation.z = lerp(-0.6 * cdir, 0.75 * cdir, smooth(sp));
-                    rig.mageStaffHolder.rotation.x = 1.15;
-                    rig.mageArmL.rotation.x = -0.45;
-                    rig.slashMat.opacity = env * 0.85;
-                    rig.slashInnerMat.opacity = env * 0.85;
-                    rig.slashGroup.rotation.y = lerp(-1.05 * cdir, 1.1 * cdir, sp);
-                    if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = env * 0.55;
+                    rig.mageTorso.rotation.y = lerp(-0.55 * cdir, 0.65 * cdir, smooth(sp));
+                    rig.mageTorso.rotation.x = env * 0.16;
+                    rig.mageArmR.rotation.x = lerp(-1.85, 0.65, smooth(sp));
+                    rig.mageArmR.rotation.z = lerp(-0.5 * cdir, 0.65 * cdir, smooth(sp));
+                    rig.mageStaffHolder.rotation.x = 0.95;
+                    rig.mageArmL.rotation.x = -0.35;
+                    if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = env * 0.4;
                 } else {
-                    // 自然待機呼吸 & 優雅擺臂走路
-                    rig.mageTorso.rotation.x = lerp(rig.mageTorso.rotation.x, state.isMoving ? 0.08 : Math.sin(t * 2.2) * 0.025, clamp(dt * 10, 0, 1));
+                    rig.mageTorso.rotation.x = lerp(rig.mageTorso.rotation.x, state.isMoving ? 0.06 : Math.sin(t * 2.2) * 0.025, clamp(dt * 10, 0, 1));
                     rig.mageTorso.rotation.y = lerp(rig.mageTorso.rotation.y, Math.sin(t * 1.8) * 0.05 + stride * 0.12, clamp(dt * 10, 0, 1));
-                    rig.mageArmR.rotation.x = lerp(rig.mageArmR.rotation.x, -0.32 - stride * 0.28 + Math.sin(t * 2.2) * 0.05, clamp(dt * 10, 0, 1));
-                    rig.mageArmR.rotation.z = lerp(rig.mageArmR.rotation.z, 0.12, clamp(dt * 10, 0, 1));
-                    rig.mageStaffHolder.rotation.x = lerp(rig.mageStaffHolder.rotation.x, 0.32, clamp(dt * 10, 0, 1));
+                    rig.mageArmR.rotation.x = lerp(rig.mageArmR.rotation.x, -0.12 - stride * 0.2, clamp(dt * 10, 0, 1));
+                    rig.mageArmR.rotation.z = lerp(rig.mageArmR.rotation.z, 0.08, clamp(dt * 10, 0, 1));
+                    rig.mageStaffHolder.rotation.x = lerp(rig.mageStaffHolder.rotation.x, 0.06, clamp(dt * 10, 0, 1));
                     rig.mageArmL.rotation.x = lerp(rig.mageArmL.rotation.x, -0.18 + stride * 0.36, clamp(dt * 10, 0, 1));
                     rig.mageArmL.rotation.z = lerp(rig.mageArmL.rotation.z, -0.1, clamp(dt * 10, 0, 1));
                     if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = 0;
@@ -1136,7 +1137,7 @@ export function createModelFactory(sharedTEX) {
     function createDragonRig(isWaterBoss = false) {
         const root = new THREE.Group();
         const body = new THREE.Group();
-        body.position.y = isWaterBoss ? 2.55 : 3.35; // 飛龍飛得更高更壯觀！
+        body.position.y = isWaterBoss ? 1.05 : 3.35; // 末日水龍在地面行走！飛龍高空盤旋！
         root.add(body);
 
         const bodyMat = isWaterBoss ? new THREE.MeshStandardMaterial({
@@ -1271,13 +1272,26 @@ export function createModelFactory(sharedTEX) {
             prevTail = seg;
         }
 
-        for (const s of [-1, 1]) {
-            addM(body, new THREE.CapsuleGeometry(0.11, 0.44, 8, 10), bodyMat, s * 0.44, -0.5, 0.42).rotation.x = 0.42;
-            addM(body, new THREE.CapsuleGeometry(0.12, 0.48, 8, 10), bodyMat, s * 0.46, -0.52, -0.38).rotation.x = -0.35;
+        const groundLegs = [];
+        for (const [sx, sz] of [[-1, 0.52], [1, 0.52], [-1, -0.46], [1, -0.46]]) {
+            const lg = new THREE.Group();
+            lg.position.set(sx * 0.48, -0.22, sz);
+            body.add(lg);
+            addM(lg, new THREE.CapsuleGeometry(0.14, 0.58, 8, 10), bodyMat, 0, -0.35, 0);
+            if (isWaterBoss) {
+                addM(lg, new THREE.BoxGeometry(0.28, 0.14, 0.38), hornMat, 0, -0.74, 0.08);
+            }
+            groundLegs.push({ g: lg, sx, sz });
+        }
+
+        // 水龍為地面巨獸：把雙翼微收為霸氣背鰭翼，不會飛上天
+        if (isWaterBoss) {
+            wingL.shoulder.rotation.set(0.35, -0.45, -0.25);
+            wingR.shoulder.rotation.set(0.35, 0.45, 0.25);
         }
 
         setShadows(body, true);
-        return { root, body, neck, head, jaw, wingL, wingR, tailSegs, baseY: body.position.y, yaw: 0 };
+        return { root, body, neck, head, jaw, wingL, wingR, tailSegs, groundLegs, baseY: body.position.y, yaw: 0 };
     }
 
     /* =====================================================================
@@ -1469,12 +1483,12 @@ export function createModelFactory(sharedTEX) {
             rig.jaw.rotation.x = 0.14 + Math.abs(Math.sin(t * 3 + m.id)) * 0.12 + lunge * 0.48;
             rig.body.position.z = lunge * 0.5;
             rig.tail.rotation.y = Math.sin(t * 6.5 + m.id) * 0.38;
-        } else if (m.type === 'drake' || m.type === 'water_dragon') {
-            // 相位差自然拍翅 (內翼先揮、外翼稍慢波浪折疊，更像真實飛龍！)
+        } else if (m.type === 'drake') {
+            // 高空飛龍：相位差自然拍翅
             const ph = m.wingPhase * 0.65;
             const flapIn = Math.sin(ph);
             const flapOut = Math.sin(ph - 0.85);
-            rig.body.position.y = (rig.baseY || 3.2) + Math.cos(ph) * 0.34;
+            rig.body.position.y = (rig.baseY || 3.35) + Math.cos(ph) * 0.34;
             rig.body.rotation.x = Math.sin(ph) * 0.06;
             rig.wingL.shoulder.rotation.z = flapIn * 0.48;
             rig.wingL.outer.rotation.z = flapOut * 0.55;
@@ -1485,6 +1499,21 @@ export function createModelFactory(sharedTEX) {
             rig.tailSegs.forEach((seg, i) => {
                 seg.rotation.y = Math.sin(t * 3.4 + m.id - i * 0.68) * 0.26;
                 seg.rotation.x = Math.cos(t * 2.2 + m.id - i * 0.5) * 0.08;
+            });
+        } else if (m.type === 'water_dragon') {
+            // 末日水龍：地面四足沉重踏步行走 BOSS (絕不飛上天！)
+            const step = Math.sin(m.walkPhase * 0.7);
+            rig.body.position.y = 1.05 + Math.abs(step) * 0.06;
+            if (rig.groundLegs) {
+                rig.groundLegs.forEach(({ g, sx, sz }) => {
+                    const phase = (sx * sz > 0) ? step : -step;
+                    g.rotation.x = phase * 0.42;
+                });
+            }
+            rig.neck.rotation.x = lunge * 0.35 + Math.sin(t * 2.0 + m.id) * 0.05;
+            rig.jaw.rotation.x = 0.1 + lunge * 0.72;
+            rig.tailSegs.forEach((seg, i) => {
+                seg.rotation.y = Math.sin(t * 2.8 + m.id - i * 0.6) * 0.24;
             });
         } else if (m.type === 'shelob') {
             rig.legs.forEach(({ g, s, i }) => {

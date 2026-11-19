@@ -1675,7 +1675,7 @@
             de_archer:    { type: 'de_archer',    name: '暗黑精靈弓箭手', level: 11, maxHp: 210, atkMin: 19, atkMax: 29, speed: 2.2, aggroRange: 7.5, attackRange: 6.2,  exp: 150, scale: 1.08, isFlying: false, hitRadius: 32, ranged: 'arrow' },
             dark_mage:    { type: 'dark_mage',    name: '暗黑法師',       level: 13, maxHp: 235, atkMin: 24, atkMax: 36, speed: 1.85,aggroRange: 7.8, attackRange: 6.8,  exp: 185, scale: 1.1,  isFlying: false, hitRadius: 32, ranged: 'dark_fireball' },
             drake:        { type: 'drake',        name: '高空飛龍 Boss',  level: 16, maxHp: 560, atkMin: 28, atkMax: 42, speed: 2.55,aggroRange: 7.5, attackRange: 3.6,  exp: 380, scale: 1.38, isFlying: true,  hitRadius: 48 },
-            water_dragon: { type: 'water_dragon', name: '末日水龍 Boss',  level: 20, maxHp: 880, atkMin: 34, atkMax: 52, speed: 2.35,aggroRange: 8.5, attackRange: 5.2,  exp: 680, scale: 1.55, isFlying: true,  hitRadius: 54, ranged: 'icicle' }
+            water_dragon: { type: 'water_dragon', name: '末日水龍 Boss',  level: 20, maxHp: 880, atkMin: 34, atkMax: 52, speed: 2.35,aggroRange: 8.5, attackRange: 5.2,  exp: 680, scale: 1.55, isFlying: false, hitRadius: 54, ranged: 'icicle' }
         };
 
         // 12 座怪物生態群聚巢穴 (自動群聚活動 + 自動重生)
@@ -1959,7 +1959,7 @@
                 camera.shakeTimer = 0.22; camera.shakeIntensity = 5;
                 const tx = targetMonster.x, ty = targetMonster.y;
                 player.dirX = tx - player.x; player.dirY = ty - player.y;
-                activeSpells.push({ type: 'meteor_rock', x: tx, y: ty, timer: 0.88, maxTimer: 0.88 });
+                activeSpells.push({ type: 'meteor_rock', x: tx, y: ty, timer: 1.45, maxTimer: 1.45 });
                 monsters.forEach(m => {
                     if (m.hp <= 0) return;
                     if (Math.hypot(m.x - tx, m.y - ty) <= cfg.radius) {
@@ -2976,22 +2976,19 @@
             const isMageStaff = (player.charClass === 'mage' && !player.polyForm);
             const isMageMeleeBonk = isMageStaff && distToTarget <= 2.3;
 
-            // 法師近距離揮舞權杖攻速明顯較慢、揮擊動作沉重流暢；遠距離則揮杖施放魔彈！
+            // 法師遠距離普攻：優雅舉杖丟出一顆 3D 小光彈 (無劍氣！)；貼身則緩慢揮杖
             player.attackCooldown = getPlayerAttackInterval() * (isMageMeleeBonk ? 1.48 : 1.0);
-            if (isMageStaff && !isMageMeleeBonk) {
-                player.castAnimTimer = 0.38;
-                player.swingAnimTimer = 0;
-                // 遠距普攻魔杖飛彈軌跡粒子
-                for (let k = 1; k <= 6; k++) {
-                    const f = k / 6;
-                    particles.push({
-                        wx: player.x + (target.x - player.x) * f, wy: player.y + (target.y - player.y) * f, z: 32,
-                        vx: (Math.random() - 0.5) * 14, vy: (Math.random() - 0.5) * 14, vz: 8, gravity: 18,
-                        color: '#c084fc', size: 3.2, life: 0.22, maxLife: 0.22
-                    });
+            if (isMageStaff) {
+                if (isMageMeleeBonk) {
+                    player.swingAnimTimer = 0.46;
+                    player.castAnimTimer = 0;
+                } else {
+                    player.castAnimTimer = 0.42;
+                    player.swingAnimTimer = 0;
+                    activeSpells.push({ type: 'mage_orb', x: player.x, y: player.y, tx: target.x, ty: target.y, timer: 0.48, maxTimer: 0.48 });
                 }
             } else {
-                player.swingAnimTimer = isMageMeleeBonk ? 0.44 : 0.26;
+                player.swingAnimTimer = 0.26;
             }
             player.swingCombo = (player.swingCombo + 1) % 2;
 
@@ -6104,6 +6101,7 @@
                     else if (sp.type === 'heal') spellVfx.spawnHealAura3D(sp.x, sp.y);
                     else if (sp.type === 'meteor_rock') spellVfx.spawnRockFall3D(sp.x, sp.y);
                     else if (sp.type === 'void_thunder') spellVfx.spawnVoidThunder3D(sp.x, sp.y, monsters);
+                    else if (sp.type === 'mage_orb') spellVfx.spawnMageOrb3D(sp.x, sp.y, sp.tx, sp.ty);
                     else if (sp.type === 'fireball') {
                         const fg = spellVfx.createFireballMesh();
                         scene.add(fg);
