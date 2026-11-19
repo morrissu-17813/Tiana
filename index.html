@@ -3,9 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>天啊~~ - 2.5D 經典懷舊多人連線版</title>
+    <title>天啊~~ - 3D 暗黑奇幻多人連線 ARPG</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+            }
+        }
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Noto+Serif+TC:wght@600;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap');
 
@@ -92,10 +100,23 @@
             filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 16px rgba(234, 179, 8, 0.28));
         }
 
-        #gameCanvas {
+        #glCanvas {
+            position: fixed;
+            inset: 0;
             display: block;
             width: 100vw;
             height: 100vh;
+            z-index: 0;
+        }
+
+        #gameCanvas {
+            position: fixed;
+            inset: 0;
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            background: transparent;
             cursor: crosshair;
         }
 
@@ -135,7 +156,7 @@
                 天啊~~
             </h1>
             <p class="text-[11px] tracking-[0.22em] text-amber-200/50 uppercase mb-5">
-                Lineage 2.5D Classic World
+                Lineage 3D Dark Fantasy World
             </p>
 
             <!-- 歷史創角記憶快選區 (若曾有存檔自動顯示) -->
@@ -176,8 +197,9 @@
     </div>
 
     <!-- ==========================================================
-         2. 遊戲 2.5D 主畫布 (100% 滿版無遮擋)
+         2. 遊戲 3D WebGL 主畫布 + 透明 2D HUD 疊層畫布
          ========================================================== -->
+    <canvas id="glCanvas"></canvas>
     <canvas id="gameCanvas"></canvas>
 
     <!-- ==========================================================
@@ -253,7 +275,16 @@
             <button onclick="spawnSpecificMonster('werewolf')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-amber-200 cursor-pointer">+狼人</button>
             <button onclick="spawnSpecificMonster('shelob')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-red-300 cursor-pointer">+夏洛柏</button>
             <button onclick="spawnSpecificMonster('croc')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-emerald-300 cursor-pointer">+鱷魚</button>
-            <button onclick="spawnSpecificMonster('drake')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-orange-300 font-bold cursor-pointer">+飛龍Boss</button>
+            <button onclick="spawnSpecificMonster('drake')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-orange-300 font-bold cursor-pointer">+黑暗之龍Boss</button>
+        </div>
+
+        <!-- 經典圓形雷達小地圖 (滾輪縮放視角 / 右鍵拖曳旋轉) -->
+        <div class="hidden sm:flex flex-col items-center mt-2">
+            <div class="relative w-[108px] h-[108px] rounded-full border-2 border-[#a88649] bg-black/80 shadow-[0_4px_18px_rgba(0,0,0,0.9),inset_0_0_12px_rgba(0,0,0,0.95)] p-1">
+                <canvas id="minimapCanvas" width="96" height="96" class="w-full h-full rounded-full block"></canvas>
+                <span class="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold text-amber-300 bg-black/90 px-1 rounded border border-amber-700/70 leading-tight">N</span>
+            </div>
+            <span class="text-[9px] text-amber-200/60 mt-0.5">滾輪縮放 · 右鍵轉視角</span>
         </div>
     </div>
 
@@ -814,6 +845,9 @@
         }
 
         function screenToWorld(sx, sy, camX = 0, camY = 0) {
+            if (window.R3D && window.R3D.ready) {
+                return window.R3D.screenToWorld(sx, sy);
+            }
             const adjX = sx - canvas.width / 2 + camX;
             let estElev = getTerrainElevation(player.x, player.y);
             let wx = 0, wy = 0;
@@ -1158,6 +1192,7 @@
             player.y = 19.5;
             player.targetX = 36.0;
             player.targetY = 19.5;
+            if (window.R3D && window.R3D.snapCamera) window.R3D.snapCamera();
             sound.playLevelUp();
             spawnHitSparks(player.x, player.y, '#38bdf8', 20, 28);
             addFloatingText(player.x, player.y, '🏰 奇岩王城高地', '#fde047', 15);
@@ -2008,6 +2043,9 @@
          * 8. 滑鼠與手機觸控控制
          **************************************************************/
         function findMonsterAtScreenPos(sx, sy) {
+            if (window.R3D && window.R3D.ready) {
+                return window.R3D.pickMonster(sx, sy);
+            }
             for (let i = monsters.length - 1; i >= 0; i--) {
                 const m = monsters[i];
                 const sp = worldToScreen(m.x, m.y, camera.x, camera.y);
@@ -2236,6 +2274,7 @@
             const initScreen = worldToScreen(player.x, player.y, 0, 0);
             camera.x = initScreen.x - canvas.width / 2;
             camera.y = initScreen.y - canvas.height / 2;
+            if (window.R3D && window.R3D.snapCamera) window.R3D.snapCamera();
 
             document.getElementById('loginModal').classList.add('hidden');
             sound.init();
@@ -3547,6 +3586,87 @@
             }
         }
 
+        function render3DOverlay(now) {
+            // 1. 地面戰利品名稱標籤
+            for (const loot of groundLoots) {
+                const sp = window.R3D.project(loot.wx, loot.wy, 0.72);
+                if (!sp.visible) continue;
+                ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#000';
+                ctx.fillText(loot.name, sp.x + 1, sp.y + 1);
+                ctx.fillStyle = loot.color;
+                ctx.fillText(loot.name, sp.x, sp.y);
+            }
+
+            // 2. 怪物精緻血條與名稱
+            for (const m of monsters) {
+                const isTarget = player.attackTarget === m;
+                const isHover = mouseState.hoveredMonster === m;
+                if (!(isTarget || isHover || m.hp < m.maxHp || m.type === 'drake')) continue;
+                const hOff = m.isFlying ? 3.55 : (m.type === 'werewolf' ? 2.15 : 1.35) * m.scale;
+                const sp = window.R3D.project(m.x, m.y, hOff);
+                if (!sp.visible) continue;
+                const hpRatio = Math.max(0, m.hp / m.maxHp);
+                const barColor = hpRatio > 0.5 ? '#22c55e' : (hpRatio > 0.25 ? '#eab308' : '#ef4444');
+                drawCompactOverheadBar(sp.x, sp.y, hpRatio, barColor);
+                ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#000';
+                ctx.fillText(m.name, sp.x + 1, sp.y - 3);
+                ctx.fillStyle = m.type === 'drake' ? '#c084fc' : (isTarget ? '#fca5a5' : '#fde047');
+                ctx.fillText(m.name, sp.x, sp.y - 4);
+            }
+
+            // 3. 遠端玩家頭頂血條與對話泡泡
+            for (const uid in remotePlayers) {
+                const rp = remotePlayers[uid];
+                const sp = window.R3D.project(rp.x, rp.y, 2.25);
+                if (!sp.visible) continue;
+                drawCompactOverheadBar(sp.x, sp.y, rp.hp / rp.maxHp, '#38bdf8');
+                ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = '#000';
+                ctx.fillText(rp.name, sp.x + 1, sp.y - 4);
+                ctx.fillStyle = '#7dd3fc';
+                ctx.fillText(rp.name, sp.x, sp.y - 5);
+                if (rp.chatBubbleTimer > 0 && rp.chatBubbleText) {
+                    drawChatBubble(sp.x, sp.y - 16, rp.chatBubbleText);
+                }
+            }
+
+            // 4. 主角頭頂血條、名稱與對話泡泡
+            const psp = window.R3D.project(player.x, player.y, 2.25);
+            if (psp.visible) {
+                drawCompactOverheadBar(psp.x, psp.y, player.hp / player.maxHp, '#22c55e');
+                ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                const title = player.autoBattle ? `${player.name} [內掛]` : player.name;
+                ctx.fillStyle = '#000';
+                ctx.fillText(title, psp.x + 1, psp.y - 3);
+                ctx.fillStyle = player.autoBattle ? '#6ee7b7' : '#fde047';
+                ctx.fillText(title, psp.x, psp.y - 4);
+                if (player.chatBubbleTimer > 0 && player.chatBubbleText) {
+                    drawChatBubble(psp.x, psp.y - 15, player.chatBubbleText);
+                }
+            }
+
+            // 5. 傷害飄字
+            for (const ft of floatingTexts) {
+                const sp = window.R3D.project(ft.wx, ft.wy, 1.85);
+                if (!sp.visible) continue;
+                ctx.save();
+                ctx.font = `900 ${ft.size}px "Noto Sans TC", sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.globalAlpha = ft.alpha;
+                ctx.fillStyle = '#000000';
+                ctx.fillText(ft.text, sp.x + 1, sp.y + ft.offsetY + 1);
+                ctx.fillStyle = ft.color;
+                ctx.fillText(ft.text, sp.x, sp.y + ft.offsetY);
+                ctx.restore();
+            }
+        }
+
         function renderGame(now) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -3559,6 +3679,12 @@
                 else if (player.x >= 53) regionTitle = '龍之谷高台';
                 else if (player.y >= 50) regionTitle = '南方古戰場';
                 regionEl.textContent = `${regionTitle}(${playerElev}階)`;
+            }
+
+            if (window.R3D && window.R3D.ready) {
+                window.R3D.render(now);
+                render3DOverlay(now);
+                return;
             }
 
             // 1. 渲染等距地磚與立體斷崖
@@ -3737,6 +3863,10 @@
             updateUI();
             updateAutoBattleUI();
 
+            if (window.R3D && window.R3D.init) {
+                window.R3D.init();
+            }
+
             const initScreen = worldToScreen(player.x, player.y, 0, 0);
             camera.x = initScreen.x - canvas.width / 2;
             camera.y = initScreen.y - canvas.height / 2;
@@ -3788,5 +3918,1987 @@
             } catch (e) {}
         })();
     </script>
+
+    <script type="module">
+        /**************************************************************
+         * 12. Three.js 3D 渲染引擎 (原創程序化建模 + PBR 材質 + 泛光後製)
+         *     遊戲邏輯仍使用原本的 (x, y) 格座標；此模組只負責把世界畫成 3D。
+         **************************************************************/
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+        import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+        import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const EH = 0.75;               // 每一階高度 = 0.75 世界單位
+        const TAU = Math.PI * 2;
+        const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+        const lerp = (a, b, t) => a + (b - a) * t;
+        const smooth = (t) => t * t * (3 - 2 * t);
+        const lerpAngle = (a, b, t) => { const d = ((b - a + Math.PI) % TAU + TAU) % TAU - Math.PI; return a + d * t; };
+        function hash2(x, y) { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); }
+        function hash3(x, y, z) { const s = Math.sin(Math.round(x * 1000) * 12.9898 + Math.round(y * 1000) * 78.233 + Math.round(z * 1000) * 37.719) * 43758.5453; return s - Math.floor(s); }
+        function vnoise(x, y) {
+            const xi = Math.floor(x), yi = Math.floor(y), u = smooth(x - xi), v = smooth(y - yi);
+            return lerp(lerp(hash2(xi, yi), hash2(xi + 1, yi), u), lerp(hash2(xi, yi + 1), hash2(xi + 1, yi + 1), u), v);
+        }
+        function rng(seed) {
+            return function () {
+                seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+                let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+                t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            };
+        }
+
+        const R3D = { ready: false, failed: false };
+        window.R3D = R3D;
+
+        let renderer, scene, cam, composer, bloomPass, ENV;
+        let sun, hemi, fill;
+        const TEX = {};
+        const glCanvas = document.getElementById('glCanvas');
+        const camState = { dist: 14, yaw: Math.PI / 4, pitch: 0.9, target: new THREE.Vector3(36, 1, 37) };
+        const tmpV = new THREE.Vector3();
+        const raycaster = new THREE.Raycaster();
+        const pickables = [];
+        let simTime = 0, lastNow = 0;
+
+        /* ---------------- 程序化貼圖 ---------------- */
+        function makeCanvas(w, h = w) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
+
+        function heightToNormal(src, strength = 2.0) {
+            const w = src.width, h = src.height;
+            const sd = src.getContext('2d').getImageData(0, 0, w, h).data;
+            const [nc, ng] = makeCanvas(w, h);
+            const out = ng.createImageData(w, h);
+            const H = (x, y) => sd[(((y + h) % h) * w + ((x + w) % w)) * 4] / 255;
+            for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+                const dx = (H(x + 1, y) - H(x - 1, y)) * strength;
+                const dy = (H(x, y + 1) - H(x, y - 1)) * strength;
+                let nx = -dx, ny = dy, nz = 1; const l = Math.hypot(nx, ny, nz);
+                const i = (y * w + x) * 4;
+                out.data[i] = (nx / l * 0.5 + 0.5) * 255; out.data[i + 1] = (ny / l * 0.5 + 0.5) * 255;
+                out.data[i + 2] = (nz / l * 0.5 + 0.5) * 255; out.data[i + 3] = 255;
+            }
+            ng.putImageData(out, 0, 0);
+            return nc;
+        }
+
+        function toTex(canvas, srgb = true) {
+            const t = new THREE.CanvasTexture(canvas);
+            t.wrapS = t.wrapT = THREE.RepeatWrapping;
+            if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+            t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+            return t;
+        }
+
+        function wrapDraw(size, x, y, r, fn) {
+            for (const ox of [-size, 0, size]) for (const oy of [-size, 0, size]) {
+                if (x + ox + r < 0 || x + ox - r > size || y + oy + r < 0 || y + oy - r > size) continue;
+                fn(x + ox, y + oy);
+            }
+        }
+
+        function stonePath(g, cx, cy, rw, rh, rnd) {
+            const n = 11, pts = [];
+            for (let i = 0; i < n; i++) { const a = i / n * TAU, k = 0.84 + rnd() * 0.18; pts.push([cx + Math.cos(a) * rw * k, cy + Math.sin(a) * rh * k]); }
+            g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+            for (let i = 1; i <= n; i++) {
+                const p = pts[i % n], q = pts[(i - 1) % n];
+                g.quadraticCurveTo(q[0], q[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2);
+            }
+            g.closePath();
+        }
+
+        // 石板 / 鵝卵石 / 城牆磚 共用產生器
+        function genStones({ size = 512, rows = 8, cols = 8, gap = '#1d1b18', color, brick = false, moss = 0, seed = 1 }) {
+            const rnd = rng(seed);
+            const [dc, dg] = makeCanvas(size), [hc, hg] = makeCanvas(size);
+            dg.fillStyle = gap; dg.fillRect(0, 0, size, size);
+            hg.fillStyle = '#000'; hg.fillRect(0, 0, size, size);
+            for (let i = 0; i < 2500; i++) {
+                dg.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.3)' : (moss ? 'rgba(70,95,40,0.35)' : 'rgba(90,80,60,0.25)');
+                dg.fillRect(rnd() * size, rnd() * size, 2, 2);
+            }
+            const rh = size / rows;
+            for (let r = 0; r < rows; r++) {
+                let x = (r % 2) * (size / cols) * 0.5 - size / cols;
+                while (x < size + size / cols) {
+                    const w = brick ? (size / cols) * (0.7 + rnd() * 0.7) : (size / cols) * (0.85 + rnd() * 0.3);
+                    const cx = x + w / 2 + (rnd() - 0.5) * 4, cy = r * rh + rh / 2 + (rnd() - 0.5) * (brick ? 2 : rh * 0.12);
+                    const sw = w * 0.47, sh = rh * (brick ? 0.44 : 0.46);
+                    const col = color(rnd);
+                    const lightA = 0.08 + rnd() * 0.1;
+                    wrapDraw(size, cx, cy, Math.max(sw, sh) * 1.2, (px, py) => {
+                        const pr = rng(Math.floor(px * 7 + py * 13) + seed);
+                        // 高度
+                        hg.save();
+                        if (brick) { hg.beginPath(); hg.roundRect(px - sw, py - sh, sw * 2, sh * 2, sh * 0.35); } else stonePath(hg, px, py, sw, sh, pr);
+                        const hgGrad = hg.createRadialGradient(px, py, 0, px, py, Math.max(sw, sh) * 1.05);
+                        hgGrad.addColorStop(0, '#ffffff'); hgGrad.addColorStop(0.65, '#c8c8c8'); hgGrad.addColorStop(1, '#4a4a4a');
+                        hg.fillStyle = hgGrad; hg.fill(); hg.restore();
+                        // 顏色
+                        const pr2 = rng(Math.floor(px * 7 + py * 13) + seed);
+                        dg.save();
+                        if (brick) { dg.beginPath(); dg.roundRect(px - sw, py - sh, sw * 2, sh * 2, sh * 0.35); } else stonePath(dg, px, py, sw, sh, pr2);
+                        dg.fillStyle = col; dg.fill();
+                        dg.clip();
+                        const sg = dg.createRadialGradient(px - sw * 0.3, py - sh * 0.4, 0, px, py, Math.max(sw, sh) * 1.2);
+                        sg.addColorStop(0, `rgba(255,245,225,${lightA})`); sg.addColorStop(0.6, 'rgba(0,0,0,0)'); sg.addColorStop(1, 'rgba(0,0,0,0.35)');
+                        dg.fillStyle = sg; dg.fillRect(px - sw * 1.3, py - sh * 1.3, sw * 2.6, sh * 2.6);
+                        for (let k = 0; k < 40; k++) {
+                            dg.fillStyle = pr() < 0.5 ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.12)';
+                            dg.fillRect(px - sw + pr() * sw * 2, py - sh + pr() * sh * 2, 1 + pr() * 2, 1 + pr() * 2);
+                        }
+                        if (moss && pr() < moss) {
+                            dg.fillStyle = 'rgba(78,110,44,0.45)';
+                            dg.beginPath(); dg.ellipse(px - sw * 0.2, py - sh * 0.75, sw * 0.6, sh * 0.25, 0, 0, TAU); dg.fill();
+                        }
+                        dg.restore();
+                    });
+                    x += w;
+                }
+            }
+            return { map: toTex(dc), normalMap: toTex(heightToNormal(hc, 3.0), false) };
+        }
+
+        function genGrass(size = 512) {
+            const rnd = rng(77);
+            const [dc, dg] = makeCanvas(size), [hc, hg] = makeCanvas(size);
+            dg.fillStyle = '#34502a'; dg.fillRect(0, 0, size, size);
+            hg.fillStyle = '#404040'; hg.fillRect(0, 0, size, size);
+            for (let i = 0; i < 160; i++) {
+                const x = rnd() * size, y = rnd() * size, r = 20 + rnd() * 70;
+                const hue = 78 + rnd() * 34, l = 15 + rnd() * 14;
+                wrapDraw(size, x, y, r, (px, py) => {
+                    const gr = dg.createRadialGradient(px, py, 0, px, py, r);
+                    gr.addColorStop(0, `hsla(${hue},38%,${l}%,0.35)`); gr.addColorStop(1, `hsla(${hue},38%,${l}%,0)`);
+                    dg.fillStyle = gr; dg.fillRect(px - r, py - r, r * 2, r * 2);
+                });
+            }
+            for (let i = 0; i < 9000; i++) {
+                const x = rnd() * size, y = rnd() * size, len = 4 + rnd() * 9, a = -Math.PI / 2 + (rnd() - 0.5) * 1.1;
+                const hue = 75 + rnd() * 40, l = 16 + rnd() * 26;
+                const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
+                wrapDraw(size, x, y, len, (px, py) => {
+                    dg.strokeStyle = `hsl(${hue},${35 + rnd() * 20}%,${l}%)`; dg.lineWidth = 1 + rnd() * 0.8;
+                    dg.beginPath(); dg.moveTo(px, py); dg.lineTo(px + ex - x, py + ey - y); dg.stroke();
+                    hg.strokeStyle = `rgb(${120 + l * 3},${120 + l * 3},${120 + l * 3})`; hg.lineWidth = 1.2;
+                    hg.beginPath(); hg.moveTo(px, py); hg.lineTo(px + ex - x, py + ey - y); hg.stroke();
+                });
+            }
+            for (let i = 0; i < 260; i++) {
+                dg.fillStyle = `rgba(${90 + rnd() * 40},${80 + rnd() * 30},${60},0.35)`;
+                dg.fillRect(rnd() * size, rnd() * size, 2 + rnd() * 3, 2 + rnd() * 2);
+            }
+            return { map: toTex(dc), normalMap: toTex(heightToNormal(hc, 1.6), false) };
+        }
+
+        function genRoof(size = 256) {
+            const rnd = rng(9);
+            const [dc, dg] = makeCanvas(size), [hc, hg] = makeCanvas(size);
+            dg.fillStyle = '#2a2a2a'; dg.fillRect(0, 0, size, size); hg.fillStyle = '#000'; hg.fillRect(0, 0, size, size);
+            const rows = 10, cols = 8, rh = size / rows, cw = size / cols;
+            for (let r = 0; r < rows; r++) for (let c = -1; c <= cols; c++) {
+                const x = c * cw + (r % 2) * cw / 2, y = r * rh;
+                const l = 62 + rnd() * 26;
+                dg.fillStyle = `hsl(0,0%,${l}%)`;
+                dg.beginPath(); dg.roundRect(x + 1, y, cw - 2, rh * 1.15, [0, 0, cw * 0.45, cw * 0.45]); dg.fill();
+                const gr = hg.createLinearGradient(0, y, 0, y + rh * 1.15); gr.addColorStop(0, '#333'); gr.addColorStop(1, '#fff');
+                hg.fillStyle = gr; hg.beginPath(); hg.roundRect(x + 1, y, cw - 2, rh * 1.15, [0, 0, cw * 0.45, cw * 0.45]); hg.fill();
+            }
+            return { map: toTex(dc), normalMap: toTex(heightToNormal(hc, 2.2), false) };
+        }
+
+        function genPlaster(size = 256) {
+            const rnd = rng(31);
+            const [dc, dg] = makeCanvas(size), [hc, hg] = makeCanvas(size);
+            dg.fillStyle = '#d9cbb0'; dg.fillRect(0, 0, size, size); hg.fillStyle = '#555'; hg.fillRect(0, 0, size, size);
+            for (let i = 0; i < 3000; i++) { dg.fillStyle = `rgba(${rnd() < 0.5 ? '0,0,0' : '255,255,255'},0.06)`; dg.fillRect(rnd() * size, rnd() * size, 3, 3); }
+            const beam = (x1, y1, x2, y2, w) => {
+                for (const [g, c] of [[dg, '#3b2a1c'], [hg, '#ddd']]) { g.strokeStyle = c; g.lineWidth = w; g.lineCap = 'square'; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke(); }
+            };
+            beam(0, 6, size, 6, 14); beam(0, size - 6, size, size - 6, 14); beam(6, 0, 6, size, 14); beam(size - 6, 0, size - 6, size, 14);
+            beam(size / 2, 0, size / 2, size, 12); beam(12, 12, size / 2, size - 12, 10); beam(size - 12, 12, size / 2, size - 12, 10);
+            return { map: toTex(dc), normalMap: toTex(heightToNormal(hc, 2.0), false) };
+        }
+
+        function genStrokes(size, base, colors, count, lenMin, lenMax, seed, vertical = true) {
+            const rnd = rng(seed);
+            const [dc, dg] = makeCanvas(size);
+            dg.fillStyle = base; dg.fillRect(0, 0, size, size);
+            for (let i = 0; i < count; i++) {
+                const x = rnd() * size, y = rnd() * size, len = lenMin + rnd() * (lenMax - lenMin);
+                const a = vertical ? Math.PI / 2 + (rnd() - 0.5) * 0.6 : rnd() * TAU;
+                dg.strokeStyle = colors[Math.floor(rnd() * colors.length)]; dg.lineWidth = 1 + rnd();
+                wrapDraw(size, x, y, len, (px, py) => { dg.beginPath(); dg.moveTo(px, py); dg.lineTo(px + Math.cos(a) * len, py + Math.sin(a) * len); dg.stroke(); });
+            }
+            return toTex(dc);
+        }
+
+        function genScales(size = 256, seed = 5) {
+            const rnd = rng(seed);
+            const [dc, dg] = makeCanvas(size), [hc, hg] = makeCanvas(size);
+            dg.fillStyle = '#222'; dg.fillRect(0, 0, size, size); hg.fillStyle = '#000'; hg.fillRect(0, 0, size, size);
+            const s = 16;
+            for (let r = 0; r < size / s * 1.6; r++) for (let c = -1; c <= size / s; c++) {
+                const x = c * s + (r % 2) * s / 2, y = r * s * 0.62;
+                const l = 55 + rnd() * 30;
+                dg.fillStyle = `hsl(0,0%,${l}%)`; dg.beginPath(); dg.arc(x, y, s * 0.62, 0, Math.PI); dg.fill();
+                const gr = hg.createRadialGradient(x, y, 0, x, y, s * 0.62); gr.addColorStop(0, '#fff'); gr.addColorStop(1, '#222');
+                hg.fillStyle = gr; hg.beginPath(); hg.arc(x, y, s * 0.62, 0, Math.PI); hg.fill();
+            }
+            return { map: toTex(dc), normalMap: toTex(heightToNormal(hc, 2.5), false) };
+        }
+
+        function genMail(size = 128) {
+            const [dc, dg] = makeCanvas(size), [hc, hg] = makeCanvas(size);
+            dg.fillStyle = '#555'; dg.fillRect(0, 0, size, size); hg.fillStyle = '#000'; hg.fillRect(0, 0, size, size);
+            const s = 8;
+            for (let y = 0; y < size + s; y += s * 0.7) for (let x = 0; x < size + s; x += s) {
+                const ox = (Math.round(y / (s * 0.7)) % 2) * s / 2;
+                for (const [g, c] of [[dg, '#bbb'], [hg, '#fff']]) { g.strokeStyle = c; g.lineWidth = 2; g.beginPath(); g.arc(x + ox, y, s * 0.42, 0, TAU); g.stroke(); }
+            }
+            return { map: toTex(dc), normalMap: toTex(heightToNormal(hc, 2.0), false) };
+        }
+
+        function genRadial(stops, size = 128) {
+            const [c, g] = makeCanvas(size);
+            const gr = g.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+            stops.forEach(([o, col]) => gr.addColorStop(o, col));
+            g.fillStyle = gr; g.fillRect(0, 0, size, size);
+            const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+        }
+
+        function genRing(dashed = false) {
+            const [c, g] = makeCanvas(256);
+            g.strokeStyle = '#fff'; g.lineWidth = dashed ? 14 : 10; g.shadowColor = '#fff'; g.shadowBlur = 14;
+            if (dashed) g.setLineDash([34, 20]);
+            g.beginPath(); g.arc(128, 128, 104, 0, TAU); g.stroke();
+            if (!dashed) { g.globalAlpha = 0.12; g.fillStyle = '#fff'; g.beginPath(); g.arc(128, 128, 100, 0, TAU); g.fill(); }
+            const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+        }
+
+        function genSwirl() {
+            const rnd = rng(3);
+            const [c, g] = makeCanvas(256);
+            for (let i = 0; i < 70; i++) {
+                const x = rnd() * 256, w = 2 + rnd() * 9;
+                g.strokeStyle = `rgba(255,255,255,${0.15 + rnd() * 0.5})`; g.lineWidth = w;
+                for (const ox of [-256, 0, 256]) { g.beginPath(); g.moveTo(x + ox, 256); g.lineTo(x + ox + 120, 0); g.stroke(); }
+            }
+            g.globalCompositeOperation = 'destination-in';
+            const gr = g.createLinearGradient(0, 0, 0, 256);
+            gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(0.2, 'rgba(0,0,0,1)'); gr.addColorStop(0.8, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+            const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+        }
+
+        function genBeam() {
+            const [c, g] = makeCanvas(32, 256);
+            const gr = g.createLinearGradient(0, 256, 0, 0);
+            gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = gr; g.fillRect(0, 0, 32, 256);
+            return new THREE.CanvasTexture(c);
+        }
+
+        function genWaterNormal() {
+            const size = 256;
+            const [hc, hg] = makeCanvas(size);
+            const img = hg.createImageData(size, size);
+            for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+                const u = x / size * TAU, v = y / size * TAU;
+                const h = Math.sin(u * 3 + v * 2) * 0.3 + Math.sin(u * 7 - v * 5) * 0.2 + Math.sin(u * 13 + v * 11) * 0.12 + Math.cos(v * 4 - u) * 0.25;
+                const c = (h * 0.5 + 0.5) * 255, i = (y * size + x) * 4;
+                img.data[i] = img.data[i + 1] = img.data[i + 2] = c; img.data[i + 3] = 255;
+            }
+            hg.putImageData(img, 0, 0);
+            return toTex(heightToNormal(hc, 3.5), false);
+        }
+
+        function buildTextures() {
+            TEX.cobble = genStones({ rows: 8, cols: 8, gap: '#24211c', seed: 11, moss: 0.12, color: (r) => `hsl(${28 + r() * 16},${6 + r() * 8}%,${34 + r() * 16}%)` });
+            TEX.road = genStones({ rows: 4, cols: 3, gap: '#2a221a', seed: 21, brick: true, color: (r) => `hsl(${24 + r() * 12},${14 + r() * 10}%,${38 + r() * 14}%)` });
+            TEX.rock = genStones({ rows: 6, cols: 4, gap: '#151310', seed: 41, brick: true, moss: 0.25, color: (r) => `hsl(${30 + r() * 15},${7 + r() * 7}%,${26 + r() * 14}%)` });
+            TEX.grass = genGrass();
+            TEX.roof = genRoof();
+            TEX.plaster = genPlaster();
+            TEX.scales = genScales();
+            TEX.mail = genMail();
+            TEX.mail.map.repeat.set(3, 3); TEX.mail.normalMap.repeat.set(3, 3);
+            TEX.fur = genStrokes(256, '#3b2b1f', ['#5a4330', '#2a1d14', '#6e5540', '#4a3526'], 5000, 5, 13, 51);
+            TEX.cloth = genStrokes(128, '#bdbdbd', ['#a9a9a9', '#d0d0d0', '#b5b5b5'], 1400, 3, 8, 61, false);
+            TEX.glow = genRadial([[0, 'rgba(255,255,255,1)'], [0.22, 'rgba(255,255,255,0.65)'], [1, 'rgba(255,255,255,0)']]);
+            TEX.blob = genRadial([[0, 'rgba(255,255,255,0.75)'], [0.55, 'rgba(255,255,255,0.4)'], [1, 'rgba(255,255,255,0)']]);
+            TEX.ring = genRing(false);
+            TEX.ringDash = genRing(true);
+            TEX.swirl = genSwirl();
+            TEX.beam = genBeam();
+            TEX.waterN = genWaterNormal();
+        }
+
+
+        /* ---------------- 看穿遮擋 (角色被樹/建築擋住時挖洞) ---------------- */
+        const seeThrough = { uPlayerPx: { value: new THREE.Vector2(-9999, -9999) }, uPlayerDepth: { value: 0 }, uRadius: { value: 120 } };
+        function addSeeThrough(mat) {
+            mat.onBeforeCompile = (shader) => {
+                shader.uniforms.uPlayerPx = seeThrough.uPlayerPx;
+                shader.uniforms.uPlayerDepth = seeThrough.uPlayerDepth;
+                shader.uniforms.uRadius = seeThrough.uRadius;
+                shader.fragmentShader = 'uniform vec2 uPlayerPx; uniform float uPlayerDepth; uniform float uRadius;\n' +
+                    shader.fragmentShader.replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+                    {
+                        float dd = distance(gl_FragCoord.xy, uPlayerPx);
+                        if (gl_FragCoord.z < uPlayerDepth - 0.0004 && dd < uRadius) {
+                            float edge = smoothstep(uRadius * 0.45, uRadius, dd);
+                            float dither = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
+                            if (dither > edge * 0.9) discard;
+                        }
+                    }`);
+            };
+            mat.customProgramCacheKey = () => 'seeThrough_v1';
+            return mat;
+        }
+
+        /* ---------------- 地形 ---------------- */
+        function cornerY(x, y, cx, cy) {
+            if (x < 0 || y < 0 || x >= MAP_SIZE || y >= MAP_SIZE) return 0;
+            if (mapRamp[y][x]) return getTerrainElevation(x + (cx ? 0.999 : 0.001), y + (cy ? 0.999 : 0.001)) * EH;
+            let h = heightMap[y][x] * EH;
+            if (mapGrid[y][x] === 2) h -= 0.45;
+            return h;
+        }
+
+        class GeoBuilder {
+            constructor() { this.pos = []; this.uv = []; this.col = []; }
+            quad(a, b, c, d, ua, ub, uc, ud, ca, cb, cc, cd) {
+                const P = this.pos, U = this.uv, C = this.col;
+                for (const [p, u, k] of [[a, ua, ca], [b, ub, cb], [c, uc, cc], [a, ua, ca], [c, uc, cc], [d, ud, cd]]) {
+                    P.push(p[0], p[1], p[2]); U.push(u[0], u[1]); C.push(k, k, k);
+                }
+            }
+            build() {
+                const g = new THREE.BufferGeometry();
+                g.setAttribute('position', new THREE.Float32BufferAttribute(this.pos, 3));
+                g.setAttribute('uv', new THREE.Float32BufferAttribute(this.uv, 2));
+                g.setAttribute('color', new THREE.Float32BufferAttribute(this.col, 3));
+                g.computeVertexNormals();
+                return g;
+            }
+        }
+
+        function buildTerrain() {
+            const tops = { grass: new GeoBuilder(), cobble: new GeoBuilder(), road: new GeoBuilder(), bed: new GeoBuilder() };
+            const cliff = new GeoBuilder();
+            const water = new GeoBuilder();
+            const steps = [];
+            const UVS = { grass: 0.25, cobble: 0.5, road: 0.5, bed: 0.5 };
+
+            for (let y = 0; y < MAP_SIZE; y++) for (let x = 0; x < MAP_SIZE; x++) {
+                const t = mapGrid[y][x];
+                const h00 = cornerY(x, y, 0, 0), h10 = cornerY(x, y, 1, 0), h01 = cornerY(x, y, 0, 1), h11 = cornerY(x, y, 1, 1);
+
+                if (mapRamp[y][x]) {
+                    // 石階梯
+                    const nH = heightMap[y - 1][x], sH = heightMap[y + 1][x];
+                    const alongZ = nH !== sH;
+                    const a = alongZ ? nH : heightMap[y][x - 1], b = alongZ ? sH : heightMap[y][x + 1];
+                    const low = Math.min(a, b) * EH - 0.25;
+                    const N = 4;
+                    for (let i = 0; i < N; i++) {
+                        const f = (i + 0.5) / N;
+                        const top = lerp(a, b, f) * EH + Math.abs(a - b) * EH / (N * 2);
+                        const hgt = Math.max(0.05, top - low);
+                        const g = new THREE.BoxGeometry(alongZ ? 1 : 1 / N, hgt, alongZ ? 1 / N : 1);
+                        g.translate(alongZ ? x + 0.5 : x + f, low + hgt / 2, alongZ ? y + f : y + 0.5);
+                        steps.push(g);
+                    }
+                } else {
+                    const key = t === 2 ? 'bed' : (t === 1 || t === 6) ? 'cobble' : t === 5 ? 'road' : 'grass';
+                    const s = UVS[key];
+                    let c = 1;
+                    if (key === 'grass') c = 0.72 + vnoise(x * 0.18, y * 0.18) * 0.45 - (t === 3 ? 0.12 : 0);
+                    else c = 0.85 + hash2(x, y) * 0.2;
+                    tops[key].quad([x, h00, y], [x, h01, y + 1], [x + 1, h11, y + 1], [x + 1, h10, y],
+                        [x * s, y * s], [x * s, (y + 1) * s], [(x + 1) * s, (y + 1) * s], [(x + 1) * s, y * s], c, c, c, c);
+                    if (t === 2) {
+                        const wy = heightMap[y][x] * EH - 0.12;
+                        water.quad([x, wy, y], [x, wy, y + 1], [x + 1, wy, y + 1], [x + 1, wy, y], [x / 4, y / 4], [x / 4, (y + 1) / 4], [(x + 1) / 4, (y + 1) / 4], [(x + 1) / 4, y / 4], 1, 1, 1, 1);
+                    }
+                }
+
+                // 斷崖側牆
+                const edges = [
+                    [0, -1, [x, y], [x + 1, y], h00, h10, cornerY(x, y - 1, 0, 1), cornerY(x, y - 1, 1, 1)],
+                    [0, 1, [x, y + 1], [x + 1, y + 1], h01, h11, cornerY(x, y + 1, 0, 0), cornerY(x, y + 1, 1, 0)],
+                    [-1, 0, [x, y], [x, y + 1], h00, h01, cornerY(x - 1, y, 1, 0), cornerY(x - 1, y, 1, 1)],
+                    [1, 0, [x + 1, y], [x + 1, y + 1], h10, h11, cornerY(x + 1, y, 0, 0), cornerY(x + 1, y, 0, 1)]
+                ];
+                for (const [dx, dy, p1, p2, a, b, na, nb] of edges) {
+                    const nx = x + dx, ny = y + dy;
+                    if (nx < 0 || ny < 0 || nx >= MAP_SIZE || ny >= MAP_SIZE) continue;
+                    if (a <= na + 0.01 && b <= nb + 0.01) continue;
+                    const ba = Math.min(a, na), bb = Math.min(b, nb);
+                    const u1 = (p1[0] + p1[1]) * 0.5, u2 = (p2[0] + p2[1]) * 0.5;
+                    cliff.quad([p1[0], a, p1[1]], [p1[0], ba, p1[1]], [p2[0], bb, p2[1]], [p2[0], b, p2[1]],
+                        [u1, a * 0.6], [u1, ba * 0.6], [u2, bb * 0.6], [u2, b * 0.6], 1.0, 0.45, 0.45, 1.0);
+                }
+            }
+
+            const group = new THREE.Group();
+            const mk = (geo, mat, cast = false) => { const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; m.castShadow = cast; group.add(m); pickables.push(m); return m; };
+            mk(tops.grass.build(), new THREE.MeshStandardMaterial({ map: TEX.grass.map, normalMap: TEX.grass.normalMap, vertexColors: true, roughness: 0.95 }));
+            mk(tops.cobble.build(), new THREE.MeshStandardMaterial({ map: TEX.cobble.map, normalMap: TEX.cobble.normalMap, normalScale: new THREE.Vector2(1.3, 1.3), vertexColors: true, roughness: 0.85 }));
+            mk(tops.road.build(), new THREE.MeshStandardMaterial({ map: TEX.road.map, normalMap: TEX.road.normalMap, vertexColors: true, roughness: 0.8 }));
+            mk(tops.bed.build(), new THREE.MeshStandardMaterial({ color: 0x3a3226, map: TEX.cobble.map, vertexColors: true, roughness: 1 }));
+            mk(cliff.build(), new THREE.MeshStandardMaterial({ map: TEX.rock.map, normalMap: TEX.rock.normalMap, normalScale: new THREE.Vector2(1.6, 1.6), vertexColors: true, roughness: 0.92, side: THREE.DoubleSide }), true);
+            if (steps.length) {
+                const sm = mk(mergeGeometries(steps), new THREE.MeshStandardMaterial({ map: TEX.road.map, normalMap: TEX.road.normalMap, color: 0xb8b0a4, roughness: 0.85 }), true);
+                sm.material.map = TEX.road.map;
+            }
+
+            const waterMat = new THREE.MeshStandardMaterial({ color: 0x0e2a3c, roughness: 0.06, metalness: 0.3, normalMap: TEX.waterN, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, opacity: 0.86, envMap: ENV, envMapIntensity: 1.3 });
+            const waterMesh = new THREE.Mesh(water.build(), waterMat);
+            waterMesh.receiveShadow = true;
+            group.add(waterMesh);
+            R3D._water = waterMat;
+
+            // 地圖外圍延伸地面
+            const outer = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x1d2a17, roughness: 1 }));
+            outer.rotation.x = -Math.PI / 2; outer.position.set(MAP_SIZE / 2, -0.02, MAP_SIZE / 2); outer.receiveShadow = true;
+            group.add(outer);
+            scene.add(group);
+        }
+
+        /* ---------------- 植被：寫實松樹、岩石、草叢 ---------------- */
+        function buildPineGeo(seed) {
+            const rnd = rng(seed);
+            const tiers = [];
+            const n = 6;
+            for (let i = 0; i < n; i++) {
+                const f = i / (n - 1);
+                const r = 1.0 - f * 0.78, h = 1.0 - f * 0.4, y = 0.7 + i * 0.5;
+                const g = new THREE.ConeGeometry(r, h, 10, 3);
+                const p = g.attributes.position;
+                for (let k = 0; k < p.count; k++) {
+                    const vx = p.getX(k), vy = p.getY(k), vz = p.getZ(k);
+                    const j = hash3(vx + seed, vy + i, vz);
+                    const rad = Math.hypot(vx, vz);
+                    if (rad > 0.01) {
+                        const s = 0.82 + j * 0.36;
+                        p.setX(k, vx * s); p.setZ(k, vz * s);
+                        if (vy < -h * 0.3) p.setY(k, vy - j * 0.18);
+                    }
+                }
+                g.rotateY(rnd() * TAU);
+                g.translate(0, y + h / 2, 0);
+                tiers.push(g);
+            }
+            const leaves = mergeGeometries(tiers);
+            const p = leaves.attributes.position;
+            const cols = [];
+            for (let k = 0; k < p.count; k++) {
+                const yy = p.getY(k), rad = Math.hypot(p.getX(k), p.getZ(k));
+                const c = 0.45 + clamp(yy / 4, 0, 1) * 0.35 + rad * 0.25;
+                cols.push(c * 0.75, c, c * 0.8);
+            }
+            leaves.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+            leaves.computeVertexNormals();
+            const trunk = new THREE.CylinderGeometry(0.07, 0.14, 1.3, 7);
+            trunk.translate(0, 0.65, 0);
+            return { leaves, trunk };
+        }
+
+        function buildVegetation() {
+            const leafMat = addSeeThrough(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, flatShading: true }));
+            const trunkMat = addSeeThrough(new THREE.MeshStandardMaterial({ color: 0x3b2a1e, roughness: 1, map: TEX.fur }));
+            const variants = [buildPineGeo(3), buildPineGeo(17)];
+            const spots = [[], []];
+            const rnd = rng(99);
+            for (let y = 0; y < MAP_SIZE; y++) for (let x = 0; x < MAP_SIZE; x++) {
+                if (mapGrid[y][x] !== 3) continue;
+                spots[(x * 7 + y * 3) % 2].push([x + 0.5 + (rnd() - 0.5) * 0.4, y + 0.5 + (rnd() - 0.5) * 0.4, mapTreeScale[y][x], heightMap[y][x] * EH]);
+            }
+            // 地圖外圍裝飾林
+            for (let i = 0; i < 260; i++) {
+                const side = Math.floor(rnd() * 4), d = 1 + rnd() * 9, a = rnd() * MAP_SIZE;
+                const px = side === 0 ? -d : side === 1 ? MAP_SIZE + d : a, pz = side === 2 ? -d : side === 3 ? MAP_SIZE + d : a;
+                spots[i % 2].push([px, pz, 1.6 + rnd() * 0.8, 0]);
+            }
+            const dummy = new THREE.Object3D();
+            const col = new THREE.Color();
+            variants.forEach((v, vi) => {
+                const list = spots[vi];
+                const lm = new THREE.InstancedMesh(v.leaves, leafMat, list.length);
+                const tm = new THREE.InstancedMesh(v.trunk, trunkMat, list.length);
+                list.forEach(([x, z, sc, h], i) => {
+                    const s = 0.5 + sc * 0.45;
+                    dummy.position.set(x, h, z); dummy.rotation.set(0, rnd() * TAU, 0); dummy.scale.set(s, s * (0.9 + rnd() * 0.25), s);
+                    dummy.updateMatrix();
+                    lm.setMatrixAt(i, dummy.matrix); tm.setMatrixAt(i, dummy.matrix);
+                    col.setHSL(0.27 + rnd() * 0.07, 0.35 + rnd() * 0.2, 0.22 + rnd() * 0.1);
+                    lm.setColorAt(i, col);
+                });
+                lm.castShadow = tm.castShadow = true; lm.receiveShadow = true;
+                scene.add(lm, tm);
+            });
+
+            // 岩石
+            const rockGeo = new THREE.IcosahedronGeometry(0.5, 1);
+            const rp = rockGeo.attributes.position;
+            for (let k = 0; k < rp.count; k++) {
+                const j = 0.75 + hash3(rp.getX(k), rp.getY(k), rp.getZ(k)) * 0.45;
+                rp.setXYZ(k, rp.getX(k) * j, rp.getY(k) * j * 0.7, rp.getZ(k) * j);
+            }
+            rockGeo.computeVertexNormals();
+            const rockMat = new THREE.MeshStandardMaterial({ map: TEX.rock.map, normalMap: TEX.rock.normalMap, color: 0x9a948a, roughness: 0.9, flatShading: true });
+            const rocks = [];
+            for (let y = 1; y < MAP_SIZE - 1; y++) for (let x = 1; x < MAP_SIZE - 1; x++) {
+                const t = mapGrid[y][x];
+                const nearCliff = heightMap[y][x] !== heightMap[y + 1][x] || heightMap[y][x] !== heightMap[y][x + 1];
+                if ((mapFoliage[y][x] && rnd() < 0.8) || (nearCliff && (t === 0 || t === 4) && !mapRamp[y][x] && rnd() < 0.35)) rocks.push([x + rnd(), y + rnd(), heightMap[y][x] * EH]);
+            }
+            const rm = new THREE.InstancedMesh(rockGeo, rockMat, rocks.length);
+            rocks.forEach(([x, z, h], i) => {
+                const s = 0.25 + rnd() * 0.6;
+                dummy.position.set(x, h + 0.05, z); dummy.rotation.set(rnd(), rnd() * TAU, rnd() * 0.4); dummy.scale.set(s, s, s);
+                dummy.updateMatrix(); rm.setMatrixAt(i, dummy.matrix);
+            });
+            rm.castShadow = rm.receiveShadow = true;
+            scene.add(rm);
+
+            // 草叢
+            const blades = [];
+            for (let i = 0; i < 6; i++) {
+                const g = new THREE.PlaneGeometry(0.05, 0.32, 1, 2);
+                const p = g.attributes.position;
+                for (let k = 0; k < p.count; k++) if (p.getY(k) > 0.1) p.setX(k, p.getX(k) * 0.1);
+                g.translate(0, 0.16, 0); g.rotateX(-0.25 - (i % 3) * 0.1); g.rotateY(i / 6 * TAU);
+                blades.push(g);
+            }
+            const tuft = mergeGeometries(blades);
+            const tc = [];
+            const tp = tuft.attributes.position;
+            for (let k = 0; k < tp.count; k++) { const c = 0.35 + tp.getY(k) * 2.2; tc.push(c * 0.7, c, c * 0.45); }
+            tuft.setAttribute('color', new THREE.Float32BufferAttribute(tc, 3));
+            const tufts = [];
+            for (let y = 1; y < MAP_SIZE - 1; y++) for (let x = 1; x < MAP_SIZE - 1; x++) {
+                const t = mapGrid[y][x];
+                if ((t === 0 || t === 4) && rnd() < 0.5) for (let k = 0; k < 2; k++) tufts.push([x + rnd(), y + rnd(), heightMap[y][x] * EH]);
+            }
+            const gm = new THREE.InstancedMesh(tuft, new THREE.MeshStandardMaterial({ vertexColors: true, color: 0x6f8f45, roughness: 1, side: THREE.DoubleSide }), tufts.length);
+            tufts.forEach(([x, z, h], i) => {
+                const s = 0.7 + rnd() * 0.9;
+                dummy.position.set(x, h, z); dummy.rotation.set(0, rnd() * TAU, 0); dummy.scale.set(s, s, s);
+                dummy.updateMatrix(); gm.setMatrixAt(i, dummy.matrix);
+            });
+            gm.receiveShadow = true;
+            scene.add(gm);
+        }
+
+        /* ---------------- 城牆與建築 ---------------- */
+        let wallMat, roofMats = {}, plasterMat, darkWood, glassWarm;
+        const torches = [];
+
+        function gableRoof(w, d, h, over = 0.15) {
+            const W = w / 2 + over, D = d / 2 + over;
+            const v = [
+                -W, 0, -D, W, 0, -D, W, h, 0, -W, 0, -D, W, h, 0, -W, h, 0,
+                -W, 0, D, -W, h, 0, W, h, 0, -W, 0, D, W, h, 0, W, 0, D,
+                -W, 0, -D, -W, h, 0, -W, 0, D, W, 0, -D, W, 0, D, W, h, 0
+            ];
+            const uv = [0, 0, 2, 0, 2, 1, 0, 0, 2, 1, 0, 1, 0, 0, 0, 1, 2, 1, 0, 0, 2, 1, 2, 0, 0, 0, 0.5, 1, 1, 0, 0, 0, 1, 0, 0.5, 1];
+            const g = new THREE.BufferGeometry();
+            g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+            g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+            g.computeVertexNormals();
+            return g;
+        }
+
+        function addMesh(parent, geo, mat, x, y, z, cast = true) {
+            const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = cast; m.receiveShadow = true; parent.add(m); return m;
+        }
+
+        function addTorch(x, y, z, intensity = 9) {
+            const g = new THREE.Group();
+            addMesh(g, new THREE.CylinderGeometry(0.04, 0.05, 0.9, 6), darkWood, 0, 0.45, 0);
+            addMesh(g, new THREE.CylinderGeometry(0.09, 0.05, 0.12, 8), wallMat, 0, 0.92, 0);
+            const flame = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: new THREE.Color(3, 1.5, 0.45), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+            flame.scale.set(0.45, 0.6, 1); flame.position.set(0, 1.08, 0);
+            g.add(flame);
+            g.position.set(x, y, z);
+            scene.add(g);
+            const light = new THREE.PointLight(0xff9a4a, intensity, 7, 2);
+            light.position.set(x, y + 1.2, z);
+            scene.add(light);
+            torches.push({ light, flame, base: intensity, seed: Math.random() * 100 });
+        }
+
+        function windowsOn(parent, w, d, y, count, h = 0.28) {
+            for (let i = 0; i < count; i++) {
+                const f = (i + 0.5) / count - 0.5;
+                addMesh(parent, new THREE.BoxGeometry(0.14, h, 0.04), glassWarm, f * w, y, d / 2 + 0.01, false);
+            }
+        }
+
+        function stoneTower(parent, r, h, roofColor, x = 0, z = 0) {
+            const g = new THREE.Group(); g.position.set(x, 0, z); parent.add(g);
+            addMesh(g, new THREE.CylinderGeometry(r, r * 1.08, h, 16), wallMat, 0, h / 2, 0);
+            addMesh(g, new THREE.CylinderGeometry(r * 1.15, r * 1.15, 0.22, 16), wallMat, 0, h + 0.11, 0);
+            for (let i = 0; i < 8; i++) {
+                const a = i / 8 * TAU;
+                addMesh(g, new THREE.BoxGeometry(0.2, 0.22, 0.2), wallMat, Math.cos(a) * r * 1.05, h + 0.33, Math.sin(a) * r * 1.05);
+            }
+            addMesh(g, new THREE.ConeGeometry(r * 1.2, h * 0.55, 16), roofMats[roofColor] || roofMats.slate, 0, h + 0.22 + h * 0.275, 0);
+            for (let i = 0; i < 3; i++) {
+                const a = Math.PI / 4 + i * 0.9;
+                const win = addMesh(g, new THREE.BoxGeometry(0.1, 0.3, 0.05), glassWarm, Math.cos(a) * r * 1.0, h * (0.45 + i * 0.15), Math.sin(a) * r * 1.0, false);
+                win.lookAt(g.position.x + Math.cos(a) * 9, win.position.y, g.position.z + Math.sin(a) * 9);
+            }
+            return g;
+        }
+
+        function house(parent, w, d, wallH, roofKey) {
+            addMesh(parent, new THREE.BoxGeometry(w, 0.35, d), wallMat, 0, 0.175, 0);
+            addMesh(parent, new THREE.BoxGeometry(w * 0.96, wallH, d * 0.96), plasterMat, 0, 0.35 + wallH / 2, 0);
+            const roof = addMesh(parent, gableRoof(w * 0.96, d * 0.96, wallH * 0.75), roofMats[roofKey], 0, 0.35 + wallH, 0);
+            roof.rotation.y = Math.PI / 2;
+            addMesh(parent, new THREE.BoxGeometry(0.34, 0.6, 0.06), darkWood, 0, 0.65, d * 0.48 + 0.02);
+            windowsOn(parent, w * 0.75, d * 0.96, 0.35 + wallH * 0.55, 2);
+        }
+
+        function buildStructures() {
+            wallMat = addSeeThrough(new THREE.MeshStandardMaterial({ map: TEX.rock.map, normalMap: TEX.rock.normalMap, normalScale: new THREE.Vector2(1.4, 1.4), color: 0xb5ada0, roughness: 0.9 }));
+            plasterMat = addSeeThrough(new THREE.MeshStandardMaterial({ map: TEX.plaster.map, normalMap: TEX.plaster.normalMap, roughness: 0.9 }));
+            darkWood = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.8 });
+            glassWarm = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.3, 0.5), toneMapped: false });
+            const roofCol = { slate: 0x3b4658, blacksmith: 0x4a4440, magic_shop: 0x5b2a86, cottage: 0x9a3b1c, chapel: 0x24427a, keep: 0x2f3c55 };
+            for (const k in roofCol) roofMats[k] = addSeeThrough(new THREE.MeshStandardMaterial({ map: TEX.roof.map, normalMap: TEX.roof.normalMap, color: roofCol[k], roughness: 0.7, metalness: 0.1 }));
+
+            // 城牆 (含城垛)
+            const wallGeos = [];
+            for (let y = 0; y < MAP_SIZE; y++) for (let x = 0; x < MAP_SIZE; x++) {
+                if (mapGrid[y][x] !== 6) continue;
+                const h = heightMap[y][x] * EH;
+                const g = new THREE.BoxGeometry(1, 1.7, 1); g.translate(x + 0.5, h + 0.85, y + 0.5); wallGeos.push(g);
+                for (const [ox, oz] of [[0.22, 0.22], [0.78, 0.78], [0.22, 0.78], [0.78, 0.22]]) {
+                    if ((ox + oz === 1) !== ((x + y) % 2 === 0)) continue;
+                    const m = new THREE.BoxGeometry(0.34, 0.34, 0.34); m.translate(x + ox, h + 1.87, y + oz); wallGeos.push(m);
+                }
+            }
+            if (wallGeos.length) {
+                const wm = new THREE.Mesh(mergeGeometries(wallGeos), wallMat);
+                wm.castShadow = wm.receiveShadow = true; scene.add(wm);
+            }
+
+            for (const b of mapBuildings) {
+                const cx = b.x + b.w / 2, cz = b.y + b.h / 2;
+                const g = new THREE.Group();
+                g.position.set(cx, heightMap[Math.floor(cz)][Math.floor(cx)] * EH, cz);
+                scene.add(g);
+                switch (b.type) {
+                    case 'castle_keep': {
+                        addMesh(g, new THREE.BoxGeometry(b.w - 1, 3.4, b.h - 0.8), wallMat, 0, 1.7, 0);
+                        const roof = addMesh(g, gableRoof(b.w - 1, b.h - 0.8, 1.4), roofMats.keep, 0, 3.4, 0); roof.rotation.y = 0;
+                        for (const [ox, oz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) stoneTower(g, 0.62, 4.4, 'keep', ox * (b.w / 2 - 0.55), oz * (b.h / 2 - 0.45));
+                        stoneTower(g, 0.9, 6.2, 'keep', 0, -0.3);
+                        addMesh(g, new THREE.BoxGeometry(0.9, 1.3, 0.1), darkWood, 0, 0.65, b.h / 2 - 0.38);
+                        windowsOn(g, b.w - 1.5, b.h - 0.8, 2.2, 5, 0.42);
+                        break;
+                    }
+                    case 'guard_tower': stoneTower(g, 0.85, 3.6, 'slate'); break;
+                    case 'gate_tower': {
+                        addMesh(g, new THREE.BoxGeometry(1.7, 3.2, 1.7), wallMat, 0, 1.6, 0);
+                        for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) {
+                            const s = j ? 1 : -1;
+                            addMesh(g, new THREE.BoxGeometry(0.28, 0.32, 0.28), wallMat, (i % 2 ? s : (i < 2 ? -0.42 : 0.42)) * 0.75, 3.36, (i % 2 ? (i < 2 ? -0.42 : 0.42) : s) * 0.75);
+                        }
+                        const banner = addMesh(g, new THREE.PlaneGeometry(0.6, 1.3), new THREE.MeshStandardMaterial({ color: 0x8f1d1d, side: THREE.DoubleSide, map: TEX.cloth, roughness: 0.8 }), 0, 2.0, 0.87);
+                        banner.castShadow = false;
+                        windowsOn(g, 0.6, 1.7, 2.6, 1);
+                        break;
+                    }
+                    case 'blacksmith': {
+                        house(g, b.w - 0.4, b.h - 0.3, 1.2, 'blacksmith');
+                        addMesh(g, new THREE.BoxGeometry(0.4, 2.6, 0.4), wallMat, b.w / 2 - 0.7, 1.3, -0.3);
+                        addMesh(g, new THREE.BoxGeometry(0.3, 0.2, 0.18), darkWood, -0.6, 0.45, b.h / 2 + 0.25);
+                        break;
+                    }
+                    case 'magic_shop': {
+                        house(g, b.w - 0.4, b.h - 0.3, 1.3, 'magic_shop');
+                        const crystal = addMesh(g, new THREE.OctahedronGeometry(0.22), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 0.7, 3.2), toneMapped: false }), 0, 2.9, 0, false);
+                        R3D._crystal = crystal;
+                        break;
+                    }
+                    case 'cottage': house(g, b.w - 0.4, b.h - 0.3, 1.1, 'cottage'); break;
+                    case 'chapel': {
+                        house(g, b.w - 0.4, b.h - 0.3, 1.4, 'chapel');
+                        addMesh(g, new THREE.BoxGeometry(0.7, 3.4, 0.7), wallMat, -b.w / 2 + 0.6, 1.7, 0);
+                        addMesh(g, new THREE.ConeGeometry(0.55, 1.6, 4), roofMats.chapel, -b.w / 2 + 0.6, 4.2, 0).rotation.y = Math.PI / 4;
+                        addMesh(g, new THREE.CircleGeometry(0.22, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 1.0, 2.4), toneMapped: false }), 0, 1.3, (b.h - 0.3) * 0.48 + 0.02, false);
+                        break;
+                    }
+                    case 'fountain': {
+                        addMesh(g, new THREE.CylinderGeometry(0.95, 1.0, 0.4, 10), wallMat, 0, 0.2, 0);
+                        const wtr = addMesh(g, new THREE.CylinderGeometry(0.85, 0.85, 0.05, 24), R3D._water, 0, 0.36, 0, false);
+                        wtr.receiveShadow = true;
+                        addMesh(g, new THREE.CylinderGeometry(0.12, 0.18, 1.1, 10), wallMat, 0, 0.75, 0);
+                        addMesh(g, new THREE.CylinderGeometry(0.4, 0.3, 0.12, 12), wallMat, 0, 1.3, 0);
+                        addMesh(g, new THREE.SphereGeometry(0.14, 16, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 2.0, 3.0), toneMapped: false }), 0, 1.5, 0, false);
+                        break;
+                    }
+                }
+            }
+
+            const th = (x, y) => heightMap[Math.floor(y)][Math.floor(x)] * EH;
+            addTorch(33.6, th(33.6, 19.4), 19.4); addTorch(38.4, th(38.4, 19.4), 19.4);
+            addTorch(34.2, th(34.2, 34.2), 34.2, 7); addTorch(30.6, th(30.6, 33.6), 33.6, 8);
+        }
+
+
+        /* ---------------- 外部 GLB 模型載入掛鉤 (Meshy / Tripo3D + Mixamo) ---------------- */
+        // 使用者只要把 AI 生成的 .glb 放進 assets/models/ 並在這裡開啟對應路徑，就會自動替換成外部 3D 模型！
+        // 找不到檔案時會自動無縫退回內建高精細程序化 3D 模型，完全不會報錯。
+        const EXTERNAL_GLB_CONFIG = {
+            enabled: false, // 放入 .glb 檔案後改成 true 即可啟用
+            models: {
+                player:   { url: 'assets/models/paladin.glb',      scale: 1.0, yOffset: 0 },
+                werewolf: { url: 'assets/models/werewolf.glb',     scale: 1.1, yOffset: 0 },
+                drake:    { url: 'assets/models/black_dragon.glb', scale: 2.2, yOffset: 0.4 },
+                shelob:   { url: 'assets/models/shelob.glb',       scale: 1.0, yOffset: 0 },
+                croc:     { url: 'assets/models/croc.glb',         scale: 1.0, yOffset: 0 },
+                slime:    { url: 'assets/models/slime.glb',        scale: 0.8, yOffset: 0 }
+            }
+        };
+        window.EXTERNAL_GLB_CONFIG = EXTERNAL_GLB_CONFIG;
+
+        const gltfLoader = new GLTFLoader();
+        const glbCache = new Map();
+        const activeMixers = [];
+
+        function tryAttachExternalGLB(key, rig) {
+            if (!EXTERNAL_GLB_CONFIG.enabled) return;
+            const cfg = EXTERNAL_GLB_CONFIG.models[key];
+            if (!cfg || !cfg.url) return;
+            const applyModel = (gltf) => {
+                const model = gltf.scene.clone(true);
+                model.scale.setScalar(cfg.scale || 1.0);
+                model.position.y = cfg.yOffset || 0;
+                setShadows(model, true);
+                if (rig.body) rig.body.visible = false;
+                rig.root.add(model);
+                if (gltf.animations && gltf.animations.length > 0) {
+                    const mixer = new THREE.AnimationMixer(model);
+                    mixer.clipAction(gltf.animations[0]).play();
+                    activeMixers.push(mixer);
+                    rig._mixer = mixer;
+                }
+            };
+            if (glbCache.has(cfg.url)) {
+                const cached = glbCache.get(cfg.url);
+                if (cached) applyModel(cached);
+                return;
+            }
+            gltfLoader.load(cfg.url, (gltf) => {
+                glbCache.set(cfg.url, gltf);
+                applyModel(gltf);
+            }, undefined, () => {
+                glbCache.set(cfg.url, null); // 找不到檔案時靜默保留內建高精細程序化 3D 模型
+            });
+        }
+
+        /* ---------------- 角色與怪物 3D 程序化高精細建模 ---------------- */
+        const MAT_CACHE = {};
+        function initEntityMaterials() {
+            MAT_CACHE.gold = new THREE.MeshStandardMaterial({ color: 0xe6b84c, metalness: 0.9, roughness: 0.25 });
+            MAT_CACHE.darkIron = new THREE.MeshStandardMaterial({ color: 0x2c3038, metalness: 0.8, roughness: 0.42 });
+            MAT_CACHE.leather = new THREE.MeshStandardMaterial({ color: 0x3b2618, roughness: 0.85, metalness: 0.05 });
+            MAT_CACHE.skin = new THREE.MeshStandardMaterial({ color: 0xd9a886, roughness: 0.65 });
+            MAT_CACHE.hair = new THREE.MeshStandardMaterial({ color: 0x2b2018, roughness: 0.8 });
+            MAT_CACHE.wolfFur = new THREE.MeshStandardMaterial({ map: TEX.fur, color: 0x7c6a58, roughness: 0.92 });
+            MAT_CACHE.wolfDark = new THREE.MeshStandardMaterial({ map: TEX.fur, color: 0x453a32, roughness: 0.95 });
+            MAT_CACHE.bone = new THREE.MeshStandardMaterial({ color: 0xd8d0c0, roughness: 0.5 });
+            MAT_CACHE.redGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 0.35, 0.2), toneMapped: false });
+            MAT_CACHE.purpleGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 0.5, 4.0), toneMapped: false });
+            MAT_CACHE.greenGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 2.8, 0.9), toneMapped: false });
+            MAT_CACHE.dragonScale = new THREE.MeshStandardMaterial({ map: TEX.scales.map, normalMap: TEX.scales.normalMap, color: 0x1c1824, metalness: 0.45, roughness: 0.48 });
+            MAT_CACHE.dragonWing = new THREE.MeshStandardMaterial({ color: 0x22172b, roughness: 0.72, side: THREE.DoubleSide, emissive: 0x2a0a45, emissiveIntensity: 0.35 });
+            MAT_CACHE.spiderBody = new THREE.MeshStandardMaterial({ color: 0x1a1c22, metalness: 0.35, roughness: 0.32 });
+            MAT_CACHE.crocScale = new THREE.MeshStandardMaterial({ map: TEX.scales.map, normalMap: TEX.scales.normalMap, color: 0x2d4a2b, roughness: 0.65, metalness: 0.1 });
+            MAT_CACHE.crocBelly = new THREE.MeshStandardMaterial({ color: 0x6b6f47, roughness: 0.75 });
+            MAT_CACHE.slimeOuter = new THREE.MeshPhysicalMaterial({ color: 0x22c55e, emissive: 0x0a3d1e, emissiveIntensity: 0.4, roughness: 0.12, metalness: 0.05, transmission: 0.55, transparent: true, opacity: 0.82 });
+        }
+
+        function setShadows(obj, cast = true) {
+            obj.traverse((c) => { if (c.isMesh) { c.castShadow = cast; c.receiveShadow = true; } });
+        }
+
+        // 1. 亞丁皇家聖騎士 (Paladin Knight)
+        function createKnightRig() {
+            const root = new THREE.Group();
+            const body = new THREE.Group();
+            root.add(body);
+
+            const armorMat = new THREE.MeshStandardMaterial({
+                color: 0xcbd5e1, map: TEX.mail.map, normalMap: TEX.mail.normalMap,
+                metalness: 0.85, roughness: 0.28
+            });
+            const capeMat = new THREE.MeshStandardMaterial({
+                color: 0x991b1b, map: TEX.cloth, roughness: 0.82, side: THREE.DoubleSide
+            });
+            const tabardMat = new THREE.MeshStandardMaterial({
+                color: 0x1e3a8a, map: TEX.cloth, roughness: 0.78, side: THREE.DoubleSide
+            });
+            const bladeMat = new THREE.MeshStandardMaterial({
+                color: 0xd8f3ff, emissive: 0x38bdf8, emissiveIntensity: 2.2,
+                metalness: 0.9, roughness: 0.15, toneMapped: false
+            });
+
+            // 骨盆與戰裙
+            const pelvis = new THREE.Group();
+            pelvis.position.y = 0.78;
+            body.add(pelvis);
+            addMesh(pelvis, new THREE.BoxGeometry(0.38, 0.2, 0.24), armorMat, 0, 0, 0);
+            addMesh(pelvis, new THREE.BoxGeometry(0.41, 0.06, 0.27), MAT_CACHE.gold, 0, 0.05, 0);
+            // 前後深藍戰裙 (Tabard)
+            addMesh(pelvis, new THREE.PlaneGeometry(0.2, 0.46), tabardMat, 0, -0.24, 0.135);
+            addMesh(pelvis, new THREE.PlaneGeometry(0.22, 0.44), tabardMat, 0, -0.24, -0.135);
+
+            // 雙腿 (裝甲護脛 + 膝蓋護甲)
+            const makeLeg = (side) => {
+                const hip = new THREE.Group();
+                hip.position.set(side * 0.12, 0.74, 0);
+                body.add(hip);
+                addMesh(hip, new THREE.CapsuleGeometry(0.085, 0.26, 6, 10), armorMat, 0, -0.18, 0);
+                addMesh(hip, new THREE.SphereGeometry(0.095, 10, 8), MAT_CACHE.gold, 0, -0.34, 0.03);
+                addMesh(hip, new THREE.CylinderGeometry(0.075, 0.065, 0.34, 10), armorMat, 0, -0.52, 0);
+                addMesh(hip, new THREE.BoxGeometry(0.13, 0.1, 0.24), MAT_CACHE.darkIron, 0, -0.69, 0.05);
+                return hip;
+            };
+            const legL = makeLeg(-1), legR = makeLeg(1);
+
+            // 胸甲與肩甲
+            const torso = new THREE.Group();
+            torso.position.y = 0.88;
+            body.add(torso);
+            addMesh(torso, new THREE.CylinderGeometry(0.26, 0.19, 0.54, 10), armorMat, 0, 0.27, 0);
+            addMesh(torso, new THREE.BoxGeometry(0.32, 0.36, 0.26), armorMat, 0, 0.3, 0.03);
+            // 胸前金飾徽章
+            addMesh(torso, new THREE.OctahedronGeometry(0.085, 0), MAT_CACHE.gold, 0, 0.34, 0.17);
+            addMesh(torso, new THREE.BoxGeometry(0.36, 0.05, 0.28), MAT_CACHE.gold, 0, 0.48, 0.02);
+
+            // 寬大獅紋肩甲 (Pauldrons)
+            for (const s of [-1, 1]) {
+                const p = new THREE.Group();
+                p.position.set(s * 0.32, 0.48, 0);
+                torso.add(p);
+                const dome = addMesh(p, new THREE.SphereGeometry(0.16, 12, 10, 0, TAU, 0, Math.PI * 0.65), armorMat, 0, 0, 0);
+                dome.rotation.z = -s * 0.35;
+                const trim = addMesh(p, new THREE.TorusGeometry(0.15, 0.022, 6, 14), MAT_CACHE.gold, 0, -0.02, 0);
+                trim.rotation.x = Math.PI / 2; trim.rotation.y = s * 0.35;
+            }
+
+            // 動態披風 (Cape)
+            const capeGeo = new THREE.PlaneGeometry(0.62, 1.05, 4, 6);
+            capeGeo.translate(0, -0.52, 0);
+            const capeMesh = new THREE.Mesh(capeGeo, capeMat);
+            capeMesh.position.set(0, 0.5, -0.17);
+            capeMesh.rotation.x = 0.18;
+            torso.add(capeMesh);
+            const capeBasePos = new Float32Array(capeGeo.attributes.position.array);
+
+            // 頭部 + 騎士面甲
+            const head = new THREE.Group();
+            head.position.set(0, 0.62, 0);
+            torso.add(head);
+            addMesh(head, new THREE.SphereGeometry(0.135, 14, 12), MAT_CACHE.skin, 0, 0.08, 0);
+            // 頭髮 / 騎士頭盔
+            addMesh(head, new THREE.SphereGeometry(0.145, 14, 10, 0, TAU, 0, Math.PI * 0.58), MAT_CACHE.hair, 0, 0.1, -0.01);
+            const helm = addMesh(head, new THREE.CylinderGeometry(0.14, 0.15, 0.12, 12, 1, true), armorMat, 0, 0.14, 0);
+            helm.visible = true;
+            addMesh(head, new THREE.BoxGeometry(0.04, 0.12, 0.28), MAT_CACHE.gold, 0, 0.21, -0.02);
+
+            // 右手 + 附魔符文大劍
+            const armR = new THREE.Group();
+            armR.position.set(0.32, 0.44, 0);
+            torso.add(armR);
+            addMesh(armR, new THREE.CapsuleGeometry(0.068, 0.24, 6, 8), armorMat, 0, -0.16, 0);
+            addMesh(armR, new THREE.CylinderGeometry(0.06, 0.055, 0.24, 8), armorMat, 0, -0.4, 0.04).rotation.x = -0.35;
+
+            const swordGroup = new THREE.Group();
+            swordGroup.position.set(0, -0.48, 0.1);
+            swordGroup.rotation.x = Math.PI * 0.36;
+            armR.add(swordGroup);
+            addMesh(swordGroup, new THREE.CylinderGeometry(0.022, 0.022, 0.26, 8), MAT_CACHE.leather, 0, -0.1, 0);
+            addMesh(swordGroup, new THREE.SphereGeometry(0.045, 8, 8), MAT_CACHE.gold, 0, -0.24, 0);
+            addMesh(swordGroup, new THREE.BoxGeometry(0.32, 0.045, 0.065), MAT_CACHE.gold, 0, 0.03, 0);
+            // 劍身
+            const bladeGeo = new THREE.BoxGeometry(0.085, 1.05, 0.025);
+            const bp = bladeGeo.attributes.position;
+            for (let i = 0; i < bp.count; i++) if (bp.getY(i) > 0.4) { bp.setX(i, bp.getX(i) * 0.15); bp.setY(i, 0.62); }
+            bladeGeo.computeVertexNormals();
+            const bladeMesh = addMesh(swordGroup, bladeGeo, bladeMat, 0, 0.56, 0, false);
+            // 劍身光暈精靈
+            const swordGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+                map: TEX.glow, color: new THREE.Color(0.5, 1.8, 3.2),
+                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.75, toneMapped: false
+            }));
+            swordGlow.scale.set(0.55, 1.35, 1);
+            swordGlow.position.set(0, 0.6, 0);
+            swordGroup.add(swordGlow);
+
+            // 揮刀劍氣弧 (Slash Arc)
+            const slashGeo = new THREE.RingGeometry(0.65, 1.45, 20, 1, -Math.PI * 0.45, Math.PI * 0.9);
+            const slashMat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(0.6, 2.2, 3.5), transparent: true, opacity: 0,
+                blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false
+            });
+            const slashArc = new THREE.Mesh(slashGeo, slashMat);
+            slashArc.rotation.x = -Math.PI / 2;
+            slashArc.position.set(0, 1.05, 0.25);
+            root.add(slashArc);
+
+            // 左手 + 鳶形皇家盾牌 (Kite Shield)
+            const armL = new THREE.Group();
+            armL.position.set(-0.32, 0.44, 0);
+            torso.add(armL);
+            addMesh(armL, new THREE.CapsuleGeometry(0.068, 0.24, 6, 8), armorMat, 0, -0.16, 0);
+            addMesh(armL, new THREE.CylinderGeometry(0.06, 0.055, 0.24, 8), armorMat, 0, -0.38, 0.08).rotation.x = -0.6;
+
+            const shieldShape = new THREE.Shape();
+            shieldShape.moveTo(0, 0.34);
+            shieldShape.lineTo(0.24, 0.26);
+            shieldShape.quadraticCurveTo(0.22, -0.05, 0, -0.4);
+            shieldShape.quadraticCurveTo(-0.22, -0.05, -0.24, 0.26);
+            shieldShape.closePath();
+            const shieldGeo = new THREE.ExtrudeGeometry(shieldShape, { depth: 0.04, bevelEnabled: true, bevelThickness: 0.015, bevelSize: 0.015, bevelSegments: 2 });
+            const shield = new THREE.Mesh(shieldGeo, armorMat);
+            shield.position.set(-0.1, -0.38, 0.2);
+            shield.rotation.y = -0.55;
+            armL.add(shield);
+            addMesh(shield, new THREE.OctahedronGeometry(0.09, 0), MAT_CACHE.gold, 0, 0.04, 0.055);
+
+            // 腳底光環 (綠水 / 勇水 / 升級光柱)
+            const hasteRing = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), new THREE.MeshBasicMaterial({ map: TEX.ringDash, color: 0x34d399, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false }));
+            hasteRing.rotation.x = -Math.PI / 2; hasteRing.position.y = 0.04; hasteRing.visible = false;
+            root.add(hasteRing);
+
+            const braveRing = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.75), new THREE.MeshBasicMaterial({ map: TEX.ringDash, color: 0xf43f5e, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+            braveRing.rotation.x = -Math.PI / 2; braveRing.position.y = 0.05; braveRing.visible = false;
+            root.add(braveRing);
+
+            const levelBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.85, 6.0, 16, 1, true), new THREE.MeshBasicMaterial({ map: TEX.beam, color: new THREE.Color(3.0, 2.4, 0.6), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
+            levelBeam.position.y = 3.0; levelBeam.visible = false;
+            root.add(levelBeam);
+
+            // 玩家身上微弱藍光點光源 (模擬魔劍照亮周圍石板)
+            const swordLight = new THREE.PointLight(0x38bdf8, 2.2, 5.5, 2);
+            swordLight.position.set(0.4, 1.35, 0.6);
+            root.add(swordLight);
+
+            setShadows(body, true);
+
+            return {
+                root, body, torso, head, legL, legR, armL, armR,
+                capeMesh, capeBasePos, armorMat, capeMat, bladeMat, swordGlow, swordLight,
+                slashArc, slashMat, hasteRing, braveRing, levelBeam,
+                yaw: 0
+            };
+        }
+
+        function animateKnight(rig, state, t, dt) {
+            const targetYaw = Math.atan2(state.dirX, state.dirY);
+            rig.yaw = lerpAngle(rig.yaw, targetYaw, clamp(dt * 14, 0, 1));
+            rig.root.rotation.y = rig.yaw;
+
+            const stride = state.isMoving ? Math.sin(state.walkCycle) : 0;
+            const bob = state.isMoving ? Math.abs(Math.cos(state.walkCycle)) * 0.07 : Math.sin(t * 2.5) * 0.02;
+            rig.body.position.y = bob;
+            rig.legL.rotation.x = stride * 0.72;
+            rig.legR.rotation.x = -stride * 0.72;
+
+            // 披風動態飄揚
+            const pos = rig.capeMesh.geometry.attributes.position;
+            const spd = state.isMoving ? 1.4 : 0.45;
+            for (let i = 0; i < pos.count; i++) {
+                const bx = rig.capeBasePos[i * 3], by = rig.capeBasePos[i * 3 + 1], bz = rig.capeBasePos[i * 3 + 2];
+                const factor = clamp(-by / 1.05, 0, 1);
+                const wave = Math.sin(t * (4 + spd * 3) + bx * 5 + by * 4) * 0.12 * factor;
+                const trail = (state.isMoving ? 0.32 : 0.08) * factor * factor;
+                pos.setZ(i, bz - trail + wave);
+            }
+            pos.needsUpdate = true;
+
+            // 揮刀動畫與劍氣
+            if (state.swingAnimTimer > 0) {
+                const p = 1 - clamp(state.swingAnimTimer / 0.26, 0, 1);
+                const comboDir = (state.swingCombo % 2 === 0) ? 1 : -1;
+                rig.torso.rotation.y = lerp(-0.45 * comboDir, 0.55 * comboDir, smooth(p));
+                rig.armR.rotation.x = lerp(-2.1, 0.75, smooth(p));
+                rig.armR.rotation.z = lerp(-0.5 * comboDir, 0.65 * comboDir, smooth(p));
+                rig.armL.rotation.x = -0.35;
+                rig.slashMat.opacity = Math.sin(p * Math.PI) * 0.85;
+                rig.slashArc.rotation.z = lerp(-0.8 * comboDir, 0.9 * comboDir, p);
+                rig.slashArc.scale.setScalar(0.9 + p * 0.25);
+            } else {
+                rig.torso.rotation.y = lerp(rig.torso.rotation.y, 0, clamp(dt * 12, 0, 1));
+                rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.35 - stride * 0.35, clamp(dt * 12, 0, 1));
+                rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.15, clamp(dt * 12, 0, 1));
+                rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.25 + stride * 0.3, clamp(dt * 12, 0, 1));
+                rig.slashMat.opacity = 0;
+            }
+
+            // 動態裝備外觀同步
+            if (state.armorTint) rig.armorMat.color.set(state.armorTint);
+            if (state.capeColor) rig.capeMat.color.set(state.capeColor);
+            if (state.bladeColor) {
+                const bc = new THREE.Color(state.bladeColor);
+                const boost = 1.6 + Math.min(10, state.weaponEnchant || 0) * 0.22;
+                rig.bladeMat.emissive.copy(bc);
+                rig.bladeMat.emissiveIntensity = boost;
+                rig.swordGlow.material.color.copy(bc).multiplyScalar(boost);
+                rig.swordLight.color.copy(bc);
+                rig.slashMat.color.copy(bc).multiplyScalar(2.4);
+            }
+
+            if (rig.hasteRing) {
+                rig.hasteRing.visible = state.hasteTimer > 0;
+                if (rig.hasteRing.visible) rig.hasteRing.rotation.z = t * 1.8;
+            }
+            if (rig.braveRing) {
+                rig.braveRing.visible = state.braveTimer > 0;
+                if (rig.braveRing.visible) rig.braveRing.rotation.z = -t * 2.5;
+            }
+            if (rig.levelBeam) {
+                rig.levelBeam.visible = state.levelUpBeamTimer > 0;
+                if (rig.levelBeam.visible) {
+                    rig.levelBeam.material.opacity = clamp(state.levelUpBeamTimer, 0, 1) * 0.75;
+                    rig.levelBeam.rotation.y = t * 2.5;
+                }
+            }
+        }
+
+        // 2. 怪物：嗜血狂野狼人 (Savage Werewolf)
+        function createWerewolfRig() {
+            const root = new THREE.Group();
+            const body = new THREE.Group();
+            root.add(body);
+
+            // 駝背寬厚肌肉軀幹
+            const torso = new THREE.Group();
+            torso.position.set(0, 0.95, 0.08);
+            torso.rotation.x = 0.35;
+            body.add(torso);
+            addMesh(torso, new THREE.SphereGeometry(0.32, 12, 10), MAT_CACHE.wolfFur, 0, 0.22, 0).scale.set(1.15, 0.95, 0.95);
+            addMesh(torso, new THREE.CylinderGeometry(0.24, 0.17, 0.45, 10), MAT_CACHE.wolfDark, 0, -0.1, -0.02);
+            // 背部毛刺
+            for (let i = 0; i < 4; i++) {
+                const s = addMesh(torso, new THREE.ConeGeometry(0.08, 0.25, 6), MAT_CACHE.wolfDark, 0, 0.35 - i * 0.12, -0.24);
+                s.rotation.x = -1.1;
+            }
+
+            // 狼頭與獠牙
+            const head = new THREE.Group();
+            head.position.set(0, 0.42, 0.26);
+            torso.add(head);
+            addMesh(head, new THREE.SphereGeometry(0.18, 12, 10), MAT_CACHE.wolfFur, 0, 0, 0);
+            addMesh(head, new THREE.BoxGeometry(0.14, 0.12, 0.28), MAT_CACHE.wolfDark, 0, -0.03, 0.18);
+            // 雙耳
+            for (const s of [-1, 1]) {
+                const ear = addMesh(head, new THREE.ConeGeometry(0.055, 0.22, 6), MAT_CACHE.wolfDark, s * 0.11, 0.18, -0.02);
+                ear.rotation.z = -s * 0.25; ear.rotation.x = 0.2;
+                addMesh(head, new THREE.SphereGeometry(0.028, 6, 6), MAT_CACHE.redGlow, s * 0.075, 0.04, 0.15, false);
+            }
+            // 獠牙
+            for (const s of [-1, 1]) addMesh(head, new THREE.ConeGeometry(0.018, 0.07, 5), MAT_CACHE.bone, s * 0.045, -0.1, 0.26).rotation.x = Math.PI;
+
+            // 強壯前爪手臂
+            const makeArm = (s) => {
+                const a = new THREE.Group();
+                a.position.set(s * 0.36, 0.28, 0.06);
+                torso.add(a);
+                addMesh(a, new THREE.CapsuleGeometry(0.1, 0.34, 6, 8), MAT_CACHE.wolfFur, 0, -0.2, 0.04);
+                addMesh(a, new THREE.CapsuleGeometry(0.08, 0.32, 6, 8), MAT_CACHE.wolfDark, 0, -0.5, 0.14).rotation.x = -0.5;
+                for (let c = -1; c <= 1; c++) {
+                    addMesh(a, new THREE.ConeGeometry(0.018, 0.14, 5), MAT_CACHE.bone, c * 0.035, -0.68, 0.26).rotation.x = 2.4;
+                }
+                return a;
+            };
+            const armL = makeArm(-1), armR = makeArm(1);
+
+            // 反關節後腿
+            const makeLeg = (s) => {
+                const l = new THREE.Group();
+                l.position.set(s * 0.18, 0.72, -0.06);
+                body.add(l);
+                addMesh(l, new THREE.CapsuleGeometry(0.11, 0.28, 6, 8), MAT_CACHE.wolfFur, 0, -0.18, 0.05).rotation.x = -0.35;
+                addMesh(l, new THREE.CapsuleGeometry(0.075, 0.32, 6, 8), MAT_CACHE.wolfDark, 0, -0.48, -0.04).rotation.x = 0.4;
+                addMesh(l, new THREE.BoxGeometry(0.14, 0.09, 0.24), MAT_CACHE.wolfDark, 0, -0.68, 0.08);
+                return l;
+            };
+            const legL = makeLeg(-1), legR = makeLeg(1);
+
+            // 尾巴
+            const tail = new THREE.Group();
+            tail.position.set(0, 0.72, -0.22);
+            body.add(tail);
+            addMesh(tail, new THREE.ConeGeometry(0.1, 0.65, 8), MAT_CACHE.wolfDark, 0, -0.18, -0.26).rotation.x = -1.1;
+
+            setShadows(body, true);
+            return { root, body, torso, head, armL, armR, legL, legR, tail, yaw: 0 };
+        }
+
+        // 3. BOSS：黑暗之龍 / 飛龍 (Black Dragon Boss)
+        function createDragonRig() {
+            const root = new THREE.Group();
+            const body = new THREE.Group();
+            body.position.y = 1.65; // 盤旋高度
+            root.add(body);
+
+            // 龐大黑曜石龍軀
+            const torso = addMesh(body, new THREE.SphereGeometry(0.62, 16, 12), MAT_CACHE.dragonScale, 0, 0, 0);
+            torso.scale.set(0.95, 0.85, 1.55);
+            // 胸口紫色發光龍紋
+            const chestGlow = addMesh(body, new THREE.SphereGeometry(0.45, 12, 10), MAT_CACHE.purpleGlow, 0, -0.12, 0.35, false);
+            chestGlow.scale.set(0.85, 0.6, 0.9);
+            const dragonLight = new THREE.PointLight(0xa855f7, 4.5, 9, 2);
+            dragonLight.position.set(0, 0.2, 0.8);
+            body.add(dragonLight);
+
+            // 背脊骨刺
+            for (let i = 0; i < 6; i++) {
+                const sp = addMesh(body, new THREE.ConeGeometry(0.08, 0.34, 5), MAT_CACHE.dragonScale, 0, 0.52 - i * 0.04, 0.55 - i * 0.26);
+                sp.rotation.x = -0.35;
+            }
+
+            // 長頸 + 雙角龍頭
+            const neck = new THREE.Group();
+            neck.position.set(0, 0.25, 0.82);
+            body.add(neck);
+            addMesh(neck, new THREE.CylinderGeometry(0.18, 0.28, 0.85, 10), MAT_CACHE.dragonScale, 0, 0.32, 0.22).rotation.x = 0.6;
+            const head = new THREE.Group();
+            head.position.set(0, 0.68, 0.52);
+            neck.add(head);
+            addMesh(head, new THREE.BoxGeometry(0.36, 0.28, 0.52), MAT_CACHE.dragonScale, 0, 0, 0.1);
+            addMesh(head, new THREE.BoxGeometry(0.24, 0.14, 0.42), MAT_CACHE.dragonScale, 0, -0.06, 0.42);
+            for (const s of [-1, 1]) {
+                const horn = addMesh(head, new THREE.ConeGeometry(0.06, 0.52, 6), MAT_CACHE.darkIron, s * 0.15, 0.24, -0.16);
+                horn.rotation.x = -0.75; horn.rotation.z = -s * 0.35;
+                addMesh(head, new THREE.SphereGeometry(0.048, 8, 8), MAT_CACHE.purpleGlow, s * 0.15, 0.06, 0.3, false);
+            }
+
+            // 巨大蝙蝠翼 (左右可拍動)
+            const makeWing = (s) => {
+                const w = new THREE.Group();
+                w.position.set(s * 0.48, 0.28, 0.1);
+                body.add(w);
+                addMesh(w, new THREE.CylinderGeometry(0.07, 0.09, 1.5, 8), MAT_CACHE.dragonScale, s * 0.72, 0.2, 0).rotation.z = -s * 1.3;
+                const memShape = new THREE.Shape();
+                memShape.moveTo(0, 0);
+                memShape.lineTo(s * 1.6, 0.55);
+                memShape.lineTo(s * 2.15, -0.15);
+                memShape.quadraticCurveTo(s * 1.35, -0.35, s * 0.95, -0.65);
+                memShape.quadraticCurveTo(s * 0.45, -0.35, 0, -0.45);
+                memShape.closePath();
+                const mem = new THREE.Mesh(new THREE.ShapeGeometry(memShape), MAT_CACHE.dragonWing);
+                mem.rotation.x = 0.25;
+                w.add(mem);
+                return w;
+            };
+            const wingL = makeWing(-1), wingR = makeWing(1);
+
+            // 龍尾
+            const tail = new THREE.Group();
+            tail.position.set(0, -0.05, -0.88);
+            body.add(tail);
+            addMesh(tail, new THREE.ConeGeometry(0.24, 1.65, 8), MAT_CACHE.dragonScale, 0, -0.12, -0.82).rotation.x = -Math.PI / 2;
+            addMesh(tail, new THREE.ConeGeometry(0.14, 0.38, 4), MAT_CACHE.purpleGlow, 0, -0.12, -1.65, false).rotation.x = -Math.PI / 2;
+
+            // 龍爪四肢
+            for (const s of [-1, 1]) {
+                addMesh(body, new THREE.CapsuleGeometry(0.11, 0.45, 6, 8), MAT_CACHE.dragonScale, s * 0.42, -0.55, 0.35).rotation.x = 0.3;
+                addMesh(body, new THREE.CapsuleGeometry(0.12, 0.5, 6, 8), MAT_CACHE.dragonScale, s * 0.44, -0.58, -0.35).rotation.x = -0.25;
+            }
+
+            setShadows(body, true);
+            return { root, body, neck, wingL, wingR, tail, yaw: 0 };
+        }
+
+        // 4. 夏洛柏 (巨型毒蜘蛛)
+        function createSpiderRig() {
+            const root = new THREE.Group();
+            const body = new THREE.Group();
+            body.position.y = 0.42;
+            root.add(body);
+            addMesh(body, new THREE.SphereGeometry(0.42, 14, 12), MAT_CACHE.spiderBody, 0, 0.14, -0.35).scale.set(1.0, 0.85, 1.3);
+            addMesh(body, new THREE.SphereGeometry(0.14, 8, 8), MAT_CACHE.greenGlow, 0, 0.42, -0.35, false).scale.set(0.8, 0.3, 1.3);
+            addMesh(body, new THREE.SphereGeometry(0.24, 12, 10), MAT_CACHE.spiderBody, 0, 0.04, 0.25);
+            for (const x of [-0.09, -0.03, 0.03, 0.09]) addMesh(body, new THREE.SphereGeometry(0.028, 6, 6), MAT_CACHE.redGlow, x, 0.1, 0.46, false);
+
+            const legs = [];
+            for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
+                const lg = new THREE.Group();
+                lg.position.set(s * 0.2, 0.02, 0.2 - i * 0.16);
+                body.add(lg);
+                addMesh(lg, new THREE.CylinderGeometry(0.035, 0.028, 0.55, 6), MAT_CACHE.spiderBody, s * 0.24, 0.16, 0).rotation.z = -s * 1.0;
+                addMesh(lg, new THREE.CylinderGeometry(0.028, 0.015, 0.65, 6), MAT_CACHE.spiderBody, s * 0.55, -0.12, 0).rotation.z = s * 0.3;
+                legs.push({ g: lg, s, i });
+            }
+            setShadows(body, true);
+            return { root, body, legs, yaw: 0 };
+        }
+
+        // 5. 巨大鱷魚 (Giant Crocodile)
+        function createCrocRig() {
+            const root = new THREE.Group();
+            const body = new THREE.Group();
+            body.position.y = 0.28;
+            root.add(body);
+            addMesh(body, new THREE.BoxGeometry(0.54, 0.28, 1.25), MAT_CACHE.crocScale, 0, 0.06, 0);
+            addMesh(body, new THREE.BoxGeometry(0.46, 0.1, 1.15), MAT_CACHE.crocBelly, 0, -0.1, 0);
+            for (let i = 0; i < 5; i++) addMesh(body, new THREE.ConeGeometry(0.06, 0.14, 4), MAT_CACHE.crocScale, 0, 0.25, 0.42 - i * 0.22);
+            const jaw = new THREE.Group();
+            jaw.position.set(0, 0.08, 0.62);
+            body.add(jaw);
+            addMesh(jaw, new THREE.BoxGeometry(0.36, 0.14, 0.65), MAT_CACHE.crocScale, 0, 0.04, 0.3);
+            for (const s of [-1, 1]) addMesh(jaw, new THREE.SphereGeometry(0.038, 6, 6), MAT_CACHE.redGlow, s * 0.14, 0.12, 0.06, false);
+            const tail = new THREE.Group();
+            tail.position.set(0, 0.02, -0.62);
+            body.add(tail);
+            addMesh(tail, new THREE.ConeGeometry(0.22, 1.15, 6), MAT_CACHE.crocScale, 0, 0, -0.58).rotation.x = -Math.PI / 2;
+            const legs = [];
+            for (const [sx, sz] of [[-1, 0.38], [1, 0.38], [-1, -0.38], [1, -0.38]]) {
+                const l = new THREE.Group(); l.position.set(sx * 0.32, -0.06, sz); body.add(l);
+                addMesh(l, new THREE.BoxGeometry(0.18, 0.22, 0.18), MAT_CACHE.crocScale, sx * 0.06, -0.1, 0);
+                legs.push(l);
+            }
+            setShadows(body, true);
+            return { root, body, jaw, tail, legs, yaw: 0 };
+        }
+
+        // 6. 史萊姆 (Slime)
+        function createSlimeRig() {
+            const root = new THREE.Group();
+            const body = new THREE.Group();
+            root.add(body);
+            const dome = addMesh(body, new THREE.SphereGeometry(0.38, 16, 12, 0, TAU, 0, Math.PI * 0.65), MAT_CACHE.slimeOuter, 0, 0.08, 0);
+            dome.scale.set(1.15, 0.95, 1.15);
+            addMesh(body, new THREE.SphereGeometry(0.15, 10, 8), MAT_CACHE.greenGlow, 0, 0.2, 0, false);
+            for (const s of [-1, 1]) addMesh(body, new THREE.SphereGeometry(0.04, 8, 8), MAT_CACHE.darkIron, s * 0.12, 0.26, 0.32, false);
+            setShadows(body, true);
+            return { root, body, yaw: 0 };
+        }
+
+        function createMonsterRig(m) {
+            let rig;
+            if (m.type === 'werewolf') rig = createWerewolfRig();
+            else if (m.type === 'drake') rig = createDragonRig();
+            else if (m.type === 'shelob') rig = createSpiderRig();
+            else if (m.type === 'croc') rig = createCrocRig();
+            else rig = createSlimeRig();
+
+            // 鎖定光圈 (滑鼠移入黃圈 / 鎖定目標紅圈)
+            const ringMat = new THREE.MeshBasicMaterial({ map: TEX.ring, color: 0xef4444, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
+            const ring = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), ringMat);
+            ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; ring.visible = false;
+            rig.root.add(ring);
+            rig.ring = ring; rig.ringMat = ringMat;
+            rig.type = m.type;
+            rig.root.scale.setScalar(m.scale * (m.type === 'drake' ? 1.18 : 0.92));
+            rig.root.userData.monsterId = m.id;
+            tryAttachExternalGLB(m.type, rig);
+            return rig;
+        }
+
+        function animateMonster(rig, m, t, dt) {
+            const targetYaw = Math.atan2(m.dirX || 0, m.dirY || 1);
+            rig.yaw = lerpAngle(rig.yaw, targetYaw, clamp(dt * 10, 0, 1));
+            rig.root.rotation.y = rig.yaw;
+
+            const lunge = m.attackAnimTimer > 0 ? Math.sin((m.attackAnimTimer / 0.35) * Math.PI) : 0;
+            const hurt = m.hurtFlashTimer > 0;
+
+            if (m.type === 'werewolf') {
+                const w = Math.sin(m.walkPhase);
+                rig.legL.rotation.x = w * 0.65;
+                rig.legR.rotation.x = -w * 0.65;
+                rig.armL.rotation.x = -0.35 - w * 0.4 - lunge * 1.4;
+                rig.armR.rotation.x = -0.35 + w * 0.4 - lunge * 1.4;
+                rig.body.position.z = lunge * 0.45;
+                rig.tail.rotation.y = Math.sin(t * 6 + m.id) * 0.35;
+            } else if (m.type === 'drake') {
+                const flap = Math.sin(m.wingPhase * 0.85);
+                rig.body.position.y = 1.65 + Math.cos(m.wingPhase * 0.85) * 0.25;
+                rig.wingL.rotation.z = flap * 0.55;
+                rig.wingR.rotation.z = -flap * 0.55;
+                rig.tail.rotation.y = Math.sin(t * 3.5 + m.id) * 0.3;
+                rig.neck.rotation.x = lunge * 0.45;
+            } else if (m.type === 'shelob') {
+                rig.legs.forEach(({ g, s, i }) => {
+                    g.rotation.y = Math.sin(m.walkPhase + i * 1.4 + (s > 0 ? 0 : Math.PI)) * 0.32;
+                });
+                rig.body.position.z = lunge * 0.35;
+            } else if (m.type === 'croc') {
+                rig.tail.rotation.y = Math.sin(m.walkPhase * 0.7) * 0.4;
+                rig.jaw.rotation.x = -lunge * 0.55;
+                rig.legs.forEach((l, i) => { l.rotation.x = Math.sin(m.walkPhase + i * Math.PI * 0.5) * 0.4; });
+            } else {
+                const bounce = Math.abs(Math.sin(m.walkPhase * 0.6));
+                rig.body.position.y = bounce * 0.22;
+                rig.body.scale.set(1 + (1 - bounce) * 0.14, 0.88 + bounce * 0.25, 1 + (1 - bounce) * 0.14);
+            }
+
+            // 受擊閃白縮放回饋
+            if (hurt) rig.body.scale.multiplyScalar(1.06);
+            else if (m.type !== 'slime') rig.body.scale.set(1, 1, 1);
+
+            const isTarget = player.attackTarget === m;
+            const isHover = mouseState.hoveredMonster === m;
+            rig.ring.visible = isTarget || isHover;
+            if (rig.ring.visible) {
+                rig.ringMat.color.setHex(isTarget ? 0xef4444 : 0xfacc15);
+                rig.ring.rotation.z = t * 2.4;
+            }
+        }
+
+
+        /* ---------------- 3D 魔法特效、粒子與掉寶光柱 ---------------- */
+        const vfxList = [];
+        const lootMeshes = new Map();
+        const monsterRigs = new Map();
+        const remoteRigs = new Map();
+        const spellVfxMap = new Map();
+        const clickVfxList = [];
+        let playerRig = null;
+
+        function worldY(wx, wy) {
+            return getTerrainElevation(wx, wy) * EH;
+        }
+
+        // 建立一條 3D 鋸齒閃電管線 (TubeGeometry)
+        function createLightningBoltMesh(pStart, pEnd, radius = 0.065, jitter = 0.45, colorHex = 0x7dd3fc) {
+            const pts = [];
+            const segs = 10;
+            for (let i = 0; i <= segs; i++) {
+                const t = i / segs;
+                const p = new THREE.Vector3().lerpVectors(pStart, pEnd, t);
+                if (i > 0 && i < segs) {
+                    const fade = Math.sin(t * Math.PI);
+                    p.x += (Math.random() - 0.5) * jitter * fade;
+                    p.y += (Math.random() - 0.5) * jitter * 0.7 * fade;
+                    p.z += (Math.random() - 0.5) * jitter * fade;
+                }
+                pts.push(p);
+            }
+            const curve = new THREE.CatmullRomCurve3(pts);
+            const geo = new THREE.TubeGeometry(curve, 18, radius, 6, false);
+            const mat = new THREE.MeshBasicMaterial({
+                color: new THREE.Color(colorHex).multiplyScalar(2.8),
+                transparent: true, opacity: 1,
+                blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
+            });
+            return new THREE.Mesh(geo, mat);
+        }
+
+        // 極道落雷 3D：天空落雷 + 騎士劍尖連鎖電弧 (還原截圖中的連鎖閃電！)
+        function spawn3DLightning(wx, wy) {
+            const group = new THREE.Group();
+            const ty = worldY(wx, wy);
+            const targetPos = new THREE.Vector3(wx, ty + 0.9, wy);
+            const skyPos = new THREE.Vector3(wx + (Math.random() - 0.5) * 1.2, ty + 11.5, wy + (Math.random() - 0.5) * 1.2);
+            const casterPos = new THREE.Vector3(player.x, worldY(player.x, player.y) + 1.25, player.y);
+
+            // 天空主雷 + 副雷
+            group.add(createLightningBoltMesh(skyPos, targetPos, 0.095, 1.3, 0x93c5fd));
+            group.add(createLightningBoltMesh(skyPos, targetPos, 0.04, 1.8, 0xffffff));
+
+            // 騎士發出連鎖閃電弧打向目標與周圍怪物
+            group.add(createLightningBoltMesh(casterPos, targetPos, 0.06, 0.85, 0x38bdf8));
+            group.add(createLightningBoltMesh(casterPos, targetPos, 0.025, 1.2, 0xe0f2fe));
+
+            let chainCount = 0;
+            for (const m of monsters) {
+                if (m.hp <= 0 || chainCount >= 3) continue;
+                const d = Math.hypot(m.x - wx, m.y - wy);
+                if (d > 0.3 && d <= 4.2) {
+                    const mp = new THREE.Vector3(m.x, worldY(m.x, m.y) + 0.85, m.y);
+                    group.add(createLightningBoltMesh(targetPos, mp, 0.045, 0.75, 0x60a5fa));
+                    chainCount++;
+                }
+            }
+
+            // 地面衝擊光環
+            const ring = new THREE.Mesh(
+                new THREE.PlaneGeometry(3.4, 3.4),
+                new THREE.MeshBasicMaterial({ map: TEX.ring, color: new THREE.Color(0.6, 2.2, 4.0), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })
+            );
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.set(wx, ty + 0.08, wy);
+            group.add(ring);
+
+            // 落雷點光源瞬間照亮石板與狼人
+            const light = new THREE.PointLight(0x38bdf8, 18, 14, 1.8);
+            light.position.set(wx, ty + 1.8, wy);
+            group.add(light);
+
+            scene.add(group);
+            vfxList.push({
+                group, life: 0.44, maxLife: 0.44,
+                update(dt, p) {
+                    const inv = 1 - p;
+                    light.intensity = 18 * inv * inv;
+                    ring.scale.setScalar(0.7 + p * 1.4);
+                    group.traverse((c) => { if (c.material && c.material.transparent) c.material.opacity = inv; });
+                }
+            });
+        }
+
+        // 龍捲風 3D：多層旋轉發光風暴錐 + 上升氣流環
+        function spawn3DTornado(wx, wy) {
+            const group = new THREE.Group();
+            group.position.set(wx, worldY(wx, wy), wy);
+
+            const outerMat = new THREE.MeshBasicMaterial({
+                map: TEX.swirl, color: new THREE.Color(0.5, 2.5, 1.8),
+                transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide, depthWrite: false, toneMapped: false
+            });
+            const outerCone = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 0.65, 5.2, 24, 1, true), outerMat);
+            outerCone.position.y = 2.6;
+            group.add(outerCone);
+
+            const innerMat = new THREE.MeshBasicMaterial({
+                map: TEX.swirl, color: new THREE.Color(1.4, 3.0, 2.4),
+                transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending,
+                side: THREE.DoubleSide, depthWrite: false, toneMapped: false
+            });
+            const innerCone = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 0.35, 5.8, 18, 1, true), innerMat);
+            innerCone.position.y = 2.9;
+            group.add(innerCone);
+
+            const light = new THREE.PointLight(0x34d399, 10, 12, 2);
+            light.position.y = 2.0;
+            group.add(light);
+
+            scene.add(group);
+            vfxList.push({
+                group, life: 0.8, maxLife: 0.8,
+                update(dt, p) {
+                    outerCone.rotation.y += dt * 11;
+                    innerCone.rotation.y -= dt * 16;
+                    const s = 0.75 + Math.sin(p * Math.PI) * 0.45;
+                    group.scale.set(s, 1, s);
+                    const alpha = p < 0.2 ? p / 0.2 : (1 - p) / 0.8;
+                    outerMat.opacity = 0.7 * alpha;
+                    innerMat.opacity = 0.55 * alpha;
+                    light.intensity = 10 * alpha;
+                }
+            });
+        }
+
+        // 火球爆炸 3D
+        function spawn3DFireExplosion(wx, wy) {
+            const group = new THREE.Group();
+            const ty = worldY(wx, wy);
+            group.position.set(wx, ty + 0.65, wy);
+
+            const coreMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.5, 1.4, 0.35), transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+            const core = new THREE.Mesh(new THREE.SphereGeometry(0.65, 16, 12), coreMat);
+            group.add(core);
+
+            const ringMat = new THREE.MeshBasicMaterial({ map: TEX.ring, color: new THREE.Color(3.2, 1.1, 0.25), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+            const ring = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 4.2), ringMat);
+            ring.rotation.x = -Math.PI / 2; ring.position.y = -0.55;
+            group.add(ring);
+
+            const light = new THREE.PointLight(0xfb923c, 16, 13, 2);
+            group.add(light);
+
+            scene.add(group);
+            vfxList.push({
+                group, life: 0.52, maxLife: 0.52,
+                update(dt, p) {
+                    const inv = 1 - p;
+                    core.scale.setScalar(0.6 + p * 3.2);
+                    coreMat.opacity = inv * 0.9;
+                    ring.scale.setScalar(0.4 + p * 1.35);
+                    ringMat.opacity = inv * 0.85;
+                    light.intensity = 16 * inv * inv;
+                }
+            });
+        }
+
+        // 3D 粒子池 (火花 / 龍息 / 毒絲)
+        const MAX_PARTICLES_3D = 420;
+        const partPos = new Float32Array(MAX_PARTICLES_3D * 3);
+        const partCol = new Float32Array(MAX_PARTICLES_3D * 3);
+        let partPoints = null;
+
+        function initParticleSystem() {
+            const geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.BufferAttribute(partPos, 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(partCol, 3));
+            const mat = new THREE.PointsMaterial({
+                size: 0.42, map: TEX.glow, vertexColors: true,
+                transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending,
+                depthWrite: false, toneMapped: false
+            });
+            partPoints = new THREE.Points(geo, mat);
+            partPoints.frustumCulled = false;
+            scene.add(partPoints);
+        }
+
+        function syncParticles3D() {
+            const count = Math.min(particles.length, MAX_PARTICLES_3D);
+            const c = new THREE.Color();
+            for (let i = 0; i < count; i++) {
+                const p = particles[i];
+                const age = p.maxLife - p.life;
+                const wx = p.wx + (p.isWorldSpace ? 0 : (p.vx * age) / 48);
+                const wy = p.wy + (p.isWorldSpace ? 0 : (p.vy * age) / 48);
+                const y = worldY(wx, wy) + (p.z || 10) * 0.032;
+                partPos[i * 3] = wx;
+                partPos[i * 3 + 1] = y;
+                partPos[i * 3 + 2] = wy;
+                c.set(p.color || '#fbbf24');
+                const alpha = clamp(p.life / p.maxLife, 0, 1) * 1.9;
+                partCol[i * 3] = c.r * alpha;
+                partCol[i * 3 + 1] = c.g * alpha;
+                partCol[i * 3 + 2] = c.b * alpha;
+            }
+            partPoints.geometry.setDrawRange(0, count);
+            partPoints.geometry.attributes.position.needsUpdate = true;
+            partPoints.geometry.attributes.color.needsUpdate = true;
+        }
+
+        // 同步地面戰利品 (Diablo / 天堂 光柱)
+        function syncGroundLoots3D(t) {
+            const aliveIds = new Set();
+            for (const loot of groundLoots) {
+                aliveIds.add(loot.id);
+                let g = lootMeshes.get(loot.id);
+                if (!g) {
+                    g = new THREE.Group();
+                    const isGold = loot.kind === 'gold';
+                    const col = new THREE.Color(loot.color || '#facc15');
+                    const mesh = new THREE.Mesh(
+                        isGold ? new THREE.CylinderGeometry(0.14, 0.14, 0.06, 10) : new THREE.OctahedronGeometry(0.18, 0),
+                        new THREE.MeshStandardMaterial({ color: col, emissive: col, emissiveIntensity: 1.5, metalness: 0.7, roughness: 0.2, toneMapped: false })
+                    );
+                    mesh.position.y = 0.28;
+                    g.add(mesh);
+
+                    // 非金幣或稀有裝備顯示衝天光柱
+                    if (!isGold) {
+                        const beam = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.08, 0.24, 3.2, 10, 1, true),
+                            new THREE.MeshBasicMaterial({ map: TEX.beam, color: col.clone().multiplyScalar(2.2), transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false })
+                        );
+                        beam.position.y = 1.6;
+                        g.add(beam);
+                    }
+                    scene.add(g);
+                    lootMeshes.set(loot.id, g);
+                }
+                g.position.set(loot.wx, worldY(loot.wx, loot.wy), loot.wy);
+                g.children[0].position.y = 0.26 + Math.sin(t * 4.5 + loot.wx) * 0.08;
+                g.children[0].rotation.y = t * 2.4;
+            }
+            for (const [id, g] of lootMeshes) {
+                if (!aliveIds.has(id)) { scene.remove(g); lootMeshes.delete(id); }
+            }
+        }
+
+        // 同步飛行中火球與觸發一次性的 3D 魔法特效
+        function syncActiveSpells3D(t) {
+            const alive = new Set();
+            for (const sp of activeSpells) {
+                alive.add(sp);
+                if (!sp._vfxSpawned) {
+                    sp._vfxSpawned = true;
+                    if (sp.type === 'lightning') spawn3DLightning(sp.x, sp.y);
+                    else if (sp.type === 'tornado') spawn3DTornado(sp.x, sp.y);
+                    else if (sp.type === 'fireball') {
+                        const fg = new THREE.Group();
+                        const ball = new THREE.Mesh(
+                            new THREE.SphereGeometry(0.28, 12, 10),
+                            new THREE.MeshBasicMaterial({ color: new THREE.Color(3.6, 1.5, 0.3), toneMapped: false })
+                        );
+                        fg.add(ball);
+                        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: new THREE.Color(3.2, 1.2, 0.2), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+                        halo.scale.set(1.4, 1.4, 1);
+                        fg.add(halo);
+                        const fl = new THREE.PointLight(0xfb923c, 10, 9, 2);
+                        fg.add(fl);
+                        scene.add(fg);
+                        spellVfxMap.set(sp, fg);
+                    }
+                }
+                if (sp.type === 'fireball') {
+                    const fg = spellVfxMap.get(sp);
+                    if (sp.exploded && !sp._boomSpawned) {
+                        sp._boomSpawned = true;
+                        spawn3DFireExplosion(sp.targetX, sp.targetY);
+                        if (fg) { scene.remove(fg); spellVfxMap.delete(sp); }
+                    } else if (fg) {
+                        fg.position.set(sp.x, worldY(sp.x, sp.y) + 1.05, sp.y);
+                        fg.rotation.y = t * 10;
+                    }
+                }
+            }
+            for (const [sp, fg] of spellVfxMap) {
+                if (!alive.has(sp)) { scene.remove(fg); spellVfxMap.delete(sp); }
+            }
+        }
+
+        // 同步點擊水波紋 3D
+        function syncClickRings3D(dt) {
+            for (const ci of clickIndicators) {
+                if (!ci._vfx) {
+                    ci._vfx = true;
+                    const mat = new THREE.MeshBasicMaterial({ map: TEX.ring, color: new THREE.Color(ci.color).multiplyScalar(1.8), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+                    const m = new THREE.Mesh(new THREE.PlaneGeometry(1.1, 1.1), mat);
+                    m.rotation.x = -Math.PI / 2;
+                    m.position.set(ci.wx, worldY(ci.wx, ci.wy) + 0.06, ci.wy);
+                    scene.add(m);
+                    clickVfxList.push({ m, mat, life: 0.42, maxLife: 0.42 });
+                }
+            }
+            for (let i = clickVfxList.length - 1; i >= 0; i--) {
+                const c = clickVfxList[i];
+                c.life -= dt;
+                if (c.life <= 0) { scene.remove(c.m); clickVfxList.splice(i, 1); continue; }
+                const p = 1 - c.life / c.maxLife;
+                c.m.scale.setScalar(0.35 + p * 1.15);
+                c.mat.opacity = 1 - p;
+            }
+        }
+
+        /* ---------------- 同步所有實體 ---------------- */
+        function syncEntities(t, dt) {
+            // 主角
+            const py = worldY(player.x, player.y);
+            playerRig.root.position.set(player.x, py, player.y);
+            animateKnight(playerRig, {
+                dirX: player.dirX, dirY: player.dirY,
+                isMoving: player.isMoving, walkCycle: player.walkCycle,
+                swingAnimTimer: player.swingAnimTimer, swingCombo: player.swingCombo,
+                armorTint: player.equipped.armor ? (player.equipped.armor.armorTint || '#cbd5e1') : '#64748b',
+                capeColor: player.equipped.cloak ? (player.equipped.cloak.capeColor || '#991b1b') : '#7f1d1d',
+                bladeColor: player.equipped.weapon ? (player.equipped.weapon.bladeColor || '#38bdf8') : '#38bdf8',
+                weaponEnchant: player.equipped.weapon ? (player.equipped.weapon.enchant || 0) : 0,
+                hasteTimer: player.hasteTimer, braveTimer: player.braveTimer, levelUpBeamTimer: player.levelUpBeamTimer
+            }, t, dt);
+
+            // 遠端玩家
+            const seenUids = new Set();
+            for (const uid in remotePlayers) {
+                seenUids.add(uid);
+                const rp = remotePlayers[uid];
+                let rig = remoteRigs.get(uid);
+                if (!rig) {
+                    rig = createKnightRig();
+                    rig.swordLight.intensity = 0; // 節省光源數
+                    scene.add(rig.root);
+                    remoteRigs.set(uid, rig);
+                }
+                rig.root.position.set(rp.x, worldY(rp.x, rp.y), rp.y);
+                animateKnight(rig, {
+                    dirX: rp.dirX, dirY: rp.dirY, isMoving: rp.isMoving, walkCycle: rp.walkCycle,
+                    swingAnimTimer: rp.swingAnimTimer, swingCombo: 0,
+                    armorTint: rp.armorTint, capeColor: rp.capeColor, bladeColor: rp.bladeColor,
+                    weaponEnchant: rp.weaponEnchant, hasteTimer: 0, braveTimer: 0, levelUpBeamTimer: 0
+                }, t, dt);
+            }
+            for (const [uid, rig] of remoteRigs) {
+                if (!seenUids.has(uid)) { scene.remove(rig.root); remoteRigs.delete(uid); }
+            }
+
+            // 怪物
+            const aliveMonsters = new Set();
+            for (const m of monsters) {
+                aliveMonsters.add(m.id);
+                let rig = monsterRigs.get(m.id);
+                if (!rig) {
+                    rig = createMonsterRig(m);
+                    scene.add(rig.root);
+                    monsterRigs.set(m.id, rig);
+                }
+                rig.root.position.set(m.x, worldY(m.x, m.y), m.y);
+                animateMonster(rig, m, t, dt);
+            }
+            for (const [id, rig] of monsterRigs) {
+                if (!aliveMonsters.has(id)) { scene.remove(rig.root); monsterRigs.delete(id); }
+            }
+        }
+
+        /* ---------------- 相機、座標投影與 3D 射線點選 ---------------- */
+        function updateCamera(dt) {
+            const desired = tmpV.set(player.x, worldY(player.x, player.y) + 1.1, player.y);
+            camState.target.lerp(desired, clamp(dt * 8, 0, 1));
+
+            const horiz = Math.cos(camState.pitch) * camState.dist;
+            const vert = Math.sin(camState.pitch) * camState.dist;
+            let cx = camState.target.x + Math.sin(camState.yaw) * horiz;
+            let cy = camState.target.y + vert;
+            let cz = camState.target.z + Math.cos(camState.yaw) * horiz;
+
+            if (camera.shakeTimer > 0) {
+                const amp = camera.shakeIntensity * 0.035;
+                cx += (Math.random() - 0.5) * amp;
+                cy += (Math.random() - 0.5) * amp;
+                cz += (Math.random() - 0.5) * amp;
+            }
+
+            cam.position.set(cx, cy, cz);
+            cam.lookAt(camState.target);
+
+            // 讓太陽光陰影盒跟隨主角，陰影永遠銳利
+            sun.position.set(camState.target.x + 22, camState.target.y + 34, camState.target.z + 18);
+            sun.target.position.copy(camState.target);
+            sun.target.updateMatrixWorld();
+
+            // 更新「角色被遮擋時看穿」shader uniform
+            const pNdc = tmpV.set(player.x, worldY(player.x, player.y) + 1.0, player.y).project(cam);
+            const dpr = renderer.getPixelRatio();
+            seeThrough.uPlayerPx.value.set((pNdc.x * 0.5 + 0.5) * window.innerWidth * dpr, (pNdc.y * 0.5 + 0.5) * window.innerHeight * dpr);
+            seeThrough.uPlayerDepth.value = pNdc.z * 0.5 + 0.5;
+        }
+
+        R3D.project = function (wx, wy, heightOffset = 0) {
+            const v = tmpV.set(wx, worldY(wx, wy) + heightOffset, wy).project(cam);
+            return {
+                x: (v.x * 0.5 + 0.5) * window.innerWidth,
+                y: (-v.y * 0.5 + 0.5) * window.innerHeight,
+                visible: v.z > -1 && v.z < 1
+            };
+        };
+
+        R3D.screenToWorld = function (sx, sy) {
+            const ndc = new THREE.Vector2((sx / window.innerWidth) * 2 - 1, -(sy / window.innerHeight) * 2 + 1);
+            raycaster.setFromCamera(ndc, cam);
+            const hits = raycaster.intersectObjects(pickables, false);
+            if (hits.length > 0) return { x: hits[0].point.x, y: hits[0].point.z };
+            // 退回水平面相交
+            const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -worldY(player.x, player.y));
+            const pt = new THREE.Vector3();
+            if (raycaster.ray.intersectPlane(plane, pt)) return { x: pt.x, y: pt.z };
+            return { x: player.x, y: player.y };
+        };
+
+        R3D.pickMonster = function (sx, sy) {
+            const ndc = new THREE.Vector2((sx / window.innerWidth) * 2 - 1, -(sy / window.innerHeight) * 2 + 1);
+            raycaster.setFromCamera(ndc, cam);
+            const roots = [];
+            for (const rig of monsterRigs.values()) roots.push(rig.root);
+            const hits = raycaster.intersectObjects(roots, true);
+            if (hits.length > 0) {
+                let obj = hits[0].object;
+                while (obj && obj.userData.monsterId === undefined) obj = obj.parent;
+                if (obj && obj.userData.monsterId !== undefined) {
+                    const found = monsters.find(m => m.id === obj.userData.monsterId);
+                    if (found) return found;
+                }
+            }
+            // 寬鬆螢幕距離補抓 (手機更好點)
+            let best = null, bestD = 36;
+            for (const m of monsters) {
+                const sp = R3D.project(m.x, m.y, m.isFlying ? 1.8 : 0.9);
+                if (!sp.visible) continue;
+                const d = Math.hypot(sx - sp.x, sy - sp.y);
+                if (d < bestD) { bestD = d; best = m; }
+            }
+            return best;
+        };
+
+        R3D.snapCamera = function () {
+            if (!R3D.ready) return;
+            camState.target.set(player.x, worldY(player.x, player.y) + 1.1, player.y);
+            updateCamera(1);
+        };
+
+        /* ---------------- 迷你圓形小地圖 (還原截圖右上角風格) ---------------- */
+        let minimapBg = null;
+        function buildMinimapBg() {
+            const c = document.createElement('canvas');
+            c.width = MAP_SIZE; c.height = MAP_SIZE;
+            const g = c.getContext('2d');
+            for (let y = 0; y < MAP_SIZE; y++) for (let x = 0; x < MAP_SIZE; x++) {
+                const t = mapGrid[y][x];
+                const h = heightMap[y][x];
+                if (t === 2) g.fillStyle = '#1d4e6e';
+                else if (t === 6) g.fillStyle = '#94a3b8';
+                else if (t === 1) g.fillStyle = '#646058';
+                else if (t === 5) g.fillStyle = '#7f2d24';
+                else if (t === 3) g.fillStyle = '#1b3a1e';
+                else g.fillStyle = h >= 2 ? '#4d5c3b' : (h === 1 ? '#3b4e2f' : '#2b3e24');
+                g.fillRect(x, y, 1, 1);
+            }
+            minimapBg = c;
+        }
+
+        function drawMinimap() {
+            const mc = document.getElementById('minimapCanvas');
+            if (!mc || !minimapBg) return;
+            const g = mc.getContext('2d');
+            const W = mc.width, H = mc.height;
+            g.clearRect(0, 0, W, H);
+            g.save();
+            g.beginPath(); g.arc(W / 2, H / 2, W / 2 - 2, 0, TAU); g.clip();
+            g.drawImage(minimapBg, 0, 0, W, H);
+            const sx = W / MAP_SIZE, sy = H / MAP_SIZE;
+            // 怪物紅點 / Boss 紫點
+            for (const m of monsters) {
+                g.fillStyle = m.type === 'drake' ? '#c084fc' : '#ef4444';
+                g.beginPath(); g.arc(m.x * sx, m.y * sy, m.type === 'drake' ? 3.2 : 1.7, 0, TAU); g.fill();
+            }
+            // 其他玩家藍點
+            for (const uid in remotePlayers) {
+                const rp = remotePlayers[uid];
+                g.fillStyle = '#38bdf8';
+                g.beginPath(); g.arc(rp.x * sx, rp.y * sy, 2.2, 0, TAU); g.fill();
+            }
+            // 主角金點
+            g.fillStyle = '#fde047';
+            g.beginPath(); g.arc(player.x * sx, player.y * sy, 3.0, 0, TAU); g.fill();
+            g.strokeStyle = '#000'; g.lineWidth = 1; g.stroke();
+            g.restore();
+        }
+
+        /* ---------------- 初始化與每幀渲染 ---------------- */
+        R3D.init = function () {
+            try {
+                renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: 'high-performance' });
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                renderer.toneMappingExposure = 1.05;
+
+                scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x0d121c);
+                scene.fog = new THREE.FogExp2(0x111724, 0.022);
+
+                const pmrem = new THREE.PMREMGenerator(renderer);
+                ENV = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+                scene.environment = ENV;
+                pmrem.dispose();
+
+                cam = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.2, 160);
+
+                // 黃昏暗黑史詩光影 (還原截圖氣氛)
+                hemi = new THREE.HemisphereLight(0x7c98c9, 0x2a231c, 0.65);
+                scene.add(hemi);
+
+                sun = new THREE.DirectionalLight(0xffd2a1, 1.95);
+                sun.castShadow = true;
+                sun.shadow.mapSize.set(2048, 2048);
+                sun.shadow.camera.near = 5;
+                sun.shadow.camera.far = 95;
+                const d = 22;
+                sun.shadow.camera.left = -d; sun.shadow.camera.right = d;
+                sun.shadow.camera.top = d; sun.shadow.camera.bottom = -d;
+                sun.shadow.bias = -0.0005;
+                scene.add(sun, sun.target);
+
+                fill = new THREE.DirectionalLight(0x5275b5, 0.55);
+                fill.position.set(-20, 18, -18);
+                scene.add(fill);
+
+                buildTextures();
+                initEntityMaterials();
+                buildTerrain();
+                buildVegetation();
+                buildStructures();
+                initParticleSystem();
+                buildMinimapBg();
+
+                playerRig = createKnightRig();
+                tryAttachExternalGLB('player', playerRig);
+                scene.add(playerRig.root);
+
+                // 後製輝光 (UnrealBloomPass)
+                composer = new EffectComposer(renderer);
+                composer.addPass(new RenderPass(scene, cam));
+                bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.35, 0.85);
+                composer.addPass(bloomPass);
+                composer.addPass(new OutputPass());
+
+                // 滾輪縮放 & 右鍵旋轉視角
+                window.addEventListener('wheel', (e) => {
+                    if (e.target.closest('#inventoryModal, #chatContainer, #loginModal')) return;
+                    camState.dist = clamp(camState.dist + e.deltaY * 0.01, 8, 24);
+                }, { passive: true });
+
+                let draggingCam = false, lastDragX = 0;
+                window.addEventListener('contextmenu', (e) => { if (e.target.id === 'gameCanvas' || e.target.id === 'glCanvas') e.preventDefault(); });
+                window.addEventListener('pointerdown', (e) => { if (e.button === 2) { draggingCam = true; lastDragX = e.clientX; } });
+                window.addEventListener('pointermove', (e) => {
+                    if (!draggingCam) return;
+                    camState.yaw -= (e.clientX - lastDragX) * 0.006;
+                    lastDragX = e.clientX;
+                });
+                window.addEventListener('pointerup', (e) => { if (e.button === 2) draggingCam = false; });
+
+                window.addEventListener('resize', () => {
+                    cam.aspect = window.innerWidth / window.innerHeight;
+                    cam.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                    composer.setSize(window.innerWidth, window.innerHeight);
+                });
+
+                R3D.ready = true;
+                R3D.snapCamera();
+            } catch (err) {
+                console.error('3D 引擎初始化失敗，退回 2.5D 模式:', err);
+                R3D.failed = true;
+            }
+        };
+
+        R3D.render = function (now) {
+            if (!R3D.ready) return;
+            const dt = lastNow ? Math.min(0.1, (now - lastNow) / 1000) : 0.016;
+            lastNow = now;
+            simTime += dt;
+
+            // 水波與火炬閃爍
+            if (R3D._water) {
+                R3D._water.normalMap.offset.set(simTime * 0.04, simTime * 0.025);
+            }
+            if (R3D._crystal) {
+                R3D._crystal.rotation.y = simTime * 1.4;
+                R3D._crystal.position.y = 2.9 + Math.sin(simTime * 3) * 0.14;
+            }
+            for (const tc of torches) {
+                const f = 0.85 + Math.sin(simTime * 11 + tc.seed) * 0.12 + Math.sin(simTime * 23 + tc.seed) * 0.08;
+                tc.light.intensity = tc.base * f;
+                tc.flame.scale.set(0.45 * f, 0.6 * f, 1);
+            }
+
+            syncEntities(simTime, dt);
+            for (const mx of activeMixers) mx.update(dt);
+            syncActiveSpells3D(simTime);
+            syncParticles3D();
+            syncGroundLoots3D(simTime);
+            syncClickRings3D(dt);
+
+            for (let i = vfxList.length - 1; i >= 0; i--) {
+                const v = vfxList[i];
+                v.life -= dt;
+                if (v.life <= 0) { scene.remove(v.group); vfxList.splice(i, 1); continue; }
+                v.update(dt, 1 - v.life / v.maxLife);
+            }
+
+            updateCamera(dt);
+            composer.render();
+            drawMinimap();
+        };
+    </script>
+
 </body>
 </html>
