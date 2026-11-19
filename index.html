@@ -251,6 +251,20 @@
     </div>
 
     <!-- ==========================================================
+         3.5 頂部中央：暗黑奇幻世界時鐘 ＆ 日夜光影一鍵切換列
+         ========================================================== -->
+    <div class="fixed top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 lineage-panel px-2.5 py-1 pointer-events-auto">
+        <span class="text-[11px] font-mono text-amber-200 font-bold flex items-center gap-1">
+            <i class="fa-regular fa-clock text-amber-400 text-[10px]"></i>
+            <span id="worldClockText">17:06</span>
+        </span>
+        <span class="h-3 w-[1px] bg-amber-800/70"></span>
+        <button onclick="window.cycleTimeOfDay && window.cycleTimeOfDay()" class="lineage-btn px-2 py-0.5 rounded text-[10px] font-bold text-amber-200 cursor-pointer flex items-center gap-1" title="切換：黃昏 / 白天 / 深夜 / 自動日夜循環">
+            <span id="timeModeLabel">🌇黃昏</span>
+        </button>
+    </div>
+
+    <!-- ==========================================================
          4. 右上角：極簡工具按鈕與可收折「傳送/召喚」小選單
          ========================================================== -->
     <div class="fixed top-2 right-2 z-20 flex flex-col items-end pointer-events-auto">
@@ -278,12 +292,16 @@
             <button onclick="spawnSpecificMonster('drake')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-orange-300 font-bold cursor-pointer">+黑暗之龍Boss</button>
         </div>
 
-        <!-- 經典圓形雷達小地圖 (滾輪縮放視角 / 右鍵拖曳旋轉) -->
-        <div class="hidden sm:flex flex-col items-center mt-2">
-            <div class="relative w-[108px] h-[108px] rounded-full border-2 border-[#a88649] bg-black/80 shadow-[0_4px_18px_rgba(0,0,0,0.9),inset_0_0_12px_rgba(0,0,0,0.95)] p-1">
-                <canvas id="minimapCanvas" width="96" height="96" class="w-full h-full rounded-full block"></canvas>
-                <span class="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold text-amber-300 bg-black/90 px-1 rounded border border-amber-700/70 leading-tight">N</span>
+        <!-- 經典圓形雷達小地圖 (永遠顯示目前位置、朝向箭頭、怪物與 Boss) -->
+        <div class="flex flex-col items-center mt-2">
+            <div class="relative w-[112px] h-[112px] sm:w-[126px] sm:h-[126px] rounded-full border-2 border-[#c29b53] bg-black/85 shadow-[0_6px_22px_rgba(0,0,0,0.95),inset_0_0_14px_rgba(0,0,0,0.95)] p-1">
+                <canvas id="minimapCanvas" width="120" height="120" class="w-full h-full rounded-full block"></canvas>
+                <span class="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold text-amber-300 bg-black/95 px-1.5 rounded border border-amber-600/80 leading-tight">N</span>
+                <span class="absolute -bottom-2 left-1/2 -translate-x-1/2 text-[8px] font-mono text-amber-200/95 bg-black/95 px-1.5 rounded border border-amber-800/80 leading-tight" id="minimapCoords">36,37</span>
             </div>
+            <span class="hidden sm:inline text-[9px] text-amber-200/65 mt-1.5">滾輪縮放 · 右鍵轉視角</span>
+        </div>
+    </div>
             <span class="text-[9px] text-amber-200/60 mt-0.5">滾輪縮放 · 右鍵轉視角</span>
         </div>
     </div>
@@ -3933,6 +3951,7 @@
         import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { createModelFactory } from './js/models3d.js';
+        import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, genRuneCircleTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js';
 
         const EH = 0.75;               // 每一階高度 = 0.75 世界單位
         const TAU = Math.PI * 2;
@@ -4350,13 +4369,14 @@
                 }
             }
 
+            const cobbleRough = genCobbleRoughnessTex(256);
             const group = new THREE.Group();
             const mk = (geo, mat, cast = false) => { const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; m.castShadow = cast; group.add(m); pickables.push(m); return m; };
-            mk(tops.grass.build(), new THREE.MeshStandardMaterial({ map: TEX.grass.map, normalMap: TEX.grass.normalMap, vertexColors: true, roughness: 0.95 }));
-            mk(tops.cobble.build(), new THREE.MeshStandardMaterial({ map: TEX.cobble.map, normalMap: TEX.cobble.normalMap, normalScale: new THREE.Vector2(1.3, 1.3), vertexColors: true, roughness: 0.85 }));
-            mk(tops.road.build(), new THREE.MeshStandardMaterial({ map: TEX.road.map, normalMap: TEX.road.normalMap, vertexColors: true, roughness: 0.8 }));
+            mk(tops.grass.build(), new THREE.MeshStandardMaterial({ map: TEX.grass.map, normalMap: TEX.grass.normalMap, normalScale: new THREE.Vector2(1.4, 1.4), vertexColors: true, roughness: 0.94 }));
+            mk(tops.cobble.build(), new THREE.MeshStandardMaterial({ map: TEX.cobble.map, normalMap: TEX.cobble.normalMap, normalScale: new THREE.Vector2(1.75, 1.75), roughnessMap: cobbleRough, roughness: 0.9, metalness: 0.08, vertexColors: true }));
+            mk(tops.road.build(), new THREE.MeshStandardMaterial({ map: TEX.road.map, normalMap: TEX.road.normalMap, normalScale: new THREE.Vector2(1.5, 1.5), roughnessMap: cobbleRough, roughness: 0.85, metalness: 0.08, vertexColors: true }));
             mk(tops.bed.build(), new THREE.MeshStandardMaterial({ color: 0x3a3226, map: TEX.cobble.map, vertexColors: true, roughness: 1 }));
-            mk(cliff.build(), new THREE.MeshStandardMaterial({ map: TEX.rock.map, normalMap: TEX.rock.normalMap, normalScale: new THREE.Vector2(1.6, 1.6), vertexColors: true, roughness: 0.92, side: THREE.DoubleSide }), true);
+            mk(cliff.build(), new THREE.MeshStandardMaterial({ map: TEX.rock.map, normalMap: TEX.rock.normalMap, normalScale: new THREE.Vector2(1.9, 1.9), roughnessMap: cobbleRough, vertexColors: true, roughness: 0.92, side: THREE.DoubleSide }), true);
             if (steps.length) {
                 const sm = mk(mergeGeometries(steps), new THREE.MeshStandardMaterial({ map: TEX.road.map, normalMap: TEX.road.normalMap, color: 0xb8b0a4, roughness: 0.85 }), true);
                 sm.material.map = TEX.road.map;
@@ -4415,9 +4435,15 @@
         }
 
         function buildVegetation() {
-            const leafMat = addSeeThrough(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, flatShading: true }));
-            const trunkMat = addSeeThrough(new THREE.MeshStandardMaterial({ color: 0x3b2a1e, roughness: 1, map: TEX.fur }));
-            const variants = [buildPineGeo(3), buildPineGeo(17)];
+            const pineTex = createPineTextures();
+            const leafMat = addSeeThrough(new THREE.MeshStandardMaterial({
+                map: pineTex.frondMap, alphaTest: 0.38, side: THREE.DoubleSide,
+                vertexColors: true, roughness: 0.88, metalness: 0.02
+            }));
+            const trunkMat = addSeeThrough(new THREE.MeshStandardMaterial({
+                map: pineTex.barkMap, color: 0x8a7562, roughness: 0.96
+            }));
+            const variants = [buildRealisticPineGeo(3), buildRealisticPineGeo(17)];
             const spots = [[], []];
             const rnd = rng(99);
             for (let y = 0; y < MAP_SIZE; y++) for (let x = 0; x < MAP_SIZE; x++) {
@@ -4975,27 +5001,20 @@
             }
         }
 
-        // 同步飛行中火球與觸發一次性的 3D 魔法特效
+        // 同步飛行中火球與觸發一次性的 AAA 3D 魔法特效
+        let spellVfx = null;
+        let dayNight = null;
+
         function syncActiveSpells3D(t) {
             const alive = new Set();
             for (const sp of activeSpells) {
                 alive.add(sp);
                 if (!sp._vfxSpawned) {
                     sp._vfxSpawned = true;
-                    if (sp.type === 'lightning') spawn3DLightning(sp.x, sp.y);
-                    else if (sp.type === 'tornado') spawn3DTornado(sp.x, sp.y);
+                    if (sp.type === 'lightning') spellVfx.spawn3DLightning(sp.x, sp.y, player, monsters);
+                    else if (sp.type === 'tornado') spellVfx.spawn3DTornado(sp.x, sp.y);
                     else if (sp.type === 'fireball') {
-                        const fg = new THREE.Group();
-                        const ball = new THREE.Mesh(
-                            new THREE.SphereGeometry(0.28, 12, 10),
-                            new THREE.MeshBasicMaterial({ color: new THREE.Color(3.6, 1.5, 0.3), toneMapped: false })
-                        );
-                        fg.add(ball);
-                        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: new THREE.Color(3.2, 1.2, 0.2), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
-                        halo.scale.set(1.4, 1.4, 1);
-                        fg.add(halo);
-                        const fl = new THREE.PointLight(0xfb923c, 10, 9, 2);
-                        fg.add(fl);
+                        const fg = spellVfx.createFireballMesh();
                         scene.add(fg);
                         spellVfxMap.set(sp, fg);
                     }
@@ -5004,11 +5023,20 @@
                     const fg = spellVfxMap.get(sp);
                     if (sp.exploded && !sp._boomSpawned) {
                         sp._boomSpawned = true;
-                        spawn3DFireExplosion(sp.targetX, sp.targetY);
+                        spellVfx.spawn3DFireExplosion(sp.targetX, sp.targetY);
                         if (fg) { scene.remove(fg); spellVfxMap.delete(sp); }
                     } else if (fg) {
-                        fg.position.set(sp.x, worldY(sp.x, sp.y) + 1.05, sp.y);
-                        fg.rotation.y = t * 10;
+                        fg.position.set(sp.x, worldY(sp.x, sp.y) + 1.1, sp.y);
+                        fg.rotation.y = t * 11;
+                        if (fg.userData.shell) { fg.userData.shell.rotation.x = t * 9; fg.userData.shell.rotation.z = t * 7; }
+                        // 飛行火焰尾焰粒子
+                        if (Math.random() < 0.75) {
+                            particles.push({
+                                wx: sp.x + (Math.random() - 0.5) * 0.25, wy: sp.y + (Math.random() - 0.5) * 0.25, z: 32,
+                                vx: (Math.random() - 0.5) * 18, vy: (Math.random() - 0.5) * 18, vz: 18, gravity: 25,
+                                color: Math.random() < 0.5 ? '#fde047' : '#f97316', size: 3.5, life: 0.28, maxLife: 0.28
+                            });
+                        }
                     }
                 }
             }
@@ -5119,8 +5147,9 @@
             cam.position.set(cx, cy, cz);
             cam.lookAt(camState.target);
 
-            // 讓太陽光陰影盒跟隨主角，陰影永遠銳利
-            sun.position.set(camState.target.x + 22, camState.target.y + 34, camState.target.z + 18);
+            // 讓太陽光陰影盒跟隨主角與日夜太陽方位，陰影永遠銳利
+            const so = dayNight ? dayNight.getSunOffset() : { x: 24, y: 30, z: 18 };
+            sun.position.set(camState.target.x + so.x, camState.target.y + so.y, camState.target.z + so.z);
             sun.target.position.copy(camState.target);
             sun.target.updateMatrixWorld();
 
@@ -5213,22 +5242,50 @@
             g.beginPath(); g.arc(W / 2, H / 2, W / 2 - 2, 0, TAU); g.clip();
             g.drawImage(minimapBg, 0, 0, W, H);
             const sx = W / MAP_SIZE, sy = H / MAP_SIZE;
-            // 怪物紅點 / Boss 紫點
+
+            // 建築物金色標記
+            g.fillStyle = 'rgba(217, 179, 108, 0.65)';
+            for (const b of mapBuildings) {
+                g.fillRect(b.x * sx, b.y * sy, Math.max(2, b.w * sx), Math.max(2, b.h * sy));
+            }
+            // 怪物紅點 / Boss 紫光點
             for (const m of monsters) {
                 g.fillStyle = m.type === 'drake' ? '#c084fc' : '#ef4444';
-                g.beginPath(); g.arc(m.x * sx, m.y * sy, m.type === 'drake' ? 3.2 : 1.7, 0, TAU); g.fill();
+                g.beginPath(); g.arc(m.x * sx, m.y * sy, m.type === 'drake' ? 3.8 : 2.0, 0, TAU); g.fill();
             }
-            // 其他玩家藍點
+            // 其他玩家青藍點
             for (const uid in remotePlayers) {
                 const rp = remotePlayers[uid];
                 g.fillStyle = '#38bdf8';
-                g.beginPath(); g.arc(rp.x * sx, rp.y * sy, 2.2, 0, TAU); g.fill();
+                g.beginPath(); g.arc(rp.x * sx, rp.y * sy, 2.5, 0, TAU); g.fill();
             }
-            // 主角金點
+            // 主角目前位置脈動光圈 + 朝向金箭頭
+            const px = player.x * sx, py = player.y * sy;
+            const pulse = 4.5 + Math.sin(simTime * 5) * 2.0;
+            g.strokeStyle = 'rgba(253, 224, 71, 0.75)';
+            g.lineWidth = 1.4;
+            g.beginPath(); g.arc(px, py, pulse, 0, TAU); g.stroke();
+
+            const ang = Math.atan2(player.dirY || 1, player.dirX || 0);
+            g.save();
+            g.translate(px, py);
+            g.rotate(ang);
             g.fillStyle = '#fde047';
-            g.beginPath(); g.arc(player.x * sx, player.y * sy, 3.0, 0, TAU); g.fill();
-            g.strokeStyle = '#000'; g.lineWidth = 1; g.stroke();
+            g.strokeStyle = '#000';
+            g.lineWidth = 1.2;
+            g.beginPath();
+            g.moveTo(5.5, 0); g.lineTo(-4.0, -3.6); g.lineTo(-2.0, 0); g.lineTo(-4.0, 3.6);
+            g.closePath(); g.fill(); g.stroke();
             g.restore();
+
+            // 雷達邊框暗角
+            const vig = g.createRadialGradient(W / 2, H / 2, W * 0.34, W / 2, H / 2, W * 0.5);
+            vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,0.45)');
+            g.fillStyle = vig; g.fillRect(0, 0, W, H);
+            g.restore();
+
+            const coordEl = document.getElementById('minimapCoords');
+            if (coordEl) coordEl.textContent = `${Math.floor(player.x)},${Math.floor(player.y)}`;
         }
 
         /* ---------------- 初始化與每幀渲染 ---------------- */
@@ -5287,9 +5344,15 @@
                 // 後製輝光 (UnrealBloomPass)
                 composer = new EffectComposer(renderer);
                 composer.addPass(new RenderPass(scene, cam));
-                bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.55, 0.35, 0.85);
+                bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.58, 0.36, 0.82);
                 composer.addPass(bloomPass);
                 composer.addPass(new OutputPass());
+
+                // 初始化 AAA 魔法特效引擎 與 日夜動態光影系統
+                const runeTex = genRuneCircleTex(512);
+                spellVfx = createSpellVfxEngine({ scene, TEX, runeTex, worldY, vfxList });
+                dayNight = createDayNightController({ scene, renderer, sun, hemi, fill, bloomPass, torches });
+                window.cycleTimeOfDay = () => dayNight.cycleMode();
 
                 // 滾輪縮放 & 右鍵旋轉視角
                 window.addEventListener('wheel', (e) => {
@@ -5336,9 +5399,11 @@
                 R3D._crystal.rotation.y = simTime * 1.4;
                 R3D._crystal.position.y = 2.9 + Math.sin(simTime * 3) * 0.14;
             }
+            if (dayNight) dayNight.update(dt);
+            const tMult = dayNight ? dayNight.getTorchMult() : 1.0;
             for (const tc of torches) {
                 const f = 0.85 + Math.sin(simTime * 11 + tc.seed) * 0.12 + Math.sin(simTime * 23 + tc.seed) * 0.08;
-                tc.light.intensity = tc.base * f;
+                tc.light.intensity = tc.base * f * tMult;
                 tc.flame.scale.set(0.45 * f, 0.6 * f, 1);
             }
 

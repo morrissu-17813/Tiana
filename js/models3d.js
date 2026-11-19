@@ -239,6 +239,41 @@ function createModelTextures() {
         T.dragonEmissive = canvasToTex(eg, true, 2);
     }
 
+    // (F) 符文魔劍刀身貼圖 (鋼鐵劍刃 + 中央發光符文槽)
+    {
+        const W = 128, H = 512;
+        const [dc, dg] = makeCanvas(W, H), [ec, eg] = makeCanvas(W, H);
+        const bg = dg.createLinearGradient(0, 0, W, 0);
+        bg.addColorStop(0, '#eef6ff'); bg.addColorStop(0.22, '#7c8ea3');
+        bg.addColorStop(0.5, '#2b3648'); bg.addColorStop(0.78, '#7c8ea3'); bg.addColorStop(1, '#eef6ff');
+        dg.fillStyle = bg; dg.fillRect(0, 0, W, H);
+        // 劍刃微刮痕與鍛造紋
+        dg.strokeStyle = 'rgba(255,255,255,0.22)'; dg.lineWidth = 1.5;
+        for (let y = 16; y < H; y += 22) {
+            dg.beginPath(); dg.moveTo(10, y); dg.lineTo(W - 10, y + 6); dg.stroke();
+        }
+        // 中央發光符文脈絡 (Emissive)
+        eg.fillStyle = '#000000'; eg.fillRect(0, 0, W, H);
+        const rg = eg.createLinearGradient(W * 0.34, 0, W * 0.66, 0);
+        rg.addColorStop(0, '#000000'); rg.addColorStop(0.35, '#88d8ff');
+        rg.addColorStop(0.5, '#ffffff'); rg.addColorStop(0.65, '#88d8ff'); rg.addColorStop(1, '#000000');
+        eg.fillStyle = rg; eg.fillRect(W * 0.34, 24, W * 0.32, H - 56);
+        // 橫向符文刻印與劍鋒微光
+        eg.strokeStyle = '#ffffff'; eg.lineWidth = 3;
+        for (let y = 52; y < H - 70; y += 36) {
+            eg.beginPath(); eg.moveTo(W * 0.36, y); eg.lineTo(W * 0.5, y - 12); eg.lineTo(W * 0.64, y); eg.stroke();
+            eg.beginPath(); eg.moveTo(W * 0.4, y + 10); eg.lineTo(W * 0.6, y + 10); eg.stroke();
+        }
+        // 劍刃雙緣微光
+        eg.fillStyle = 'rgba(180,235,255,0.55)';
+        eg.fillRect(0, 0, 8, H); eg.fillRect(W - 8, 0, 8, H);
+
+        T.bladeMap = canvasToTex(dc, true);
+        T.bladeMap.wrapS = T.bladeMap.wrapT = THREE.ClampToEdgeWrapping;
+        T.bladeEmissive = canvasToTex(ec, true);
+        T.bladeEmissive.wrapS = T.bladeEmissive.wrapT = THREE.ClampToEdgeWrapping;
+    }
+
     return T;
 }
 
@@ -307,8 +342,13 @@ export function createModelFactory(sharedTEX) {
             map: T.shieldMap, normalMap: T.shieldNormal, metalness: 0.78, roughness: 0.3
         });
         const bladeMat = new THREE.MeshStandardMaterial({
-            color: 0xe0f7ff, emissive: 0x38bdf8, emissiveIntensity: 2.5,
-            metalness: 0.92, roughness: 0.12, toneMapped: false
+            map: T.bladeMap, emissiveMap: T.bladeEmissive,
+            color: 0xdbeafe, emissive: 0x38bdf8, emissiveIntensity: 3.0,
+            metalness: 0.94, roughness: 0.12, toneMapped: false
+        });
+        const bladeCoreMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0.9, 2.5, 4.0), transparent: true, opacity: 0.85,
+            blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false
         });
 
         // 雕塑骨盆與層疊裙甲 (Faulds) + 深藍戰裙 (Tabard)
@@ -423,49 +463,86 @@ export function createModelFactory(sharedTEX) {
         addM(foreR, new THREE.CylinderGeometry(0.068, 0.056, 0.28, 10), armorMat, 0, -0.14, 0);
         addM(foreR, new THREE.SphereGeometry(0.055, 8, 8), M.darkSteel, 0, -0.29, 0);
 
-        // 聖劍 (精雕護手 + 菱形雙刃 + 發光符文槽)
+        // 史詩附魔符文聖劍 (精雕翼狀護手 + 鑲嵌魔晶 + 雙刃血槽 + 發光符文刃 + 環繞魔能粒子)
         const swordGroup = new THREE.Group();
         swordGroup.position.set(0, -0.3, 0.04);
         swordGroup.rotation.x = Math.PI * 0.42;
         foreR.add(swordGroup);
-        addM(swordGroup, new THREE.CylinderGeometry(0.022, 0.025, 0.28, 8), M.leather, 0, -0.12, 0);
-        addM(swordGroup, new THREE.OctahedronGeometry(0.05, 0), M.gold, 0, -0.27, 0);
-        // 弧形翼狀金護手
-        const guardShape = new THREE.Shape();
-        guardShape.moveTo(-0.22, -0.02); guardShape.quadraticCurveTo(0, 0.07, 0.22, -0.02);
-        guardShape.lineTo(0.18, 0.04); guardShape.quadraticCurveTo(0, 0.11, -0.18, 0.04);
-        guardShape.closePath();
-        const guardGeo = new THREE.ExtrudeGeometry(guardShape, { depth: 0.045, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01 });
-        guardGeo.center();
-        addM(swordGroup, guardGeo, M.gold, 0, 0.04, 0);
+        // 皮革纏柄 + 螺旋金環 + 翼狀劍首寶石
+        addM(swordGroup, new THREE.CylinderGeometry(0.024, 0.027, 0.3, 10), M.leather, 0, -0.13, 0);
+        for (let r = 0; r < 4; r++) addM(swordGroup, new THREE.TorusGeometry(0.027, 0.005, 6, 10), M.gold, 0, -0.04 - r * 0.06, 0).rotation.x = Math.PI / 2;
+        addM(swordGroup, new THREE.OctahedronGeometry(0.056, 0), M.gold, 0, -0.29, 0);
+        addM(swordGroup, new THREE.OctahedronGeometry(0.032, 0), bladeCoreMat, 0, -0.29, 0.03, false);
 
-        // 菱形截面劍身
+        // 雕花翼狀雙層金護手 + 中央魔力核心晶石
+        const guardShape = new THREE.Shape();
+        guardShape.moveTo(-0.28, -0.04); guardShape.quadraticCurveTo(-0.1, 0.09, 0, 0.07);
+        guardShape.quadraticCurveTo(0.1, 0.09, 0.28, -0.04);
+        guardShape.lineTo(0.24, 0.05); guardShape.quadraticCurveTo(0.1, 0.14, 0, 0.12);
+        guardShape.quadraticCurveTo(-0.1, 0.14, -0.24, 0.05);
+        guardShape.closePath();
+        const guardGeo = new THREE.ExtrudeGeometry(guardShape, { depth: 0.05, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012 });
+        guardGeo.center();
+        addM(swordGroup, guardGeo, M.gold, 0, 0.05, 0);
+        addM(swordGroup, new THREE.OctahedronGeometry(0.058, 0), bladeCoreMat, 0, 0.05, 0, false).scale.set(0.8, 1.15, 0.8);
+
+        // 菱形雙刃寬劍身 (含倒鉤劍鍔 + 銳利劍尖)
         const bladeShape = new THREE.Shape();
-        bladeShape.moveTo(-0.058, 0); bladeShape.lineTo(0.058, 0);
-        bladeShape.lineTo(0.036, 0.92); bladeShape.lineTo(0, 1.18); bladeShape.lineTo(-0.036, 0.92);
+        bladeShape.moveTo(-0.072, 0.02); bladeShape.lineTo(0.072, 0.02);
+        bladeShape.lineTo(0.088, 0.16); bladeShape.lineTo(0.054, 0.24);
+        bladeShape.lineTo(0.046, 1.06); bladeShape.lineTo(0, 1.36);
+        bladeShape.lineTo(-0.046, 1.06); bladeShape.lineTo(-0.054, 0.24);
+        bladeShape.lineTo(-0.088, 0.16);
         bladeShape.closePath();
-        const bladeGeo = new THREE.ExtrudeGeometry(bladeShape, { depth: 0.016, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.012, bevelSegments: 2 });
-        bladeGeo.translate(0, 0.05, -0.008);
+        const bladeGeo = new THREE.ExtrudeGeometry(bladeShape, { depth: 0.018, bevelEnabled: true, bevelThickness: 0.016, bevelSize: 0.014, bevelSegments: 2 });
+        bladeGeo.translate(0, 0.05, -0.009);
+        // 正規化 UV 讓符文貼圖沿劍身完整映射
+        const buv = bladeGeo.attributes.uv, bpos = bladeGeo.attributes.position;
+        for (let i = 0; i < bpos.count; i++) {
+            buv.setXY(i, clamp((bpos.getX(i) + 0.09) / 0.18, 0, 1), clamp(bpos.getY(i) / 1.4, 0, 1));
+        }
         addM(swordGroup, bladeGeo, bladeMat, 0, 0, 0, false);
 
+        // 劍身內核流光能量條
+        const coreStrip = addM(swordGroup, new THREE.BoxGeometry(0.024, 1.12, 0.046), bladeCoreMat, 0, 0.68, 0, false);
+
+        // 劍身環繞魔能光暈與漂浮符文火星 (6 顆動態光點)
         const swordGlow = new THREE.Sprite(new THREE.SpriteMaterial({
-            map: sharedTEX.glow, color: new THREE.Color(0.5, 2.0, 3.6),
-            blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.8, toneMapped: false
+            map: sharedTEX.glow, color: new THREE.Color(0.5, 2.2, 4.0),
+            blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.82, toneMapped: false
         }));
-        swordGlow.scale.set(0.68, 1.55, 1);
-        swordGlow.position.set(0, 0.65, 0);
+        swordGlow.scale.set(0.82, 1.85, 1);
+        swordGlow.position.set(0, 0.72, 0);
         swordGroup.add(swordGlow);
 
-        // 3D 揮刀劍氣斬擊弧
-        const slashGeo = new THREE.RingGeometry(0.7, 1.65, 24, 1, -Math.PI * 0.48, Math.PI * 0.96);
+        const bladeSparks = [];
+        for (let i = 0; i < 6; i++) {
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+                map: sharedTEX.glow, color: new THREE.Color(0.8, 2.6, 4.2),
+                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9, toneMapped: false
+            }));
+            sp.scale.set(0.16, 0.16, 1);
+            swordGroup.add(sp);
+            bladeSparks.push({ sp, phase: i * (TAU / 6), yBase: 0.25 + i * 0.17 });
+        }
+
+        // 雙層 3D 揮刀月牙劍氣弧 (內核白熱 + 外緣附魔色光刃)
+        const slashGroup = new THREE.Group();
+        slashGroup.position.set(0, 1.12, 0.28);
+        root.add(slashGroup);
         const slashMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0.6, 2.4, 3.8), transparent: true, opacity: 0,
+            color: new THREE.Color(0.6, 2.4, 4.2), transparent: true, opacity: 0,
             blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false
         });
-        const slashArc = new THREE.Mesh(slashGeo, slashMat);
+        const slashInnerMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(2.6, 3.2, 4.0), transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false
+        });
+        const slashArc = new THREE.Mesh(new THREE.RingGeometry(0.72, 1.88, 28, 1, -Math.PI * 0.52, Math.PI * 1.04), slashMat);
         slashArc.rotation.x = -Math.PI / 2;
-        slashArc.position.set(0, 1.12, 0.28);
-        root.add(slashArc);
+        const slashInner = new THREE.Mesh(new THREE.RingGeometry(1.18, 1.65, 28, 1, -Math.PI * 0.45, Math.PI * 0.9), slashInnerMat);
+        slashInner.rotation.x = -Math.PI / 2; slashInner.position.y = 0.02;
+        slashGroup.add(slashArc, slashInner);
 
         // 左手 + 精雕皇家鳶形盾 (Kite Shield)
         const armL = new THREE.Group();
@@ -512,8 +589,9 @@ export function createModelFactory(sharedTEX) {
 
         return {
             root, body, torso, head, legL, legR, armL, armR, foreR,
-            capeMesh, capeBasePos, armorMat, capeMat, bladeMat, swordGlow, swordLight,
-            slashArc, slashMat, hasteRing, braveRing, levelBeam,
+            capeMesh, capeBasePos, armorMat, capeMat, bladeMat, bladeCoreMat, coreStrip,
+            swordGlow, swordLight, bladeSparks,
+            slashGroup, slashArc, slashMat, slashInnerMat, hasteRing, braveRing, levelBeam,
             yaw: 0
         };
     }
@@ -543,18 +621,33 @@ export function createModelFactory(sharedTEX) {
         }
         pos.needsUpdate = true;
 
-        // 英雄戰姿 + 雙段連擊揮刀
+        // 劍身環繞魔能火星動畫
+        if (rig.bladeSparks) {
+            for (const b of rig.bladeSparks) {
+                const a = t * 4.5 + b.phase;
+                const y = 0.18 + ((b.yBase + t * 0.45) % 1.12);
+                const r = 0.08 + Math.sin(a * 1.7) * 0.045;
+                b.sp.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
+                const sc = 0.1 + Math.sin(t * 7 + b.phase) * 0.05;
+                b.sp.scale.set(sc, sc, 1);
+            }
+        }
+
+        // 英雄戰姿 + 雙段連擊揮刀與雙層月牙劍氣
         if (state.swingAnimTimer > 0) {
             const p = 1 - clamp(state.swingAnimTimer / 0.26, 0, 1);
             const comboDir = (state.swingCombo % 2 === 0) ? 1 : -1;
-            rig.torso.rotation.y = lerp(-0.55 * comboDir, 0.65 * comboDir, smooth(p));
-            rig.armR.rotation.x = lerp(-2.25, 0.85, smooth(p));
-            rig.armR.rotation.z = lerp(-0.55 * comboDir, 0.72 * comboDir, smooth(p));
-            rig.foreR.rotation.x = lerp(-0.2, -0.7, smooth(p));
+            rig.torso.rotation.y = lerp(-0.58 * comboDir, 0.68 * comboDir, smooth(p));
+            rig.armR.rotation.x = lerp(-2.3, 0.88, smooth(p));
+            rig.armR.rotation.z = lerp(-0.58 * comboDir, 0.75 * comboDir, smooth(p));
+            rig.foreR.rotation.x = lerp(-0.2, -0.72, smooth(p));
             rig.armL.rotation.x = -0.4;
-            rig.slashMat.opacity = Math.sin(p * Math.PI) * 0.92;
-            rig.slashArc.rotation.z = lerp(-0.95 * comboDir, 1.05 * comboDir, p);
-            rig.slashArc.scale.setScalar(0.92 + p * 0.28);
+            const env = Math.sin(p * Math.PI);
+            rig.slashMat.opacity = env * 0.92;
+            rig.slashInnerMat.opacity = env * 0.95;
+            rig.slashGroup.rotation.y = lerp(-1.1 * comboDir, 1.15 * comboDir, p);
+            rig.slashGroup.rotation.z = comboDir * 0.22;
+            rig.slashGroup.scale.setScalar(0.9 + p * 0.34);
         } else {
             rig.torso.rotation.y = lerp(rig.torso.rotation.y, 0.14, clamp(dt * 10, 0, 1));
             rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.35 - stride * 0.38, clamp(dt * 12, 0, 1));
@@ -562,18 +655,23 @@ export function createModelFactory(sharedTEX) {
             rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.45, clamp(dt * 12, 0, 1));
             rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.28 + stride * 0.3, clamp(dt * 12, 0, 1));
             rig.slashMat.opacity = 0;
+            rig.slashInnerMat.opacity = 0;
         }
 
         if (state.armorTint) rig.armorMat.color.set(state.armorTint);
         if (state.capeColor) rig.capeMat.color.set(state.capeColor);
         if (state.bladeColor) {
             const bc = new THREE.Color(state.bladeColor);
-            const boost = 1.8 + Math.min(10, state.weaponEnchant || 0) * 0.25;
+            const boost = 2.0 + Math.min(10, state.weaponEnchant || 0) * 0.28;
             rig.bladeMat.emissive.copy(bc);
             rig.bladeMat.emissiveIntensity = boost;
-            rig.swordGlow.material.color.copy(bc).multiplyScalar(boost);
+            rig.bladeCoreMat.color.copy(bc).multiplyScalar(boost * 1.15);
+            rig.swordGlow.material.color.copy(bc).multiplyScalar(boost * 0.95);
             rig.swordLight.color.copy(bc);
-            rig.slashMat.color.copy(bc).multiplyScalar(2.6);
+            rig.slashMat.color.copy(bc).multiplyScalar(2.8);
+            if (rig.bladeSparks) {
+                for (const b of rig.bladeSparks) b.sp.material.color.copy(bc).multiplyScalar(2.6);
+            }
         }
 
         if (rig.hasteRing) { rig.hasteRing.visible = state.hasteTimer > 0; if (rig.hasteRing.visible) rig.hasteRing.rotation.z = t * 1.9; }
