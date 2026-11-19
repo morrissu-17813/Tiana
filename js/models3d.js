@@ -772,13 +772,37 @@ export function createModelFactory(sharedTEX) {
         addM(mageHead, new THREE.TorusGeometry(0.128, 0.015, 6, 16), mageGoldTrim, 0, 0.15, 0.01).rotation.x = Math.PI / 2;
         addM(mageHead, new THREE.OctahedronGeometry(0.036, 0), M.purpleGlow, 0, 0.17, 0.135, false);
 
-        // 可動左手臂 (走路自然擺動、施法時向前舉掌聚能)
+        // 可動左手臂 + 精緻暗黑精裝魔法書 (Grimoire，待機托書、施法舉書綻放微光)
         const mageArmL = new THREE.Group();
         mageArmL.position.set(-0.22, 0.56, 0.02);
         mageTorso.add(mageArmL);
         addM(mageArmL, new THREE.TorusGeometry(0.054, 0.012, 6, 10), mageGoldTrim, -0.02, -0.02, 0).rotation.x = Math.PI / 2;
         addM(mageArmL, new THREE.CapsuleGeometry(0.046, 0.24, 8, 10), M.skin, -0.02, -0.16, 0.02).rotation.z = -0.14;
-        addM(mageArmL, new THREE.CapsuleGeometry(0.04, 0.22, 8, 10), M.skin, -0.04, -0.36, 0.08).rotation.x = -0.38;
+        addM(mageArmL, new THREE.CapsuleGeometry(0.04, 0.22, 8, 10), M.skin, -0.04, -0.35, 0.08).rotation.x = -0.42;
+
+        // 打開的暗紅金邊魔法典籍
+        const mageBook = new THREE.Group();
+        mageBook.position.set(-0.04, -0.44, 0.22);
+        mageBook.rotation.set(0.35, 0.28, -0.12);
+        mageArmL.add(mageBook);
+        const bookCoverMat = new THREE.MeshStandardMaterial({ color: 0x3b121c, roughness: 0.72, metalness: 0.2 });
+        const pageMat = new THREE.MeshStandardMaterial({ color: 0xe8dcc4, roughness: 0.9 });
+        // 書脊與左右展開書頁
+        addM(mageBook, new THREE.BoxGeometry(0.03, 0.025, 0.26), M.gold, 0, -0.008, 0);
+        for (const s of [-1, 1]) {
+            const cov = addM(mageBook, new THREE.BoxGeometry(0.14, 0.016, 0.26), bookCoverMat, s * 0.072, 0.004, 0);
+            cov.rotation.z = s * 0.22;
+            const pg = addM(mageBook, new THREE.BoxGeometry(0.125, 0.02, 0.23), pageMat, s * 0.068, 0.018, 0);
+            pg.rotation.z = s * 0.22;
+        }
+        const bookGlowMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(1.4, 0.7, 3.2), transparent: true, opacity: 0.18,
+            blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false
+        });
+        const bookGlow = new THREE.Mesh(new THREE.PlaneGeometry(0.24, 0.2), bookGlowMat);
+        bookGlow.rotation.x = -Math.PI / 2;
+        bookGlow.position.set(0, 0.055, 0);
+        mageBook.add(bookGlow);
 
         // 可動右手臂 + 皇家魔導法杖 + 杖尖施法聚能光球
         const mageArmR = new THREE.Group();
@@ -814,7 +838,7 @@ export function createModelFactory(sharedTEX) {
 
         return {
             root, body, knightMeshGroup, mageMeshGroup, mageStaffHolder,
-            mageLegL, mageLegR, mageTorso, mageHead, mageHair, mageArmL, mageArmR, staffCastGlow,
+            mageLegL, mageLegR, mageTorso, mageHead, mageHair, mageArmL, mageArmR, mageBook, bookGlowMat, staffCastGlow,
             torso, head, polyHeads, legL, legR, armL, armR, foreR, foreL,
             shield, offDagger, weaponModels,
             capeMesh, capeBasePos, armorMat, armorAuraMat, armorAuraMeshes, capeMat, bladeMat, bladeCoreMat, bladeAuraMat,
@@ -953,42 +977,48 @@ export function createModelFactory(sharedTEX) {
                 rig.mageHair.rotation.x = (state.isMoving ? 0.35 : 0.08) + Math.sin(t * 4.5) * 0.08;
                 rig.mageHair.rotation.z = Math.sin(t * 3.2) * 0.06;
 
-                // 2. 施法舉杖丟光彈/法術 vs 近距離緩慢揮舞長法杖 (無劍氣！)
+                // 2. 施法舉杖＆翻舉魔法書 vs 近距離護書揮杖 vs 自然托書待機/優雅邁步
                 if (state.castAnimTimer > 0) {
                     const cp = 1 - clamp(state.castAnimTimer / 0.42, 0, 1);
                     const env = Math.sin(cp * Math.PI);
-                    rig.mageTorso.rotation.x = lerp(-0.14, 0.12, smooth(cp));
-                    rig.mageTorso.rotation.y = lerp(-0.22, 0.28, smooth(cp));
-                    rig.mageArmR.rotation.x = lerp(-1.85, -0.45, smooth(cp));
-                    rig.mageArmR.rotation.z = lerp(0.28, -0.18, smooth(cp));
-                    rig.mageStaffHolder.rotation.x = lerp(0.1, 0.85, smooth(cp));
-                    rig.mageArmL.rotation.x = lerp(-1.15, -0.65, smooth(cp));
-                    rig.mageArmL.rotation.z = -0.32;
+                    rig.mageTorso.rotation.x = lerp(-0.12, 0.1, smooth(cp));
+                    rig.mageTorso.rotation.y = lerp(-0.2, 0.24, smooth(cp));
+                    rig.mageArmR.rotation.x = lerp(-1.75, -0.45, smooth(cp));
+                    rig.mageArmR.rotation.z = lerp(0.24, -0.16, smooth(cp));
+                    rig.mageStaffHolder.rotation.x = lerp(0.1, 0.78, smooth(cp));
+                    // 左手穩穩托舉展開的魔法書向前詠唱
+                    rig.mageArmL.rotation.x = lerp(-1.15, -0.92, smooth(cp));
+                    rig.mageArmL.rotation.z = -0.18;
+                    if (rig.bookGlowMat) rig.bookGlowMat.opacity = 0.25 + env * 0.7;
                     if (rig.staffCastGlow) {
                         rig.staffCastGlow.material.opacity = env * 0.9;
                         const gs = 0.38 + env * 0.65;
                         rig.staffCastGlow.scale.set(gs, gs, 1);
                     }
                 } else if (state.swingAnimTimer > 0) {
-                    // 近距離緩慢揮舞長法杖 (純粹法杖揮動，完全不帶劍氣)
+                    // 近距離緩慢揮舞長法杖，左手自然收書護胸
                     const sp = 1 - clamp(state.swingAnimTimer / 0.46, 0, 1);
                     const env = Math.sin(sp * Math.PI);
                     const cdir = (state.swingCombo % 2 === 0) ? 1 : -1;
-                    rig.mageTorso.rotation.y = lerp(-0.55 * cdir, 0.65 * cdir, smooth(sp));
-                    rig.mageTorso.rotation.x = env * 0.16;
-                    rig.mageArmR.rotation.x = lerp(-1.85, 0.65, smooth(sp));
-                    rig.mageArmR.rotation.z = lerp(-0.5 * cdir, 0.65 * cdir, smooth(sp));
-                    rig.mageStaffHolder.rotation.x = 0.95;
-                    rig.mageArmL.rotation.x = -0.35;
+                    rig.mageTorso.rotation.y = lerp(-0.5 * cdir, 0.6 * cdir, smooth(sp));
+                    rig.mageTorso.rotation.x = env * 0.14;
+                    rig.mageArmR.rotation.x = lerp(-1.75, 0.6, smooth(sp));
+                    rig.mageArmR.rotation.z = lerp(-0.45 * cdir, 0.6 * cdir, smooth(sp));
+                    rig.mageStaffHolder.rotation.x = 0.9;
+                    rig.mageArmL.rotation.x = -0.88;
+                    rig.mageArmL.rotation.z = 0.18;
+                    if (rig.bookGlowMat) rig.bookGlowMat.opacity = 0.18;
                     if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = env * 0.4;
                 } else {
-                    rig.mageTorso.rotation.x = lerp(rig.mageTorso.rotation.x, state.isMoving ? 0.06 : Math.sin(t * 2.2) * 0.025, clamp(dt * 10, 0, 1));
-                    rig.mageTorso.rotation.y = lerp(rig.mageTorso.rotation.y, Math.sin(t * 1.8) * 0.05 + stride * 0.12, clamp(dt * 10, 0, 1));
-                    rig.mageArmR.rotation.x = lerp(rig.mageArmR.rotation.x, -0.12 - stride * 0.2, clamp(dt * 10, 0, 1));
+                    // 自然待機＆行走：右手持長杖輕擺、左手托著魔法書隨步伐輕微律動
+                    rig.mageTorso.rotation.x = lerp(rig.mageTorso.rotation.x, state.isMoving ? 0.05 : Math.sin(t * 2.2) * 0.02, clamp(dt * 10, 0, 1));
+                    rig.mageTorso.rotation.y = lerp(rig.mageTorso.rotation.y, Math.sin(t * 1.8) * 0.04 + stride * 0.09, clamp(dt * 10, 0, 1));
+                    rig.mageArmR.rotation.x = lerp(rig.mageArmR.rotation.x, -0.14 - stride * 0.18, clamp(dt * 10, 0, 1));
                     rig.mageArmR.rotation.z = lerp(rig.mageArmR.rotation.z, 0.08, clamp(dt * 10, 0, 1));
                     rig.mageStaffHolder.rotation.x = lerp(rig.mageStaffHolder.rotation.x, 0.06, clamp(dt * 10, 0, 1));
-                    rig.mageArmL.rotation.x = lerp(rig.mageArmL.rotation.x, -0.18 + stride * 0.36, clamp(dt * 10, 0, 1));
-                    rig.mageArmL.rotation.z = lerp(rig.mageArmL.rotation.z, -0.1, clamp(dt * 10, 0, 1));
+                    rig.mageArmL.rotation.x = lerp(rig.mageArmL.rotation.x, -0.78 + stride * 0.1 + Math.sin(t * 2.2) * 0.03, clamp(dt * 10, 0, 1));
+                    rig.mageArmL.rotation.z = lerp(rig.mageArmL.rotation.z, -0.06, clamp(dt * 10, 0, 1));
+                    if (rig.bookGlowMat) rig.bookGlowMat.opacity = 0.14 + Math.sin(t * 3.0) * 0.05;
                     if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = 0;
                 }
             }

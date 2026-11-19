@@ -136,47 +136,55 @@
 <body class="relative select-none overflow-hidden">
 
     <!-- ==========================================================
-         1. 極簡高質感《天堂》石雕火炬風格登入與角色記憶讀取視窗
+         1. 天堂暗黑曜石風格登入與職業選擇視窗 (無多餘 Emoji，沉穩暗黑質感)
          ========================================================== -->
-    <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4">
-        <div class="relative w-full max-w-[350px] rounded-md p-6 flex flex-col items-center text-center border border-[#7c6135] bg-gradient-to-b from-[#161310] via-[#0e0c0a] to-[#080706] shadow-[0_20px_60px_rgba(0,0,0,0.98),inset_0_1px_0_rgba(255,220,140,0.18)]">
-            <!-- 四角古典銅釘裝飾 -->
-            <div class="absolute top-2 left-2 w-1.5 h-1.5 rounded-full bg-amber-600/70"></div>
-            <div class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-600/70"></div>
-            <div class="absolute bottom-2 left-2 w-1.5 h-1.5 rounded-full bg-amber-600/70"></div>
-            <div class="absolute bottom-2 right-2 w-1.5 h-1.5 rounded-full bg-amber-600/70"></div>
+    <div id="loginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-[#040405]/95 backdrop-blur-md p-4">
+        <div class="relative w-full max-w-[368px] rounded-sm p-6 flex flex-col items-center text-center border border-[#745930] bg-gradient-to-b from-[#110f0d] via-[#090807] to-[#040404] shadow-[0_24px_70px_rgba(0,0,0,0.98),inset_0_0_0_1px_rgba(212,175,100,0.12)]">
+            <!-- 四角古銅鉚釘 -->
+            <div class="absolute top-2 left-2 w-1.5 h-1.5 rounded-full bg-[#8f6e39]/80"></div>
+            <div class="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-[#8f6e39]/80"></div>
+            <div class="absolute bottom-2 left-2 w-1.5 h-1.5 rounded-full bg-[#8f6e39]/80"></div>
+            <div class="absolute bottom-2 right-2 w-1.5 h-1.5 rounded-full bg-[#8f6e39]/80"></div>
 
-            <!-- 頂部古典徽章 -->
-            <div class="w-10 h-10 rounded-full border border-amber-500/50 bg-gradient-to-b from-amber-900/40 to-black flex items-center justify-center mb-2 shadow-inner">
-                <i class="fa-solid fa-shield-halved text-amber-400 text-base"></i>
+            <!-- 頂部古典暗金紋章 -->
+            <div class="w-11 h-11 rounded-full border border-[#8f6e39]/60 bg-gradient-to-b from-[#231b11] to-[#070605] flex items-center justify-center mb-2.5 shadow-[inset_0_2px_8px_rgba(0,0,0,0.9)]">
+                <i class="fa-solid fa-crown text-[#d4aa5a] text-sm"></i>
             </div>
 
-            <!-- 遊戲主標題 (移除雙括號，高質感金屬浮雕字體) -->
-            <h1 class="serif-font text-4xl font-black tracking-widest title-emboss mb-0.5">
+            <!-- 遊戲主標題 -->
+            <h1 class="serif-font text-4xl font-black tracking-[0.2em] title-emboss mb-1">
                 天啊~~
             </h1>
-            <p class="text-[11px] tracking-[0.22em] text-amber-200/50 uppercase mb-5">
-                Lineage 3D Dark Fantasy World
+            <p class="text-[10px] tracking-[0.28em] text-[#9b8460] uppercase mb-5 border-b border-[#3a2c1a] pb-3 w-full">
+                ADEN CHRONICLES · DARK REALM
             </p>
 
-            <!-- 歷史創角記憶快選區 (若曾有存檔自動顯示) -->
+            <!-- 歷史創角記憶快選區 -->
             <div id="savedCharsContainer" class="hidden w-full mb-3.5 text-left">
-                <div class="text-[10px] text-amber-300/70 mb-1 flex items-center justify-between">
-                    <span><i class="fa-solid fa-clock-rotate-left mr-1"></i>選擇已儲存的角色進度：</span>
-                    <span class="text-[10px] text-emerald-400">自動記憶等級與裝備</span>
+                <div class="text-[10px] text-[#a9926b] mb-1.5 flex items-center justify-between">
+                    <span><i class="fa-solid fa-clock-rotate-left mr-1 text-[#8f6e39]"></i>既有角色紀錄</span>
+                    <span class="text-[9px] text-[#7c6e58]">自動同步等級與裝備</span>
                 </div>
-                <div id="savedCharsList" class="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto p-1 bg-black/60 rounded border border-amber-900/50"></div>
+                <div id="savedCharsList" class="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto p-1.5 bg-[#060504] rounded-sm border border-[#3a2c1a]"></div>
             </div>
 
-            <!-- 職業選擇 (近戰騎士 vs 遠距女性皇家法師) -->
-            <div class="w-full text-left mb-3">
-                <div class="text-[11px] text-amber-200/80 font-medium mb-1">選擇職業</div>
-                <div class="grid grid-cols-2 gap-1.5">
-                    <button type="button" id="classBtn_knight" onclick="selectLoginClass('knight')" class="lineage-btn py-1.5 px-2 rounded text-[11px] font-bold border-amber-400 text-amber-200 cursor-pointer flex items-center justify-center gap-1">
-                        <span>🛡️</span><span>亞丁騎士</span>
+            <!-- 職業選擇：魔騎士 / 法師 -->
+            <div class="w-full text-left mb-3.5">
+                <div class="text-[10px] tracking-widest text-[#a9926b] uppercase mb-1.5">選擇職業 CLASS</div>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" id="classBtn_knight" onclick="selectLoginClass('knight')" class="py-2 px-2.5 rounded-sm text-left border border-[#b58c44] bg-gradient-to-b from-[#241b11] to-[#100c08] text-[#ebd29a] cursor-pointer transition-all shadow-inner">
+                        <div class="flex items-center gap-1.5 text-xs font-bold serif-font tracking-wider">
+                            <i class="fa-solid fa-khanda text-[#d4aa5a] text-[11px]"></i>
+                            <span>魔騎士</span>
+                        </div>
+                        <div class="text-[9px] text-[#9a8668] mt-0.5">近戰劍盾・元素劍技</div>
                     </button>
-                    <button type="button" id="classBtn_mage" onclick="selectLoginClass('mage')" class="lineage-btn py-1.5 px-2 rounded text-[11px] font-bold border-stone-700 text-stone-400 cursor-pointer flex items-center justify-center gap-1">
-                        <span>🔮</span><span>皇家女法師</span>
+                    <button type="button" id="classBtn_mage" onclick="selectLoginClass('mage')" class="py-2 px-2.5 rounded-sm text-left border border-[#322920] bg-[#090807] text-[#8a7d6c] hover:border-[#6e5633] cursor-pointer transition-all">
+                        <div class="flex items-center gap-1.5 text-xs font-bold serif-font tracking-wider">
+                            <i class="fa-solid fa-book-open text-[#9a84a8] text-[11px]"></i>
+                            <span>法師</span>
+                        </div>
+                        <div class="text-[9px] text-[#72675a] mt-0.5">遠程法杖・元素詠唱</div>
                     </button>
                 </div>
             </div>
@@ -184,32 +192,37 @@
             <!-- 角色 ID 輸入框 -->
             <div class="w-full text-left mb-4">
                 <div class="flex justify-between items-center mb-1">
-                    <label class="text-[11px] text-amber-200/80 font-medium">角色名稱 (ID)</label>
-                    <span id="charPreviewTag" class="text-[10px] text-emerald-400 font-mono">輸入既有ID可接續進度</span>
+                    <label class="text-[10px] tracking-wider text-[#a9926b] uppercase">角色名稱 ID</label>
+                    <span id="charPreviewTag" class="text-[10px] text-[#9b8460] font-mono">輸入既有 ID 可接續進度</span>
                 </div>
                 <div class="relative">
-                    <input id="nicknameInput" type="text" maxlength="12" placeholder="請輸入角色 ID..."
+                    <input id="nicknameInput" type="text" maxlength="12" placeholder="輸入角色名稱..."
                         oninput="onNicknameInputChanged(this.value)"
-                        class="w-full bg-[#070605] border border-[#6b532c] focus:border-amber-400 rounded px-3 py-2 text-sm text-amber-100 outline-none font-bold tracking-wide transition-colors">
+                        class="w-full bg-[#050404] border border-[#4c3a21] focus:border-[#c99e52] rounded-sm px-3 py-2 text-sm text-[#f1e1be] placeholder-[#524638] outline-none font-semibold tracking-wider transition-colors">
                 </div>
             </div>
 
-            <button id="enterWorldBtn" onclick="enterMultiplayerWorld()" class="lineage-btn w-full py-2.5 rounded text-sm font-bold tracking-[0.2em] text-amber-200 border-amber-500/80 cursor-pointer shadow-lg">
-                登入亞丁大陸
+            <button id="enterWorldBtn" onclick="enterMultiplayerWorld()" class="w-full py-2.5 rounded-sm text-sm serif-font font-bold tracking-[0.26em] text-[#f3dca4] border border-[#9d7a3c] bg-gradient-to-b from-[#332515] via-[#21170c] to-[#140e07] hover:from-[#47341e] hover:border-[#dfb668] cursor-pointer shadow-[0_6px_20px_rgba(0,0,0,0.9)] transition-all">
+                進入亞丁大陸
             </button>
-            <div class="w-full flex gap-1.5 mt-2">
-                <button type="button" onclick="exportCharacterJson()" class="lineage-btn flex-1 py-1 rounded text-[10px] text-emerald-300 cursor-pointer">💾 匯出存檔(JSON)</button>
-                <button type="button" onclick="document.getElementById('importJsonInput').click()" class="lineage-btn flex-1 py-1 rounded text-[10px] text-sky-300 cursor-pointer">📂 匯入存檔(JSON)</button>
+
+            <div class="w-full flex gap-2 mt-2.5">
+                <button type="button" onclick="exportCharacterJson()" class="flex-1 py-1.5 rounded-sm text-[10px] tracking-wider text-[#a89371] border border-[#342819] bg-[#0a0907] hover:border-[#7c5f32] hover:text-[#ebd29a] cursor-pointer transition-colors">
+                    <i class="fa-solid fa-download mr-1 text-[9px]"></i>匯出存檔
+                </button>
+                <button type="button" onclick="document.getElementById('importJsonInput').click()" class="flex-1 py-1.5 rounded-sm text-[10px] tracking-wider text-[#a89371] border border-[#342819] bg-[#0a0907] hover:border-[#7c5f32] hover:text-[#ebd29a] cursor-pointer transition-colors">
+                    <i class="fa-solid fa-upload mr-1 text-[9px]"></i>匯入存檔
+                </button>
                 <input id="importJsonInput" type="file" accept=".json,application/json" class="hidden" onchange="importCharacterJson(this.files[0])">
             </div>
 
             <!-- 底部極簡連線狀態 -->
-            <div class="w-full mt-4 pt-2.5 border-t border-amber-950/60 flex items-center justify-between text-[10px] text-stone-400">
+            <div class="w-full mt-4 pt-2.5 border-t border-[#2b2116] flex items-center justify-between text-[10px] text-[#7a6d5c]">
                 <span class="flex items-center gap-1.5">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span>01. 奇岩王城</span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500/90"></span>
+                    <span>01 · 奇岩王城</span>
                 </span>
-                <span id="loginOnlineHint" class="text-amber-300/70">全球連線就緒</span>
+                <span id="loginOnlineHint" class="text-[#a89068]">伺服器連線就緒</span>
             </div>
         </div>
     </div>
@@ -1286,8 +1299,12 @@
             selectedLoginClass = cls === 'mage' ? 'mage' : 'knight';
             const kb = document.getElementById('classBtn_knight');
             const mb = document.getElementById('classBtn_mage');
-            if (kb) kb.className = 'lineage-btn py-1.5 px-2 rounded text-[11px] font-bold cursor-pointer flex items-center justify-center gap-1 ' + (selectedLoginClass === 'knight' ? 'border-amber-400 text-amber-200 ring-1 ring-amber-400' : 'border-stone-700 text-stone-400');
-            if (mb) mb.className = 'lineage-btn py-1.5 px-2 rounded text-[11px] font-bold cursor-pointer flex items-center justify-center gap-1 ' + (selectedLoginClass === 'mage' ? 'border-purple-400 text-purple-200 ring-1 ring-purple-400' : 'border-stone-700 text-stone-400');
+            const activeStyle = 'py-2 px-2.5 rounded-sm text-left border border-[#b58c44] bg-gradient-to-b from-[#241b11] to-[#100c08] text-[#ebd29a] cursor-pointer transition-all shadow-inner';
+            const idleStyle = 'py-2 px-2.5 rounded-sm text-left border border-[#322920] bg-[#090807] text-[#8a7d6c] hover:border-[#6e5633] cursor-pointer transition-all';
+            if (kb) kb.className = selectedLoginClass === 'knight' ? activeStyle : idleStyle;
+            if (mb) mb.className = selectedLoginClass === 'mage' ? activeStyle : idleStyle;
+            const inp = document.getElementById('nicknameInput');
+            if (inp) onNicknameInputChanged(inp.value);
         }
         window.selectLoginClass = selectLoginClass;
 
@@ -1598,13 +1615,15 @@
             }
             const existing = loadCharacterDataById(clean);
             if (existing) {
-                tag.textContent = `⚡ 讀取存檔：Lv.${existing.level} (${existing.gold.toLocaleString()}金幣)`;
-                tag.className = 'text-[10px] text-emerald-400 font-bold font-mono';
-                if (btn) btn.textContent = `接續角色 Lv.${existing.level} 登入`;
+                const clsName = existing.charClass === 'mage' ? '法師' : '魔騎士';
+                tag.textContent = `既有紀錄 · Lv.${existing.level} ${clsName}`;
+                tag.className = 'text-[10px] text-emerald-400 font-mono';
+                if (btn) btn.textContent = `接續 Lv.${existing.level} ${clsName} 登入`;
             } else {
-                tag.textContent = '✨ 新創角色 (Lv.1 皇家騎士)';
-                tag.className = 'text-[10px] text-amber-300 font-mono';
-                if (btn) btn.textContent = '創立角色進入亞丁';
+                const clsName = selectedLoginClass === 'mage' ? '法師' : '魔騎士';
+                tag.textContent = `建立新角色 · Lv.1 ${clsName}`;
+                tag.className = 'text-[10px] text-[#c9a45e] font-mono';
+                if (btn) btn.textContent = `以${clsName}進入亞丁`;
             }
         }
         window.onNicknameInputChanged = onNicknameInputChanged;
@@ -5029,7 +5048,7 @@
                 client.on('connect', () => {
                     client.subscribe(TOPIC);
                     client.subscribe(WORLD_STATE_TOPIC);
-                    if (hintEl) hintEl.textContent = '🟢 全球同步世界已連線';
+                    if (hintEl) hintEl.textContent = '同服世界已連線';
                     if (netLabel) netLabel.textContent = '●同服連線';
                 });
 
