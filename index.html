@@ -1398,6 +1398,7 @@
             attackTarget: null,
             attackCooldown: 0,
             swingAnimTimer: 0,
+            castAnimTimer: 0,
             swingCombo: 0,
             jumpZ: 0,
             jumpVel: 0,
@@ -1840,6 +1841,7 @@
 
             player.mp -= cfg.mpCost;
             player.spellCooldowns[spellKey] = cfg.cd;
+            player.castAnimTimer = 0.46;
             player.swingAnimTimer = 0.28;
 
             const stats = getPlayerStats();
@@ -2785,16 +2787,31 @@
 
             if (player.attackTarget) {
                 player.autoStatusText = `${player.attackTarget.name}`;
-                if (player.autoMagic && player.mp >= 15) {
+                if (player.autoMagic && player.mp >= 14) {
                     const distToTarget = Math.hypot(player.attackTarget.x - player.x, player.attackTarget.y - player.y);
-                    const nearbyCount = monsters.filter(m => m.hp > 0 && Math.hypot(m.x - player.x, m.y - player.y) <= 3.3).length;
+                    const nearbyCount = monsters.filter(m => m.hp > 0 && Math.hypot(m.x - player.x, m.y - player.y) <= 3.5).length;
 
-                    if (nearbyCount >= 2 && player.spellCooldowns.tornado <= 0 && player.mp >= 22) {
-                        castSpell('tornado', true);
-                    } else if (distToTarget <= 6.2 && player.spellCooldowns.lightning <= 0 && player.mp >= 18) {
-                        castSpell('lightning', true);
-                    } else if (distToTarget <= 6.2 && player.spellCooldowns.fireball <= 0 && player.mp >= 15) {
-                        castSpell('fireball', true);
+                    if (player.charClass === 'mage') {
+                        // 皇家女法師專屬自動魔攻：治癒 / 雷電操術 / 落石術 / 烈焰術 / 冰錐！
+                        if (player.hp < player.maxHp * 0.72 && player.spellCooldowns.heal <= 0 && player.mp >= 18) {
+                            castSpell('heal', true);
+                        } else if (distToTarget <= 7.6 && player.spellCooldowns.void_thunder <= 0 && player.mp >= 35) {
+                            castSpell('void_thunder', true);
+                        } else if (distToTarget <= 7.0 && player.spellCooldowns.meteor_rock <= 0 && player.mp >= 24) {
+                            castSpell('meteor_rock', true);
+                        } else if (distToTarget <= 7.2 && player.spellCooldowns.flame_line <= 0 && player.mp >= 16) {
+                            castSpell('flame_line', true);
+                        } else if (distToTarget <= 7.4 && player.spellCooldowns.ice_lance <= 0 && player.mp >= 14) {
+                            castSpell('ice_lance', true);
+                        }
+                    } else {
+                        if (nearbyCount >= 2 && player.spellCooldowns.tornado <= 0 && player.mp >= 22) {
+                            castSpell('tornado', true);
+                        } else if (distToTarget <= 6.2 && player.spellCooldowns.lightning <= 0 && player.mp >= 18) {
+                            castSpell('lightning', true);
+                        } else if (distToTarget <= 6.2 && player.spellCooldowns.fireball <= 0 && player.mp >= 15) {
+                            castSpell('fireball', true);
+                        }
                     }
                 }
             } else {
@@ -2953,9 +2970,29 @@
 
         function performPlayerAttack(target) {
             if (!target || player.attackCooldown > 0) return;
+            if (player.frozenTimer > 0) return;
 
-            player.attackCooldown = getPlayerAttackInterval();
-            player.swingAnimTimer = 0.26;
+            const distToTarget = Math.hypot(target.x - player.x, target.y - player.y);
+            const isMageStaff = (player.charClass === 'mage' && !player.polyForm);
+            const isMageMeleeBonk = isMageStaff && distToTarget <= 2.3;
+
+            // 法師近距離揮舞權杖攻速明顯較慢、揮擊動作沉重流暢；遠距離則揮杖施放魔彈！
+            player.attackCooldown = getPlayerAttackInterval() * (isMageMeleeBonk ? 1.48 : 1.0);
+            if (isMageStaff && !isMageMeleeBonk) {
+                player.castAnimTimer = 0.38;
+                player.swingAnimTimer = 0;
+                // 遠距普攻魔杖飛彈軌跡粒子
+                for (let k = 1; k <= 6; k++) {
+                    const f = k / 6;
+                    particles.push({
+                        wx: player.x + (target.x - player.x) * f, wy: player.y + (target.y - player.y) * f, z: 32,
+                        vx: (Math.random() - 0.5) * 14, vy: (Math.random() - 0.5) * 14, vz: 8, gravity: 18,
+                        color: '#c084fc', size: 3.2, life: 0.22, maxLife: 0.22
+                    });
+                }
+            } else {
+                player.swingAnimTimer = isMageMeleeBonk ? 0.44 : 0.26;
+            }
             player.swingCombo = (player.swingCombo + 1) % 2;
 
             player.dirX = target.x - player.x;
@@ -3401,6 +3438,7 @@
         function updateGame(dt) {
             if (player.attackCooldown > 0) player.attackCooldown = Math.max(0, player.attackCooldown - dt);
             if (player.swingAnimTimer > 0) player.swingAnimTimer = Math.max(0, player.swingAnimTimer - dt);
+            if (player.castAnimTimer > 0) player.castAnimTimer = Math.max(0, player.castAnimTimer - dt);
 
             // 跳躍拋物線物理
             if (player.jumpZ > 0 || player.jumpVel > 0) {
@@ -6161,7 +6199,7 @@
             animateKnight(playerRig, {
                 dirX: player.dirX, dirY: player.dirY,
                 isMoving: player.isMoving, walkCycle: player.walkCycle,
-                swingAnimTimer: player.swingAnimTimer, swingCombo: player.swingCombo,
+                swingAnimTimer: player.swingAnimTimer, castAnimTimer: player.castAnimTimer || 0, swingCombo: player.swingCombo,
                 armorTint: player.equipped.armor ? (player.equipped.armor.armorTint || '#cbd5e1') : '#64748b',
                 armorEnchant: getItemEnchantNum(player.equipped.armor),
                 capeColor: player.equipped.cloak ? (player.equipped.cloak.capeColor || '#991b1b') : '#7f1d1d',

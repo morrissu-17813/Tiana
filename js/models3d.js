@@ -707,7 +707,7 @@ export function createModelFactory(sharedTEX) {
         swordLight.position.set(0.45, 1.35, 0.6);
         root.add(swordLight);
 
-        // 雕塑女性皇家法師外觀 (S型曼妙曲線、深V高衩華麗法袍、飽滿上圍、飄逸長髮)
+        // 雕塑女性皇家法師外觀 (全可動關節：雙腿/腰身/雙臂/飄逸長髮/魔杖施法光球，完全不僵硬！)
         const mageMeshGroup = new THREE.Group();
         mageMeshGroup.visible = false;
         body.add(mageMeshGroup);
@@ -717,73 +717,102 @@ export function createModelFactory(sharedTEX) {
         });
         const mageGoldTrim = M.gold;
 
-        // 纖細修長雙腿 + 高筒法師長靴
-        for (const s of [-1, 1]) {
-            addM(mageMeshGroup, new THREE.CapsuleGeometry(0.068, 0.34, 8, 10), M.skin, s * 0.105, 0.56, 0.01);
-            addM(mageMeshGroup, new THREE.CylinderGeometry(0.068, 0.052, 0.38, 10), M.darkSteel, s * 0.105, 0.21, 0);
-            addM(mageMeshGroup, new THREE.TorusGeometry(0.068, 0.01, 6, 12), mageGoldTrim, s * 0.105, 0.4, 0).rotation.x = Math.PI / 2;
-        }
+        // 可動雙腿 (優雅邁步)
+        const makeMageLeg = (s) => {
+            const hip = new THREE.Group();
+            hip.position.set(s * 0.105, 0.78, 0);
+            mageMeshGroup.add(hip);
+            addM(hip, new THREE.CapsuleGeometry(0.068, 0.34, 8, 10), M.skin, 0, -0.22, 0.01);
+            addM(hip, new THREE.CylinderGeometry(0.068, 0.052, 0.38, 10), M.darkSteel, 0, -0.57, 0);
+            addM(hip, new THREE.TorusGeometry(0.068, 0.01, 6, 12), mageGoldTrim, 0, -0.38, 0).rotation.x = Math.PI / 2;
+            return hip;
+        };
+        const mageLegL = makeMageLeg(-1), mageLegR = makeMageLeg(1);
 
-        // 曼妙沙漏曲線身軀 (豐滿臀部 -> 纖細蜂腰 -> 緊身馬甲胸圍)
+        // 可動上半身 (自然呼吸、扭腰施法、揮杖律動)
+        const mageTorso = new THREE.Group();
+        mageTorso.position.set(0, 0.78, 0);
+        mageMeshGroup.add(mageTorso);
+
         const femPts = [
-            new THREE.Vector2(0.18, 0.72), // 臀部曲線
-            new THREE.Vector2(0.205, 0.84),
-            new THREE.Vector2(0.135, 1.02), // 纖細腰身
-            new THREE.Vector2(0.175, 1.24), // 胸廓
-            new THREE.Vector2(0.14, 1.42)
+            new THREE.Vector2(0.18, -0.06),
+            new THREE.Vector2(0.205, 0.06),
+            new THREE.Vector2(0.135, 0.24),
+            new THREE.Vector2(0.175, 0.46),
+            new THREE.Vector2(0.14, 0.64)
         ];
-        const femBody = addM(mageMeshGroup, new THREE.LatheGeometry(femPts, 18), mageRobeMat, 0, 0, 0);
+        const femBody = addM(mageTorso, new THREE.LatheGeometry(femPts, 18), mageRobeMat, 0, 0, 0);
         femBody.scale.set(1.06, 1.0, 0.88);
-        // 胸口白皙鎖骨與飽滿曲線雕塑
-        addM(mageMeshGroup, new THREE.SphereGeometry(0.115, 14, 12), M.skin, 0, 1.36, 0.055).scale.set(1.18, 0.85, 0.78);
+        addM(mageTorso, new THREE.SphereGeometry(0.115, 14, 12), M.skin, 0, 0.58, 0.055).scale.set(1.18, 0.85, 0.78);
         for (const s of [-1, 1]) {
-            const bust = addM(mageMeshGroup, new THREE.SphereGeometry(0.112, 16, 14), mageRobeMat, s * 0.088, 1.255, 0.125);
+            const bust = addM(mageTorso, new THREE.SphereGeometry(0.112, 16, 14), mageRobeMat, s * 0.088, 0.475, 0.125);
             bust.scale.set(1.02, 0.96, 1.05);
-            addM(mageMeshGroup, new THREE.SphereGeometry(0.082, 12, 10), M.skin, s * 0.075, 1.315, 0.135); // 上胸露肌
+            addM(mageTorso, new THREE.SphereGeometry(0.082, 12, 10), M.skin, s * 0.075, 0.535, 0.135);
         }
-        // 金色束腰腰帶與高衩飄逸後擺長袍
-        addM(mageMeshGroup, new THREE.TorusGeometry(0.145, 0.018, 8, 16), mageGoldTrim, 0, 1.02, 0).rotation.x = Math.PI / 2;
+        addM(mageTorso, new THREE.TorusGeometry(0.145, 0.018, 8, 16), mageGoldTrim, 0, 0.24, 0).rotation.x = Math.PI / 2;
         const skirtGeo = new THREE.CylinderGeometry(0.19, 0.46, 0.82, 16, 1, true, Math.PI * 0.25, Math.PI * 1.5);
-        addM(mageMeshGroup, skirtGeo, mageRobeMat, 0, 0.44, -0.02);
-        addM(mageMeshGroup, new THREE.TorusGeometry(0.45, 0.014, 6, 18, Math.PI * 1.5), mageGoldTrim, 0, 0.04, -0.02).rotation.set(Math.PI / 2, 0, Math.PI * 0.25);
+        addM(mageTorso, skirtGeo, mageRobeMat, 0, -0.34, -0.02);
+        addM(mageTorso, new THREE.TorusGeometry(0.45, 0.014, 6, 18, Math.PI * 1.5), mageGoldTrim, 0, -0.74, -0.02).rotation.set(Math.PI / 2, 0, Math.PI * 0.25);
 
-        // 優雅露肩法師雙臂 + 精緻女性頭像與長捲髮
-        for (const s of [-1, 1]) {
-            addM(mageMeshGroup, new THREE.CapsuleGeometry(0.048, 0.34, 8, 10), M.skin, s * 0.23, 1.22, 0.04).rotation.z = s * 0.22;
-            addM(mageMeshGroup, new THREE.TorusGeometry(0.054, 0.012, 6, 10), mageGoldTrim, s * 0.25, 1.32, 0.03).rotation.x = Math.PI / 2;
-        }
+        // 精緻女性頭像 + 可動飄逸長捲髮
         const mageHead = new THREE.Group();
-        mageHead.position.set(0, 1.54, 0.02);
-        mageMeshGroup.add(mageHead);
+        mageHead.position.set(0, 0.76, 0.02);
+        mageTorso.add(mageHead);
         addM(mageHead, new THREE.CylinderGeometry(0.055, 0.068, 0.14, 10), M.skin, 0, -0.06, 0);
         addM(mageHead, new THREE.SphereGeometry(0.125, 16, 14), M.skin, 0, 0.08, 0).scale.set(0.9, 1.04, 0.94);
         const longHairMat = new THREE.MeshStandardMaterial({ color: 0xd97742, roughness: 0.48, metalness: 0.15 });
         addM(mageHead, new THREE.SphereGeometry(0.138, 16, 12, 0, TAU, 0, Math.PI * 0.65), longHairMat, 0, 0.1, -0.02);
-        // 飄逸波浪長髮垂落背後
-        const hairBack = addM(mageHead, new THREE.ConeGeometry(0.22, 0.68, 12), longHairMat, 0, -0.22, -0.14);
-        hairBack.rotation.x = -0.22;
-        // 皇家魔導頭冠
+        const mageHair = new THREE.Group();
+        mageHair.position.set(0, 0.04, -0.1);
+        mageHead.add(mageHair);
+        const hairBack = addM(mageHair, new THREE.ConeGeometry(0.22, 0.68, 12), longHairMat, 0, -0.26, -0.05);
+        hairBack.rotation.x = -0.18;
         addM(mageHead, new THREE.TorusGeometry(0.128, 0.015, 6, 16), mageGoldTrim, 0, 0.15, 0.01).rotation.x = Math.PI / 2;
         addM(mageHead, new THREE.OctahedronGeometry(0.036, 0), M.purpleGlow, 0, 0.17, 0.135, false);
+
+        // 可動左手臂 (走路自然擺動、施法時向前舉掌聚能)
+        const mageArmL = new THREE.Group();
+        mageArmL.position.set(-0.22, 0.56, 0.02);
+        mageTorso.add(mageArmL);
+        addM(mageArmL, new THREE.TorusGeometry(0.054, 0.012, 6, 10), mageGoldTrim, -0.02, -0.02, 0).rotation.x = Math.PI / 2;
+        addM(mageArmL, new THREE.CapsuleGeometry(0.046, 0.24, 8, 10), M.skin, -0.02, -0.16, 0.02).rotation.z = -0.14;
+        addM(mageArmL, new THREE.CapsuleGeometry(0.04, 0.22, 8, 10), M.skin, -0.04, -0.36, 0.08).rotation.x = -0.38;
+
+        // 可動右手臂 + 皇家魔導法杖 + 杖尖施法聚能光球
+        const mageArmR = new THREE.Group();
+        mageArmR.position.set(0.22, 0.56, 0.02);
+        mageTorso.add(mageArmR);
+        addM(mageArmR, new THREE.TorusGeometry(0.054, 0.012, 6, 10), mageGoldTrim, 0.02, -0.02, 0).rotation.x = Math.PI / 2;
+        addM(mageArmR, new THREE.CapsuleGeometry(0.046, 0.24, 8, 10), M.skin, 0.02, -0.16, 0.02).rotation.z = 0.14;
+        addM(mageArmR, new THREE.CapsuleGeometry(0.04, 0.22, 8, 10), M.skin, 0.04, -0.36, 0.08).rotation.x = -0.45;
+
+        const mageStaffHolder = new THREE.Group();
+        mageStaffHolder.position.set(0.05, -0.46, 0.14);
+        mageStaffHolder.rotation.x = 0.35;
+        mageArmR.add(mageStaffHolder);
+        const mageStaff = wStaff.clone();
+        mageStaff.visible = true;
+        mageStaffHolder.add(mageStaff);
+
+        const staffCastGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: sharedTEX.glow, color: new THREE.Color(1.8, 0.8, 3.8),
+            blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0, toneMapped: false
+        }));
+        staffCastGlow.scale.set(0.6, 0.6, 1);
+        staffCastGlow.position.set(0, 1.56, 0);
+        mageStaffHolder.add(staffCastGlow);
 
         // 將原本騎士軀幹與雙腿歸類到 knightMeshGroup 方便一鍵切換
         const knightMeshGroup = new THREE.Group();
         body.remove(pelvis, legL, legR, torso);
         knightMeshGroup.add(pelvis, legL, legR, torso);
         body.add(knightMeshGroup);
-        // 法師也共用右手武器掛點 (把法杖移到獨立掛點讓女法師手持)
-        const mageStaffHolder = new THREE.Group();
-        mageStaffHolder.position.set(0.28, 1.06, 0.16);
-        mageStaffHolder.rotation.x = 0.25;
-        mageMeshGroup.add(mageStaffHolder);
-        const mageStaff = wStaff.clone();
-        mageStaff.visible = true;
-        mageStaffHolder.add(mageStaff);
 
         setShadows(body, true);
 
         return {
             root, body, knightMeshGroup, mageMeshGroup, mageStaffHolder,
+            mageLegL, mageLegR, mageTorso, mageHead, mageHair, mageArmL, mageArmR, staffCastGlow,
             torso, head, polyHeads, legL, legR, armL, armR, foreR, foreL,
             shield, offDagger, weaponModels,
             capeMesh, capeBasePos, armorMat, armorAuraMat, armorAuraMeshes, capeMat, bladeMat, bladeCoreMat, bladeAuraMat,
@@ -900,11 +929,68 @@ export function createModelFactory(sharedTEX) {
         }
         // 冰凍異常狀態泛冰藍
         if (state.isFrozen) rig.armorMat.color.lerp(new THREE.Color(0x38bdf8), 0.72);
-        // 同步法師身體切換 (騎士體 vs 性感女性法師體)
+        // 同步法師身體切換 (騎士體 vs 全可動女性皇家法師體)
         if (rig.knightMeshGroup && rig.mageMeshGroup) {
             const isMage = (state.charClass === 'mage') && !poly;
             rig.knightMeshGroup.visible = !isMage;
             rig.mageMeshGroup.visible = isMage;
+
+            if (isMage && rig.mageTorso) {
+                // 1. 優雅走路邁步 & 跳躍姿勢 + 飄逸長髮擺動
+                if (jumpZ > 0.05) {
+                    rig.mageLegL.rotation.x = -0.4;
+                    rig.mageLegR.rotation.x = 0.45;
+                } else {
+                    rig.mageLegL.rotation.x = stride * 0.62;
+                    rig.mageLegR.rotation.x = -stride * 0.62;
+                }
+                rig.mageHair.rotation.x = (state.isMoving ? 0.35 : 0.08) + Math.sin(t * 4.5) * 0.08;
+                rig.mageHair.rotation.z = Math.sin(t * 3.2) * 0.06;
+
+                // 2. 施法舉杖揮舞動作 vs 近距離緩慢沉重揮舞權杖動作
+                if (state.castAnimTimer > 0) {
+                    const cp = 1 - clamp(state.castAnimTimer / 0.46, 0, 1);
+                    const env = Math.sin(cp * Math.PI);
+                    // 高舉魔杖施法並向前揮出魔力波！
+                    rig.mageTorso.rotation.x = lerp(-0.16, 0.14, smooth(cp));
+                    rig.mageTorso.rotation.y = lerp(-0.28, 0.32, smooth(cp));
+                    rig.mageArmR.rotation.x = lerp(-2.35, -0.55, smooth(cp));
+                    rig.mageArmR.rotation.z = lerp(0.35, -0.25, smooth(cp));
+                    rig.mageStaffHolder.rotation.x = lerp(0.15, 1.05, smooth(cp));
+                    rig.mageArmL.rotation.x = lerp(-1.25, -0.75, smooth(cp));
+                    rig.mageArmL.rotation.z = -0.35;
+                    if (rig.staffCastGlow) {
+                        rig.staffCastGlow.material.opacity = env * 0.95;
+                        const gs = 0.45 + env * 0.95;
+                        rig.staffCastGlow.scale.set(gs, gs, 1);
+                    }
+                } else if (state.swingAnimTimer > 0) {
+                    // 近距離緩慢沉重揮舞權杖打擊 + 附帶可見的 3D 揮擊光弧！
+                    const sp = 1 - clamp(state.swingAnimTimer / 0.44, 0, 1);
+                    const env = Math.sin(sp * Math.PI);
+                    const cdir = (state.swingCombo % 2 === 0) ? 1 : -1;
+                    rig.mageTorso.rotation.y = lerp(-0.65 * cdir, 0.72 * cdir, smooth(sp));
+                    rig.mageTorso.rotation.x = env * 0.18;
+                    rig.mageArmR.rotation.x = lerp(-2.05, 0.78, smooth(sp));
+                    rig.mageArmR.rotation.z = lerp(-0.6 * cdir, 0.75 * cdir, smooth(sp));
+                    rig.mageStaffHolder.rotation.x = 1.15;
+                    rig.mageArmL.rotation.x = -0.45;
+                    rig.slashMat.opacity = env * 0.85;
+                    rig.slashInnerMat.opacity = env * 0.85;
+                    rig.slashGroup.rotation.y = lerp(-1.05 * cdir, 1.1 * cdir, sp);
+                    if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = env * 0.55;
+                } else {
+                    // 自然待機呼吸 & 優雅擺臂走路
+                    rig.mageTorso.rotation.x = lerp(rig.mageTorso.rotation.x, state.isMoving ? 0.08 : Math.sin(t * 2.2) * 0.025, clamp(dt * 10, 0, 1));
+                    rig.mageTorso.rotation.y = lerp(rig.mageTorso.rotation.y, Math.sin(t * 1.8) * 0.05 + stride * 0.12, clamp(dt * 10, 0, 1));
+                    rig.mageArmR.rotation.x = lerp(rig.mageArmR.rotation.x, -0.32 - stride * 0.28 + Math.sin(t * 2.2) * 0.05, clamp(dt * 10, 0, 1));
+                    rig.mageArmR.rotation.z = lerp(rig.mageArmR.rotation.z, 0.12, clamp(dt * 10, 0, 1));
+                    rig.mageStaffHolder.rotation.x = lerp(rig.mageStaffHolder.rotation.x, 0.32, clamp(dt * 10, 0, 1));
+                    rig.mageArmL.rotation.x = lerp(rig.mageArmL.rotation.x, -0.18 + stride * 0.36, clamp(dt * 10, 0, 1));
+                    rig.mageArmL.rotation.z = lerp(rig.mageArmL.rotation.z, -0.1, clamp(dt * 10, 0, 1));
+                    if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = 0;
+                }
+            }
         }
 
         // 武器每 +10 階色階光芒 (+10白 / +20綠 / +30藍 / +40紫 / +50紅 / +60金)
