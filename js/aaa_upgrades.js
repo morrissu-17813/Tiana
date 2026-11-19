@@ -601,5 +601,179 @@ export function createSpellVfxEngine({ scene, TEX, worldY, vfxList }) {
         });
     }
 
-    return { spawn3DLightning, spawn3DTornado, createFireballMesh, spawn3DFireExplosion };
+    // (4) 法師技能 — 烈焰術 (直線範圍烈焰柱浪)
+    function spawnFlameLine3D(sx, sy, dx, dy) {
+        const group = new THREE.Group();
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = dx / len, ny = dy / len;
+        const pillars = [];
+        for (let i = 1; i <= 7; i++) {
+            const px = sx + nx * (i * 1.05), py = sy + ny * (i * 1.05);
+            const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.6, 1.2 + (i % 2) * 0.5, 0.2), transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+            const cone = new THREE.Mesh(new THREE.ConeGeometry(0.62, 2.2, 10), mat);
+            cone.position.set(px, worldY(px, py) + 0.9, py);
+            cone.scale.set(0.2, 0.1, 0.2);
+            group.add(cone);
+            pillars.push({ cone, mat, delay: (i - 1) * 0.045 });
+        }
+        const light = new THREE.PointLight(0xf97316, 14, 14, 1.8);
+        light.position.set(sx + nx * 3.5, worldY(sx, sy) + 1.6, sy + ny * 3.5);
+        group.add(light);
+        scene.add(group);
+        vfxList.push({
+            group, life: 0.72, maxLife: 0.72,
+            update(dt, p) {
+                const elapsed = p * 0.72;
+                light.intensity = 14 * (1 - p);
+                for (const pl of pillars) {
+                    const lp = clamp((elapsed - pl.delay) / 0.36, 0, 1);
+                    const s = Math.sin(lp * Math.PI);
+                    pl.cone.scale.set(0.4 + s * 0.9, 0.2 + s * 1.25, 0.4 + s * 0.9);
+                    pl.cone.rotation.y += dt * 8;
+                    pl.mat.opacity = s * 0.92;
+                }
+            }
+        });
+    }
+
+    // (5) 法師技能 — 冰錐 (單體急凍冰槍 + 冰晶爆裂)
+    function spawnIceLance3D(sx, sy, tx, ty) {
+        const group = new THREE.Group();
+        const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 3.0, 4.4), transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+        const spear = new THREE.Mesh(new THREE.ConeGeometry(0.18, 1.55, 6), mat);
+        spear.rotation.x = Math.PI / 2;
+        const holder = new THREE.Group();
+        holder.add(spear);
+        group.add(holder);
+        const light = new THREE.PointLight(0x38bdf8, 12, 10, 2);
+        holder.add(light);
+        scene.add(group);
+        vfxList.push({
+            group, life: 0.42, maxLife: 0.42,
+            update(dt, p) {
+                const f = Math.min(1, p * 1.8);
+                const cx = lerp(sx, tx, f), cy = lerp(sy, ty, f);
+                holder.position.set(cx, worldY(cx, cy) + 1.2, cy);
+                holder.lookAt(tx, worldY(tx, ty) + 1.1, ty);
+                if (p > 0.55) {
+                    const bp = (p - 0.55) / 0.45;
+                    spear.scale.setScalar(1 + bp * 2.2);
+                    mat.opacity = 1 - bp;
+                    light.intensity = 12 * (1 - bp);
+                }
+            }
+        });
+    }
+
+    // (6) 法師技能 — 治癒術 (柔和翠綠生命光波)
+    function spawnHealAura3D(wx, wy) {
+        const group = new THREE.Group();
+        group.position.set(wx, worldY(wx, wy), wy);
+        const sparks = [];
+        for (let i = 0; i < 16; i++) {
+            const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: new THREE.Color(0.6, 3.2, 1.6), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9, toneMapped: false }));
+            sp.scale.setScalar(0.22 + Math.random() * 0.16);
+            group.add(sp);
+            sparks.push({ sp, a: (i / 16) * TAU, r: 0.45 + Math.random() * 0.65, y: Math.random() * 0.4 });
+        }
+        const light = new THREE.PointLight(0x34d399, 10, 9, 2);
+        light.position.y = 1.4;
+        group.add(light);
+        scene.add(group);
+        vfxList.push({
+            group, life: 0.85, maxLife: 0.85,
+            update(dt, p) {
+                const inv = 1 - p;
+                light.intensity = 10 * inv;
+                for (const s of sparks) {
+                    s.a += dt * 3.5;
+                    s.y += dt * 2.6;
+                    s.sp.position.set(Math.cos(s.a) * s.r, s.y, Math.sin(s.a) * s.r);
+                    s.sp.material.opacity = inv;
+                }
+            }
+        });
+    }
+
+    // (7) 法師技能 — 落石術 (天降巨岩重擊 + 暈眩震波)
+    function spawnRockFall3D(wx, wy) {
+        const group = new THREE.Group();
+        const ty = worldY(wx, wy);
+        const rockMat = new THREE.MeshStandardMaterial({ color: 0x57534e, roughness: 0.95, flatShading: true });
+        const rocks = [];
+        for (let i = 0; i < 6; i++) {
+            const r = new THREE.Mesh(new THREE.DodecahedronGeometry(0.45 + Math.random() * 0.35, 0), rockMat);
+            const ox = (Math.random() - 0.5) * 3.4, oz = (Math.random() - 0.5) * 3.4;
+            const sy = ty + 7.5 + Math.random() * 3.5;
+            r.position.set(wx + ox, sy, wy + oz);
+            group.add(r);
+            rocks.push({ r, sy, targetY: ty + 0.35, rot: 3 + Math.random() * 5 });
+        }
+        const shockMat = new THREE.MeshBasicMaterial({ map: TEX.ring, color: new THREE.Color(2.4, 1.7, 0.8), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+        const shock = new THREE.Mesh(new THREE.PlaneGeometry(5.6, 5.6), shockMat);
+        shock.rotation.x = -Math.PI / 2; shock.position.set(wx, ty + 0.1, wy);
+        group.add(shock);
+        scene.add(group);
+        vfxList.push({
+            group, life: 0.88, maxLife: 0.88,
+            update(dt, p) {
+                const fallP = clamp(p / 0.38, 0, 1);
+                for (const rk of rocks) {
+                    rk.r.position.y = lerp(rk.sy, rk.targetY, fallP * fallP);
+                    rk.r.rotation.x += dt * rk.rot; rk.r.rotation.z += dt * rk.rot;
+                    if (p > 0.72) rk.r.scale.setScalar(Math.max(0.01, (1 - p) / 0.28));
+                }
+                if (p >= 0.36) {
+                    const sp = (p - 0.36) / 0.64;
+                    shock.scale.setScalar(0.35 + sp * 1.15);
+                    shockMat.opacity = (1 - sp) * 0.85;
+                }
+            }
+        });
+    }
+
+    // (8) 法師終極技能 — 雷電操術 (黑紫色毀滅大範圍雷電風暴，CD 最久、傷害最高！)
+    function spawnVoidThunder3D(wx, wy, monsters) {
+        const group = new THREE.Group();
+        const ty = worldY(wx, wy);
+        const boltsHolder = new THREE.Group();
+        group.add(boltsHolder);
+
+        const targets = [new THREE.Vector3(wx, ty + 0.6, wy)];
+        for (const m of monsters) {
+            if (m.hp <= 0 || targets.length >= 6) continue;
+            if (Math.hypot(m.x - wx, m.y - wy) <= 4.6) targets.push(new THREE.Vector3(m.x, worldY(m.x, m.y) + 0.8, m.y));
+        }
+        const rebuild = () => {
+            while (boltsHolder.children.length) boltsHolder.remove(boltsHolder.children[0]);
+            for (const tp of targets) {
+                const sky = new THREE.Vector3(tp.x + (Math.random() - 0.5) * 2.2, ty + 14, tp.z + (Math.random() - 0.5) * 2.2);
+                boltsHolder.add(buildNaturalBolt(sky, tp, 0.11, 1.85, 0x9333ea, true));
+                boltsHolder.add(buildNaturalBolt(sky, tp, 0.055, 2.2, 0x3b0764, false));
+            }
+        };
+        rebuild();
+
+        // 暗黑紫電核心爆閃
+        const flash = new THREE.PointLight(0xa855f7, 26, 20, 1.6);
+        flash.position.set(wx, ty + 2.4, wy);
+        group.add(flash);
+        scene.add(group);
+        let acc = 0;
+        vfxList.push({
+            group, life: 0.78, maxLife: 0.78,
+            update(dt, p) {
+                acc += dt;
+                if (acc >= 0.07 && p < 0.82) { acc = 0; rebuild(); }
+                const inv = 1 - p;
+                flash.intensity = 26 * inv * inv;
+                boltsHolder.traverse((c) => { if (c.material && c.material.transparent) c.material.opacity = inv; });
+            }
+        });
+    }
+
+    return {
+        spawn3DLightning, spawn3DTornado, createFireballMesh, spawn3DFireExplosion,
+        spawnFlameLine3D, spawnIceLance3D, spawnHealAura3D, spawnRockFall3D, spawnVoidThunder3D
+    };
 }

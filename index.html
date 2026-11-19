@@ -168,6 +168,19 @@
                 <div id="savedCharsList" class="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto p-1 bg-black/60 rounded border border-amber-900/50"></div>
             </div>
 
+            <!-- 職業選擇 (近戰騎士 vs 遠距女性皇家法師) -->
+            <div class="w-full text-left mb-3">
+                <div class="text-[11px] text-amber-200/80 font-medium mb-1">選擇職業</div>
+                <div class="grid grid-cols-2 gap-1.5">
+                    <button type="button" id="classBtn_knight" onclick="selectLoginClass('knight')" class="lineage-btn py-1.5 px-2 rounded text-[11px] font-bold border-amber-400 text-amber-200 cursor-pointer flex items-center justify-center gap-1">
+                        <span>🛡️</span><span>亞丁騎士</span>
+                    </button>
+                    <button type="button" id="classBtn_mage" onclick="selectLoginClass('mage')" class="lineage-btn py-1.5 px-2 rounded text-[11px] font-bold border-stone-700 text-stone-400 cursor-pointer flex items-center justify-center gap-1">
+                        <span>🔮</span><span>皇家女法師</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- 角色 ID 輸入框 -->
             <div class="w-full text-left mb-4">
                 <div class="flex justify-between items-center mb-1">
@@ -184,6 +197,11 @@
             <button id="enterWorldBtn" onclick="enterMultiplayerWorld()" class="lineage-btn w-full py-2.5 rounded text-sm font-bold tracking-[0.2em] text-amber-200 border-amber-500/80 cursor-pointer shadow-lg">
                 登入亞丁大陸
             </button>
+            <div class="w-full flex gap-1.5 mt-2">
+                <button type="button" onclick="exportCharacterJson()" class="lineage-btn flex-1 py-1 rounded text-[10px] text-emerald-300 cursor-pointer">💾 匯出存檔(JSON)</button>
+                <button type="button" onclick="document.getElementById('importJsonInput').click()" class="lineage-btn flex-1 py-1 rounded text-[10px] text-sky-300 cursor-pointer">📂 匯入存檔(JSON)</button>
+                <input id="importJsonInput" type="file" accept=".json,application/json" class="hidden" onchange="importCharacterJson(this.files[0])">
+            </div>
 
             <!-- 底部極簡連線狀態 -->
             <div class="w-full mt-4 pt-2.5 border-t border-amber-950/60 flex items-center justify-between text-[10px] text-stone-400">
@@ -463,24 +481,52 @@
 
             <div class="h-6 w-[1px] bg-amber-800/60 mx-0.5 shrink-0"></div>
 
-            <!-- 三大魔法 5~7 -->
-            <button onclick="castSpell('lightning')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-sky-600/70 cursor-pointer shrink-0 overflow-hidden" title="極道落雷 (5)">
-                <span class="text-xs sm:text-sm leading-none">⚡</span>
-                <span class="text-[8px] text-sky-300 font-bold mt-0.5">落雷</span>
-                <div id="cdBar_lightning" class="absolute bottom-0 left-0 h-0.5 bg-sky-400 transition-all" style="width:0%"></div>
-            </button>
-
-            <button onclick="castSpell('tornado')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-emerald-600/70 cursor-pointer shrink-0 overflow-hidden" title="龍捲風 (6)">
-                <span class="text-xs sm:text-sm leading-none">🌪️</span>
-                <span class="text-[8px] text-emerald-300 font-bold mt-0.5">龍捲</span>
-                <div id="cdBar_tornado" class="absolute bottom-0 left-0 h-0.5 bg-emerald-400 transition-all" style="width:0%"></div>
-            </button>
-
-            <button onclick="castSpell('fireball')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-orange-600/70 cursor-pointer shrink-0 overflow-hidden" title="火球術 (7)">
-                <span class="text-xs sm:text-sm leading-none">☄️</span>
-                <span class="text-[8px] text-orange-300 font-bold mt-0.5">火球</span>
-                <div id="cdBar_fireball" class="absolute bottom-0 left-0 h-0.5 bg-orange-400 transition-all" style="width:0%"></div>
-            </button>
+            <!-- 騎士技能列 5~7 -->
+            <div id="knightSkillBar" class="flex items-center gap-1 shrink-0">
+                <button onclick="castSpell('lightning')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-sky-600/70 cursor-pointer shrink-0 overflow-hidden" title="極道落雷 (5)">
+                    <span class="text-xs sm:text-sm leading-none">⚡</span>
+                    <span class="text-[8px] text-sky-300 font-bold mt-0.5">落雷</span>
+                    <div id="cdBar_lightning" class="absolute bottom-0 left-0 h-0.5 bg-sky-400 transition-all" style="width:0%"></div>
+                </button>
+                <button onclick="castSpell('tornado')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-emerald-600/70 cursor-pointer shrink-0 overflow-hidden" title="龍捲風 (6)">
+                    <span class="text-xs sm:text-sm leading-none">🌪️</span>
+                    <span class="text-[8px] text-emerald-300 font-bold mt-0.5">龍捲</span>
+                    <div id="cdBar_tornado" class="absolute bottom-0 left-0 h-0.5 bg-emerald-400 transition-all" style="width:0%"></div>
+                </button>
+                <button onclick="castSpell('fireball')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-orange-600/70 cursor-pointer shrink-0 overflow-hidden" title="火球術 (7)">
+                    <span class="text-xs sm:text-sm leading-none">☄️</span>
+                    <span class="text-[8px] text-orange-300 font-bold mt-0.5">火球</span>
+                    <div id="cdBar_fireball" class="absolute bottom-0 left-0 h-0.5 bg-orange-400 transition-all" style="width:0%"></div>
+                </button>
+            </div>
+            <!-- 皇家女法師專屬五大技能列 5~9 -->
+            <div id="mageSkillBar" class="hidden flex items-center gap-1 shrink-0">
+                <button onclick="castSpell('flame_line')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-orange-500/80 cursor-pointer shrink-0 overflow-hidden" title="烈焰術：直線範圍火焰 (5)">
+                    <span class="text-xs sm:text-sm leading-none">🔥</span>
+                    <span class="text-[8px] text-orange-300 font-bold mt-0.5">烈焰</span>
+                    <div id="cdBar_flame_line" class="absolute bottom-0 left-0 h-0.5 bg-orange-400 transition-all" style="width:0%"></div>
+                </button>
+                <button onclick="castSpell('ice_lance')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-cyan-500/80 cursor-pointer shrink-0 overflow-hidden" title="冰錐：單體傷害＋冰凍1秒 (6)">
+                    <span class="text-xs sm:text-sm leading-none">🧊</span>
+                    <span class="text-[8px] text-cyan-300 font-bold mt-0.5">冰錐</span>
+                    <div id="cdBar_ice_lance" class="absolute bottom-0 left-0 h-0.5 bg-cyan-400 transition-all" style="width:0%"></div>
+                </button>
+                <button onclick="castSpell('heal')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-emerald-500/80 cursor-pointer shrink-0 overflow-hidden" title="治癒術：補血自己與附近隊友 (7)">
+                    <span class="text-xs sm:text-sm leading-none">💚</span>
+                    <span class="text-[8px] text-emerald-300 font-bold mt-0.5">治癒</span>
+                    <div id="cdBar_heal" class="absolute bottom-0 left-0 h-0.5 bg-emerald-400 transition-all" style="width:0%"></div>
+                </button>
+                <button onclick="castSpell('meteor_rock')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-amber-600/80 cursor-pointer shrink-0 overflow-hidden" title="落石術：範圍傷害＋暈眩2秒 (8)">
+                    <span class="text-xs sm:text-sm leading-none">🪨</span>
+                    <span class="text-[8px] text-amber-300 font-bold mt-0.5">落石</span>
+                    <div id="cdBar_meteor_rock" class="absolute bottom-0 left-0 h-0.5 bg-amber-400 transition-all" style="width:0%"></div>
+                </button>
+                <button onclick="castSpell('void_thunder')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-purple-500/90 cursor-pointer shrink-0 overflow-hidden" title="雷電操術：黑紫大範圍高傷長CD (9)">
+                    <span class="text-xs sm:text-sm leading-none">🟣</span>
+                    <span class="text-[8px] text-purple-300 font-bold mt-0.5">雷操</span>
+                    <div id="cdBar_void_thunder" class="absolute bottom-0 left-0 h-0.5 bg-purple-400 transition-all" style="width:0%"></div>
+                </button>
+            </div>
 
             <div class="h-6 w-[1px] bg-amber-800/60 mx-0.5 shrink-0"></div>
 
@@ -538,93 +584,96 @@
                     this.ctx.resume();
                 }
             }
-            playSwing(isBrave = false) {
+            _noiseBuf(dur = 0.25) {
+                const len = Math.floor(this.ctx.sampleRate * dur);
+                const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+                const d = buf.getChannelData(0);
+                for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+                return buf;
+            }
+            playNoise(dur, filterType, freqStart, freqEnd, vol = 0.18, q = 1.5) {
                 if (!this.enabled) return;
-                this.init();
-                if (!this.ctx) return;
+                this.init(); if (!this.ctx) return;
                 const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sawtooth';
-                osc.frequency.setValueAtTime(isBrave ? 330 : 250, now);
-                osc.frequency.exponentialRampToValueAtTime(55, now + 0.11);
-                gain.gain.setValueAtTime(0.11, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.11);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.11);
+                const src = this.ctx.createBufferSource();
+                src.buffer = this._noiseBuf(dur);
+                const flt = this.ctx.createBiquadFilter();
+                flt.type = filterType; flt.Q.value = q;
+                flt.frequency.setValueAtTime(freqStart, now);
+                flt.frequency.exponentialRampToValueAtTime(Math.max(40, freqEnd), now + dur);
+                const g = this.ctx.createGain();
+                g.gain.setValueAtTime(vol, now);
+                g.gain.exponentialRampToValueAtTime(0.002, now + dur);
+                src.connect(flt); flt.connect(g); g.connect(this.ctx.destination);
+                src.start(now); src.stop(now + dur + 0.02);
+            }
+            playSwing(isBrave = false) {
+                // 寫實刀劍破風聲 (帶通噪音掃頻)
+                this.playNoise(0.14, 'bandpass', isBrave ? 2200 : 1650, 320, 0.16, 2.2);
             }
             playHit(isCrit = false) {
                 if (!this.enabled) return;
-                this.init();
-                if (!this.ctx) return;
+                this.init(); if (!this.ctx) return;
                 const now = this.ctx.currentTime;
+                // 沉重實體打擊低頻衝擊 + 銳利斬擊撕裂噪音
+                this.playNoise(isCrit ? 0.14 : 0.09, 'lowpass', isCrit ? 2400 : 1200, 160, isCrit ? 0.24 : 0.15, 1.2);
                 const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = isCrit ? 'square' : 'triangle';
-                osc.frequency.setValueAtTime(isCrit ? 190 : 135, now);
-                osc.frequency.exponentialRampToValueAtTime(32, now + 0.14);
-                gain.gain.setValueAtTime(isCrit ? 0.2 : 0.13, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.14);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.14);
+                const g = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(isCrit ? 150 : 115, now);
+                osc.frequency.exponentialRampToValueAtTime(34, now + 0.12);
+                g.gain.setValueAtTime(isCrit ? 0.28 : 0.18, now);
+                g.gain.exponentialRampToValueAtTime(0.003, now + 0.13);
+                osc.connect(g); g.connect(this.ctx.destination);
+                osc.start(now); osc.stop(now + 0.14);
             }
             playLightning() {
-                if (!this.enabled) return;
-                this.init();
-                if (!this.ctx) return;
-                const now = this.ctx.currentTime;
-                [520, 260, 110].forEach((freq, i) => {
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sawtooth';
-                    osc.frequency.setValueAtTime(freq, now + i * 0.03);
-                    osc.frequency.exponentialRampToValueAtTime(42, now + 0.28 + i * 0.03);
-                    gain.gain.setValueAtTime(0.15, now + i * 0.03);
-                    gain.gain.linearRampToValueAtTime(0.01, now + 0.28 + i * 0.03);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start(now + i * 0.03);
-                    osc.stop(now + 0.29 + i * 0.03);
-                });
+                // 高壓電弧爆裂 + 低沉雷鳴滾動
+                this.playNoise(0.18, 'highpass', 3200, 900, 0.22, 1.2);
+                this.playNoise(0.42, 'lowpass', 380, 65, 0.26, 1.0);
             }
             playTornado() {
-                if (!this.enabled) return;
-                this.init();
-                if (!this.ctx) return;
-                const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(160, now);
-                osc.frequency.linearRampToValueAtTime(380, now + 0.22);
-                osc.frequency.linearRampToValueAtTime(120, now + 0.45);
-                gain.gain.setValueAtTime(0.14, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.45);
+                // 狂風呼嘯漩渦噪音
+                this.playNoise(0.55, 'bandpass', 240, 880, 0.2, 3.0);
             }
             playFireball() {
+                // 烈焰轟燃噴射 + 爆破低音
+                this.playNoise(0.36, 'bandpass', 950, 140, 0.25, 1.1);
+                this.playNoise(0.28, 'lowpass', 260, 48, 0.24, 1.0);
+            }
+            playIce() {
+                // 冰錐銳利破冰＋冰晶碎裂聲
                 if (!this.enabled) return;
-                this.init();
-                if (!this.ctx) return;
+                this.init(); if (!this.ctx) return;
+                this.playNoise(0.16, 'highpass', 4200, 1800, 0.16, 2.5);
                 const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(220, now);
-                osc.frequency.exponentialRampToValueAtTime(38, now + 0.32);
-                gain.gain.setValueAtTime(0.2, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.32);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.32);
+                [2100, 2780, 3420].forEach((f, i) => {
+                    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+                    o.type = 'sine'; o.frequency.setValueAtTime(f, now + i * 0.025);
+                    g.gain.setValueAtTime(0.07, now + i * 0.025);
+                    g.gain.exponentialRampToValueAtTime(0.002, now + i * 0.025 + 0.18);
+                    o.connect(g); g.connect(this.ctx.destination);
+                    o.start(now + i * 0.025); o.stop(now + i * 0.025 + 0.19);
+                });
+            }
+            playRockFall() {
+                // 巨石墜落地震重擊
+                this.playNoise(0.45, 'lowpass', 420, 55, 0.32, 0.9);
+            }
+            playHeal() {
+                // 溫暖聖光治癒和弦
+                if (!this.enabled) return;
+                this.init(); if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+                    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+                    o.type = 'sine'; o.frequency.setValueAtTime(f, now + i * 0.04);
+                    g.gain.setValueAtTime(0.001, now + i * 0.04);
+                    g.gain.linearRampToValueAtTime(0.065, now + i * 0.04 + 0.08);
+                    g.gain.exponentialRampToValueAtTime(0.002, now + i * 0.04 + 0.45);
+                    o.connect(g); g.connect(this.ctx.destination);
+                    o.start(now + i * 0.04); o.stop(now + i * 0.04 + 0.48);
+                });
             }
             playPickupGold() {
                 if (!this.enabled) return;
@@ -796,6 +845,40 @@
                 if (!bgmState.enabled || !sound.ctx || sound.ctx.state !== 'running') return;
                 const now = sound.ctx.currentTime;
                 const s = bgmState.step++;
+                // 偵測是否進入亞丁／奇岩城堡區域 (自動切換為皇家莊嚴管風琴＋號角進行曲！)
+                const inCastle = (player.y <= 23 && player.x >= 37 && player.x <= 71);
+                if (inCastle) {
+                    const royalChords = [
+                        [146.83, 220.00, 293.66, 369.99], // D major
+                        [196.00, 246.94, 293.66, 392.00], // G major
+                        [164.81, 220.00, 277.18, 329.63], // A major
+                        [146.83, 220.00, 293.66, 440.00]  // D major
+                    ];
+                    const brassMel = [587.33, 0, 587.33, 659.25, 739.99, 0, 659.25, 587.33, 783.99, 0, 739.99, 659.25, 587.33, 0, 440.00, 0];
+                    const rc = royalChords[Math.floor(s / 4) % royalChords.length];
+                    if (s % 4 === 0) {
+                        rc.forEach(freq => {
+                            const o = sound.ctx.createOscillator(), g = sound.ctx.createGain(), f = sound.ctx.createBiquadFilter();
+                            o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 620;
+                            o.frequency.setValueAtTime(freq, now);
+                            g.gain.setValueAtTime(0.001, now); g.gain.linearRampToValueAtTime(0.018, now + 0.14);
+                            g.gain.exponentialRampToValueAtTime(0.001, now + 1.48);
+                            o.connect(f); f.connect(g); g.connect(sound.ctx.destination);
+                            o.start(now); o.stop(now + 1.52);
+                        });
+                    }
+                    const bf = brassMel[s % brassMel.length];
+                    if (bf > 0) {
+                        const o = sound.ctx.createOscillator(), g = sound.ctx.createGain(), f = sound.ctx.createBiquadFilter();
+                        o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 1150;
+                        o.frequency.setValueAtTime(bf, now);
+                        g.gain.setValueAtTime(0.001, now); g.gain.linearRampToValueAtTime(0.026, now + 0.05);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+                        o.connect(f); f.connect(g); g.connect(sound.ctx.destination);
+                        o.start(now); o.stop(now + 0.55);
+                    }
+                    return;
+                }
                 const bar = Math.floor(s / 4) % chords.length;
                 const ch = chords[bar];
 
@@ -1198,8 +1281,46 @@
             { key: 'boots',    label: '鞋子', emptyIcon: '👢' }
         ];
 
-        function getDefaultNewCharacterTemplate() {
+        let selectedLoginClass = 'knight';
+        function selectLoginClass(cls) {
+            selectedLoginClass = cls === 'mage' ? 'mage' : 'knight';
+            const kb = document.getElementById('classBtn_knight');
+            const mb = document.getElementById('classBtn_mage');
+            if (kb) kb.className = 'lineage-btn py-1.5 px-2 rounded text-[11px] font-bold cursor-pointer flex items-center justify-center gap-1 ' + (selectedLoginClass === 'knight' ? 'border-amber-400 text-amber-200 ring-1 ring-amber-400' : 'border-stone-700 text-stone-400');
+            if (mb) mb.className = 'lineage-btn py-1.5 px-2 rounded text-[11px] font-bold cursor-pointer flex items-center justify-center gap-1 ' + (selectedLoginClass === 'mage' ? 'border-purple-400 text-purple-200 ring-1 ring-purple-400' : 'border-stone-700 text-stone-400');
+        }
+        window.selectLoginClass = selectLoginClass;
+
+        function exportCharacterJson() {
+            saveCharacterProgress();
+            const blob = new Blob([JSON.stringify({ player: loadCharacterDataById(player.name) || player, monsters: monsters.map(m => ({ id: m.id, type: m.type, x: m.x, y: m.y, hp: m.hp, maxHp: m.maxHp, lairId: m.lairId })) }, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `tiana_${player.name || 'save'}.json`; a.click();
+        }
+        function importCharacterJson(file) {
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                try {
+                    const data = JSON.parse(reader.result);
+                    const p = data.player || data;
+                    if (p && p.name) {
+                        localStorage.setItem(SAVE_PREFIX + p.name, JSON.stringify(p));
+                        const inp = document.getElementById('nicknameInput');
+                        if (inp) { inp.value = p.name; onNicknameInputChanged(p.name); }
+                        refreshLoginModalSavedChars();
+                        addChatLog(`📂 成功匯入角色存檔【${escapeHtml(p.name)}】！`, 'text-emerald-300');
+                    }
+                } catch (e) { addChatLog('❌ 存檔 JSON 格式錯誤', 'text-red-400'); }
+            };
+            reader.readAsText(file);
+        }
+        window.exportCharacterJson = exportCharacterJson;
+        window.importCharacterJson = importCharacterJson;
+
+        function getDefaultNewCharacterTemplate(charClass = 'knight') {
+            const isMage = (charClass === 'mage');
             return {
+                charClass: isMage ? 'mage' : 'knight',
                 level: 1,
                 hp: 220,
                 maxHp: 220,
@@ -1217,7 +1338,9 @@
                     helmet:   { id: 'eq_helm_1',  name: '+4 騎士面甲',       type: 'helmet',   def: 4,  atk: 0,  sp: 0,  icon: '🪖', desc: '防禦 -4 的標準亞丁騎士面甲' },
                     earring:  { id: 'eq_ear_1',   name: '靈魂耳環',          type: 'earring',  def: 1,  atk: 1,  sp: 5,  icon: '💎', desc: '防禦 -1、額外攻擊 +1、魔傷 +5%' },
                     necklace: { id: 'eq_neck_1',  name: '力量項鍊',          type: 'necklace', def: 1,  atk: 2,  sp: 0,  icon: '📿', desc: '防禦 -1、近戰傷害 +2' },
-                    weapon:   { id: 'eq_weap_1',  name: '+6 大馬士革刀',     type: 'weapon',   def: 0,  atk: 9,  sp: 5,  enchant: 6, bladeColor: '#bae6fd', icon: '🗡️', desc: '額外攻擊 +9，不會壞刀的經典名劍' },
+                    weapon: isMage
+                        ? { id: 'eq_staff_1', name: '+6 皇家魔導法杖', type: 'weapon', weaponClass: 'staff', def: 0, atk: 7, sp: 30, enchant: 6, bladeColor: '#a855f7', icon: '🔮', desc: '法師專屬遠距離法杖，魔法增傷 +30%' }
+                        : { id: 'eq_weap_1',  name: '+6 大馬士革刀',   type: 'weapon', weaponClass: '1h_sword', def: 0, atk: 9, sp: 5, enchant: 6, bladeColor: '#bae6fd', icon: '🗡️', desc: '額外攻擊 +9，不會壞刀的經典名劍' },
                     armor:    { id: 'eq_arm_1',   name: '+4 精靈鏈甲',       type: 'armor',    def: 7,  atk: 0,  sp: 0,  armorTint: '#cbd5e1', icon: '🛡️', desc: '防禦 -7，妖精森林鍛造的輕便鏈甲' },
                     cloak:    { id: 'eq_cloak_1', name: '+4 保護斗篷',       type: 'cloak',    def: 4,  atk: 0,  sp: 0,  capeColor: '#dc2626', icon: '🧣', desc: '防禦 -4，鮮紅色的亞丁騎士披風' },
                     gloves:   { id: 'eq_glove_1', name: '+4 力量手套',       type: 'gloves',   def: 2,  atk: 2,  sp: 0,  icon: '🧤', desc: '防禦 -2、近戰傷害 +2' },
@@ -1266,7 +1389,8 @@
             baseAtkMax: defaultTpl.baseAtkMax,
             baseDef: defaultTpl.baseDef,
             gold: defaultTpl.gold,
-            baseSpeed: 3.8,
+            charClass: 'knight',
+            baseSpeed: 2.65,
             hasteTimer: 0,
             braveTimer: 0,
             bluePotionTimer: 0,
@@ -1296,9 +1420,8 @@
             lastPosX: 36.0,
             lastPosY: 37.5,
             spellCooldowns: {
-                lightning: 0,
-                tornado: 0,
-                fireball: 0
+                lightning: 0, tornado: 0, fireball: 0,
+                flame_line: 0, ice_lance: 0, heal: 0, meteor_rock: 0, void_thunder: 0
             },
             equipped: JSON.parse(JSON.stringify(defaultTpl.equipped)),
             inventory: JSON.parse(JSON.stringify(defaultTpl.inventory))
@@ -1332,6 +1455,7 @@
             try {
                 const saveObj = {
                     name: player.name,
+                    charClass: player.charClass || 'knight',
                     level: player.level,
                     hp: player.hp,
                     maxHp: player.maxHp,
@@ -1372,8 +1496,15 @@
 
         function applyCharacterProfile(nick) {
             const saved = loadCharacterDataById(nick);
-            const tpl = getDefaultNewCharacterTemplate();
+            const chosenCls = saved?.charClass || selectedLoginClass || 'knight';
+            const tpl = getDefaultNewCharacterTemplate(chosenCls);
             player.name = nick;
+            player.charClass = chosenCls;
+
+            const kb = document.getElementById('knightSkillBar');
+            const mb = document.getElementById('mageSkillBar');
+            if (kb) kb.classList.toggle('hidden', chosenCls === 'mage');
+            if (mb) mb.classList.toggle('hidden', chosenCls !== 'mage');
 
             if (saved) {
                 player.level = saved.level ?? tpl.level;
@@ -1668,9 +1799,15 @@
          * 5. 內建三大魔法：極道落雷、龍捲風、火球術
          **************************************************************/
         const SPELL_CONFIG = {
-            lightning: { name: '極道落雷', mpCost: 18, cd: 1.8, baseMin: 48, baseMax: 72, range: 6.5 },
-            tornado:   { name: '龍捲風',   mpCost: 22, cd: 2.8, baseMin: 42, baseMax: 65, radius: 3.4 },
-            fireball:  { name: '火球術',   mpCost: 15, cd: 1.5, baseMin: 38, baseMax: 58, range: 6.5, blastRadius: 2.3 }
+            lightning:    { name: '極道落雷', mpCost: 18, cd: 2.2, baseMin: 48, baseMax: 72, range: 6.5 },
+            tornado:      { name: '龍捲風',   mpCost: 22, cd: 3.2, baseMin: 42, baseMax: 65, radius: 3.4 },
+            fireball:     { name: '火球術',   mpCost: 15, cd: 1.8, baseMin: 38, baseMax: 58, range: 6.5, blastRadius: 2.3 },
+            // 皇家女法師 5 大專屬技能
+            flame_line:   { name: '烈焰術',   mpCost: 16, cd: 2.2, baseMin: 52, baseMax: 78, range: 7.5 },
+            ice_lance:    { name: '冰錐',     mpCost: 14, cd: 2.4, baseMin: 60, baseMax: 88, range: 7.5 },
+            heal:         { name: '治癒術',   mpCost: 18, cd: 3.0, baseMin: 75, baseMax: 110 },
+            meteor_rock:  { name: '落石術',   mpCost: 24, cd: 4.5, baseMin: 65, baseMax: 96, range: 7.2, radius: 3.0 },
+            void_thunder: { name: '雷電操術', mpCost: 35, cd: 7.5, baseMin: 118, baseMax: 168, range: 7.8, radius: 4.4 }
         };
 
         function castSpell(spellKey, isAutoTriggered = false) {
@@ -1696,7 +1833,7 @@
                 }
             }
 
-            if ((spellKey === 'lightning' || spellKey === 'fireball') && !targetMonster) {
+            if ((spellKey === 'lightning' || spellKey === 'fireball' || spellKey === 'ice_lance' || spellKey === 'meteor_rock' || spellKey === 'void_thunder') && !targetMonster) {
                 if (!isAutoTriggered) addChatLog(`🎯 範圍內沒有可鎖定的怪物！`, 'text-amber-300');
                 return false;
             }
@@ -1728,10 +1865,9 @@
                     if (d <= 2.1) {
                         const falloff = d < 0.5 ? 1.0 : 0.75;
                         const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * spMultiplier * falloff);
-                        applyDamageToMonster(m, dmg, '⚡落雷', '#38bdf8');
+                        applyDamageToMonster(m, dmg, '', '#38bdf8');
                     }
                 });
-                addFloatingText(player.x, player.y, '⚡極道落雷', '#38bdf8', 14);
 
             } else if (spellKey === 'tornado') {
                 sound.playTornado();
@@ -1747,7 +1883,7 @@
                     const d = Math.hypot(m.x - player.x, m.y - player.y);
                     if (d <= cfg.radius) {
                         const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * spMultiplier);
-                        applyDamageToMonster(m, dmg, '🌪️狂風', '#34d399');
+                        applyDamageToMonster(m, dmg, '', '#34d399');
                         const ang = Math.atan2(m.y - player.y, m.x - player.x);
                         const pushX = m.x + Math.cos(ang) * 0.55;
                         const pushY = m.y + Math.sin(ang) * 0.55;
@@ -1757,7 +1893,7 @@
                         }
                     }
                 });
-                addFloatingText(player.x, player.y, '🌪️龍捲風', '#34d399', 14);
+                // 不顯示冗長法術名稱
 
             } else if (spellKey === 'fireball') {
                 sound.playFireball();
@@ -1775,7 +1911,75 @@
                     timer: 0.42, maxTimer: 0.42,
                     spMultiplier
                 });
-                addFloatingText(player.x, player.y, '☄️火球術', '#fb923c', 14);
+            } else if (spellKey === 'flame_line') {
+                // 烈焰術：直線範圍傷害
+                sound.playFireball();
+                const dx = targetMonster ? (targetMonster.x - player.x) : (player.dirX || 0);
+                const dy = targetMonster ? (targetMonster.y - player.y) : (player.dirY || 1);
+                const len = Math.hypot(dx, dy) || 1;
+                const nx = dx / len, ny = dy / len;
+                player.dirX = nx; player.dirY = ny;
+                activeSpells.push({ type: 'flame_line', x: player.x, y: player.y, dx: nx, dy: ny, timer: 0.72, maxTimer: 0.72 });
+                monsters.forEach(m => {
+                    if (m.hp <= 0) return;
+                    const rx = m.x - player.x, ry = m.y - player.y;
+                    const proj = rx * nx + ry * ny;
+                    const perp = Math.abs(rx * -ny + ry * nx);
+                    if (proj > 0 && proj <= cfg.range && perp <= 1.35) {
+                        const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * spMultiplier);
+                        applyDamageToMonster(m, dmg, '', '#fb923c');
+                    }
+                });
+            } else if (spellKey === 'ice_lance') {
+                // 冰錐：單體傷害＋冰凍 1 秒
+                sound.playIce();
+                player.dirX = targetMonster.x - player.x; player.dirY = targetMonster.y - player.y;
+                activeSpells.push({ type: 'ice_lance', x: player.x, y: player.y, tx: targetMonster.x, ty: targetMonster.y, timer: 0.45, maxTimer: 0.45 });
+                const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * spMultiplier);
+                targetMonster.frozenTimer = Math.max(targetMonster.frozenTimer || 0, 1.0);
+                applyDamageToMonster(targetMonster, dmg, '', '#38bdf8');
+            } else if (spellKey === 'heal') {
+                // 治癒術：可治療自己與附近玩家
+                sound.playHeal();
+                const healAmt = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * spMultiplier);
+                player.hp = Math.min(player.maxHp, player.hp + healAmt);
+                addFloatingText(player.x, player.y, `+${healAmt}`, '#4ade80', 14);
+                activeSpells.push({ type: 'heal', x: player.x, y: player.y, timer: 0.85, maxTimer: 0.85 });
+                for (const uid in remotePlayers) {
+                    const rp = remotePlayers[uid];
+                    if (Math.hypot(rp.x - player.x, rp.y - player.y) <= 7.0) {
+                        broadcastPlayerState('pvp_heal', JSON.stringify({ targetUid: uid, amt: healAmt, healer: player.name }));
+                    }
+                }
+            } else if (spellKey === 'meteor_rock') {
+                // 落石術：範圍傷害＋暈眩 2 秒
+                sound.playRockFall();
+                camera.shakeTimer = 0.22; camera.shakeIntensity = 5;
+                const tx = targetMonster.x, ty = targetMonster.y;
+                player.dirX = tx - player.x; player.dirY = ty - player.y;
+                activeSpells.push({ type: 'meteor_rock', x: tx, y: ty, timer: 0.88, maxTimer: 0.88 });
+                monsters.forEach(m => {
+                    if (m.hp <= 0) return;
+                    if (Math.hypot(m.x - tx, m.y - ty) <= cfg.radius) {
+                        const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * spMultiplier);
+                        m.stunTimer = Math.max(m.stunTimer || 0, 2.0);
+                        applyDamageToMonster(m, dmg, '', '#f59e0b');
+                    }
+                });
+            } else if (spellKey === 'void_thunder') {
+                // 雷電操術：黑紫色超大範圍高傷 (CD 最久)
+                sound.playLightning();
+                camera.shakeTimer = 0.28; camera.shakeIntensity = 6;
+                const tx = targetMonster.x, ty = targetMonster.y;
+                player.dirX = tx - player.x; player.dirY = ty - player.y;
+                activeSpells.push({ type: 'void_thunder', x: tx, y: ty, timer: 0.8, maxTimer: 0.8 });
+                monsters.forEach(m => {
+                    if (m.hp <= 0) return;
+                    if (Math.hypot(m.x - tx, m.y - ty) <= cfg.radius) {
+                        const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * spMultiplier);
+                        applyDamageToMonster(m, dmg, '', '#c084fc');
+                    }
+                });
             }
 
             updateStatusNumbersUI();
@@ -1802,7 +2006,7 @@
             m.hp -= dmg;
             m.hurtFlashTimer = 0.16;
             spawnHitSparks(m.x, m.y, colorHex, 12, m.isFlying ? 32 : 12);
-            addFloatingText(m.x, m.y, `${tagText} -${dmg}`, colorHex, 14);
+            addFloatingText(m.x, m.y, `-${dmg}`, colorHex, 14);
             if (!fromNetwork) {
                 broadcastPlayerState('monster_hit', JSON.stringify({ id: m.id, dmg, hp: Math.max(0, m.hp), x: Number(m.x.toFixed(2)), y: Number(m.y.toFixed(2)), tag: tagText }));
             }
@@ -2274,6 +2478,11 @@
             } else if (item.type === 'scroll' && item.subType === 'poly') {
                 openPolyModal(index);
             } else if (VALID_EQUIP_TYPES.has(item.type)) {
+                if (item.type === 'weapon' && player.charClass === 'mage' && inferWeaponClass(item) !== 'staff') {
+                    addChatLog('🔮 皇家女法師無法使用劍／雙刀等近戰武器，僅限裝備法杖！', 'text-rose-400 font-bold');
+                    addFloatingText(player.x, player.y, '僅限裝備法杖', '#f87171', 13);
+                    return;
+                }
                 const slotKey = item.type;
                 const prevEquipped = player.equipped[slotKey];
                 player.equipped[slotKey] = item;
@@ -2733,7 +2942,7 @@
         window.triggerManualSwing = triggerManualSwing;
 
         function getPlayerAttackInterval() {
-            let interval = 0.56;
+            let interval = 0.84;
             if (player.hasteTimer > 0) interval *= 0.78;
             if (player.braveTimer > 0) interval *= 0.72;
             if (player.polyForm === 'death_knight') interval *= 0.75;
@@ -2786,7 +2995,7 @@
 
             const weaponColor = player.equipped.weapon ? player.equipped.weapon.bladeColor : '#fbbf24';
             spawnHitSparks(target.x, target.y, isCrit ? '#f43f5e' : weaponColor, isCrit ? 14 : 8, target.isFlying ? 32 : 12);
-            addFloatingText(target.x, target.y, isCrit ? `暴擊 -${dmg}!` : `-${dmg}`, isCrit ? '#fde047' : '#ffffff', isCrit ? 15 : 13);
+            addFloatingText(target.x, target.y, isCrit ? `-${dmg}!` : `-${dmg}`, isCrit ? '#fde047' : '#ffffff', isCrit ? 16 : 13);
             broadcastPlayerState('monster_hit', JSON.stringify({ id: target.id, dmg, hp: Math.max(0, target.hp), x: Number(target.x.toFixed(2)), y: Number(target.y.toFixed(2)), tag: isCrit ? '暴擊' : '' }));
 
             // 三大傳說神兵獨特觸發特效 (完全不同效果！)
@@ -2923,11 +3132,15 @@
             } else if (e.key === '4') {
                 useQuickPotion('blue');
             } else if (e.key === '5') {
-                castSpell('lightning');
+                castSpell(player.charClass === 'mage' ? 'flame_line' : 'lightning');
             } else if (e.key === '6') {
-                castSpell('tornado');
+                castSpell(player.charClass === 'mage' ? 'ice_lance' : 'tornado');
             } else if (e.key === '7') {
-                castSpell('fireball');
+                castSpell(player.charClass === 'mage' ? 'heal' : 'fireball');
+            } else if (e.key === '8' && player.charClass === 'mage') {
+                castSpell('meteor_rock');
+            } else if (e.key === '9' && player.charClass === 'mage') {
+                castSpell('void_thunder');
             }
         });
 
@@ -3017,6 +3230,8 @@
                 hp: Math.ceil(player.hp),
                 maxHp: player.maxHp,
                 swingAnimTimer: player.swingAnimTimer,
+                charClass: player.charClass || 'knight',
+                polyForm: player.polyForm || null,
                 armorTint: player.equipped.armor ? (player.equipped.armor.armorTint || '#cbd5e1') : '#64748b',
                 armorEnchant: getItemEnchantNum(player.equipped.armor),
                 capeColor: player.equipped.cloak ? (player.equipped.cloak.capeColor || '#dc2626') : '#991b1b',
@@ -3078,6 +3293,8 @@
             rp.hp = pkt.hp ?? rp.hp;
             rp.maxHp = pkt.maxHp || rp.maxHp;
             if (pkt.swingAnimTimer > 0.05) rp.swingAnimTimer = 0.26;
+            rp.charClass = pkt.charClass || rp.charClass || 'knight';
+            rp.polyForm = pkt.polyForm || null;
             rp.armorTint = pkt.armorTint || rp.armorTint;
             rp.armorEnchant = pkt.armorEnchant ?? (rp.armorEnchant || 0);
             rp.capeColor = pkt.capeColor || rp.capeColor;
@@ -3114,6 +3331,17 @@
                     const info = JSON.parse(pkt.extraText);
                     if (!monsters.some(x => x.id === info.id)) {
                         createMonster(info.type, info.x, info.y, info.id);
+                    }
+                } catch (e) {}
+            } else if (pkt.eventType === 'pvp_heal' && pkt.extraText) {
+                try {
+                    const info = JSON.parse(pkt.extraText);
+                    if (info.targetUid === player.uid) {
+                        player.hp = Math.min(player.maxHp, player.hp + info.amt);
+                        sound.playHeal();
+                        addFloatingText(player.x, player.y, `+${info.amt}`, '#4ade80', 14);
+                        addChatLog(`💚 隊友【${escapeHtml(info.healer)}】為你施放了治癒術！`, 'text-emerald-300');
+                        updateStatusNumbersUI();
                     }
                 } catch (e) {}
             } else if (pkt.eventType === 'pvp_hit' && pkt.extraText) {
@@ -3287,7 +3515,7 @@
             const badgeEl = document.getElementById('onlineCountBadge');
             if (badgeEl) badgeEl.textContent = onlineTotal;
 
-            ['lightning', 'tornado', 'fireball'].forEach(k => {
+            ['lightning', 'tornado', 'fireball', 'flame_line', 'ice_lance', 'heal', 'meteor_rock', 'void_thunder'].forEach(k => {
                 if (player.spellCooldowns[k] > 0) {
                     player.spellCooldowns[k] = Math.max(0, player.spellCooldowns[k] - dt);
                 }
@@ -3334,7 +3562,8 @@
                     player.attackTarget = null;
                 } else {
                     const dist = Math.hypot(player.attackTarget.x - player.x, player.attackTarget.y - player.y);
-                    const stopRange = player.attackTarget.isFlying ? 1.65 : 1.35;
+                    const isMageRanged = (player.charClass === 'mage' && !player.polyForm);
+                    const stopRange = isMageRanged ? 6.6 : (player.attackTarget.isFlying ? 1.85 : 1.4);
                     if (dist <= stopRange) {
                         player.targetX = player.x;
                         player.targetY = player.y;
@@ -3428,6 +3657,8 @@
             // 怪物 AI 迴圈
             const stats = getPlayerStats();
             for (const m of monsters) {
+                if (m.frozenTimer > 0) { m.frozenTimer = Math.max(0, m.frozenTimer - dt); continue; }
+                if (m.stunTimer > 0) { m.stunTimer = Math.max(0, m.stunTimer - dt); continue; }
                 m.walkPhase += dt * (m.type === 'shelob' ? 14 : 8);
                 m.wingPhase += dt * 11;
                 if (m.attackCooldown > 0) m.attackCooldown = Math.max(0, m.attackCooldown - dt);
@@ -3565,7 +3796,7 @@
                             if (m.hp <= 0) return;
                             if (Math.hypot(m.x - sp.targetX, m.y - sp.targetY) <= cfg.blastRadius) {
                                 const dmg = Math.floor((cfg.baseMin + Math.random() * (cfg.baseMax - cfg.baseMin)) * sp.spMultiplier);
-                                applyDamageToMonster(m, dmg, '☄️烈焰', '#fb923c');
+                                applyDamageToMonster(m, dmg, '', '#fb923c');
                             }
                         });
                     }
@@ -4747,6 +4978,8 @@
         (function initGlobalWssLobby() {
             if (typeof mqtt === 'undefined') return;
             const TOPIC = 'tiana_rpg_25d_global_room_v2/players';
+            const WORLD_STATE_TOPIC = 'tiana_rpg_25d_global_room_v2/world_state';
+            let worldStateLoaded = false;
             const hintEl = document.getElementById('loginOnlineHint');
             const netLabel = document.getElementById('netStatusLabel');
 
@@ -4760,11 +4993,39 @@
 
                 client.on('connect', () => {
                     client.subscribe(TOPIC);
-                    if (hintEl) hintEl.textContent = '🟢 全球 WebSocket 已連線';
-                    if (netLabel) netLabel.textContent = '●全球連線';
+                    client.subscribe(WORLD_STATE_TOPIC);
+                    if (hintEl) hintEl.textContent = '🟢 全球同步世界已連線';
+                    if (netLabel) netLabel.textContent = '●同服連線';
                 });
 
+                // 每 4 秒自動把目前全圖怪物位置/血量寫入雲端 Retained JSON (零資料庫持久同步！)
+                setInterval(() => {
+                    if (!client || !client.connected || !window.player) return;
+                    try {
+                        const snap = {
+                            ts: Date.now(),
+                            monsters: monsters.map(m => ({ id: m.id, type: m.type, x: Number(m.x.toFixed(2)), y: Number(m.y.toFixed(2)), hp: Math.ceil(m.hp), maxHp: m.maxHp, lairId: m.lairId || null }))
+                        };
+                        client.publish(WORLD_STATE_TOPIC, JSON.stringify(snap), { retain: true });
+                    } catch (e) {}
+                }, 4000);
+
                 client.on('message', (topic, message) => {
+                    if (topic === WORLD_STATE_TOPIC && !worldStateLoaded) {
+                        worldStateLoaded = true;
+                        try {
+                            const snap = JSON.parse(message.toString());
+                            if (snap && Array.isArray(snap.monsters) && snap.monsters.length > 0 && Date.now() - (snap.ts || 0) < 3600000) {
+                                monsters.length = 0;
+                                snap.monsters.forEach(sm => {
+                                    const created = createMonster(sm.type, sm.x, sm.y, sm.id);
+                                    created.hp = Math.max(1, Math.min(created.maxHp, sm.hp));
+                                    created.lairId = sm.lairId;
+                                });
+                            }
+                        } catch (e) {}
+                        return;
+                    }
                     if (topic !== TOPIC) return;
                     try {
                         const data = JSON.parse(message.toString());
@@ -5769,15 +6030,13 @@
                     mesh.position.y = 0.28;
                     g.add(mesh);
 
-                    // 非金幣或稀有裝備顯示衝天光柱
-                    if (!isGold) {
-                        const beam = new THREE.Mesh(
-                            new THREE.CylinderGeometry(0.08, 0.24, 3.2, 10, 1, true),
-                            new THREE.MeshBasicMaterial({ map: TEX.beam, color: col.clone().multiplyScalar(2.2), transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false })
-                        );
-                        beam.position.y = 1.6;
-                        g.add(beam);
-                    }
+                    // 低調精緻的地面微光環 (移除刺眼醜大光柱，僅傳說金裝有極細微金光)
+                    const glint = new THREE.Mesh(
+                        new THREE.PlaneGeometry(0.62, 0.62),
+                        new THREE.MeshBasicMaterial({ map: TEX.ring, color: col, transparent: true, opacity: isGold ? 0.16 : 0.24, blending: THREE.AdditiveBlending, depthWrite: false })
+                    );
+                    glint.rotation.x = -Math.PI / 2; glint.position.y = 0.04;
+                    g.add(glint);
                     scene.add(g);
                     lootMeshes.set(loot.id, g);
                 }
@@ -5802,6 +6061,11 @@
                     sp._vfxSpawned = true;
                     if (sp.type === 'lightning') spellVfx.spawn3DLightning(sp.x, sp.y, player, monsters);
                     else if (sp.type === 'tornado') spellVfx.spawn3DTornado(sp.x, sp.y);
+                    else if (sp.type === 'flame_line') spellVfx.spawnFlameLine3D(sp.x, sp.y, sp.dx, sp.dy);
+                    else if (sp.type === 'ice_lance') spellVfx.spawnIceLance3D(sp.x, sp.y, sp.tx, sp.ty);
+                    else if (sp.type === 'heal') spellVfx.spawnHealAura3D(sp.x, sp.y);
+                    else if (sp.type === 'meteor_rock') spellVfx.spawnRockFall3D(sp.x, sp.y);
+                    else if (sp.type === 'void_thunder') spellVfx.spawnVoidThunder3D(sp.x, sp.y, monsters);
                     else if (sp.type === 'fireball') {
                         const fg = spellVfx.createFireballMesh();
                         scene.add(fg);
@@ -5903,6 +6167,7 @@
                 capeColor: player.equipped.cloak ? (player.equipped.cloak.capeColor || '#991b1b') : '#7f1d1d',
                 bladeColor: player.equipped.weapon ? (player.equipped.weapon.bladeColor || '#38bdf8') : '#38bdf8',
                 weaponEnchant: getItemEnchantNum(player.equipped.weapon),
+                charClass: player.charClass || 'knight',
                 weaponClass: inferWeaponClass(player.equipped.weapon),
                 polyForm: player.polyForm,
                 isFrozen: player.frozenTimer > 0,
@@ -5927,6 +6192,7 @@
                     dirX: rp.dirX, dirY: rp.dirY, isMoving: rp.isMoving, walkCycle: rp.walkCycle,
                     swingAnimTimer: rp.swingAnimTimer, swingCombo: 0,
                     armorTint: rp.armorTint, armorEnchant: rp.armorEnchant || 0, capeColor: rp.capeColor, bladeColor: rp.bladeColor,
+                    charClass: rp.charClass || 'knight', polyForm: rp.polyForm || null,
                     weaponEnchant: rp.weaponEnchant, weaponClass: rp.weaponClass || '1h_sword', jumpZ: rp.jumpZ || 0,
                     hasteTimer: 0, braveTimer: 0, levelUpBeamTimer: 0
                 }, t, dt);

@@ -707,10 +707,84 @@ export function createModelFactory(sharedTEX) {
         swordLight.position.set(0.45, 1.35, 0.6);
         root.add(swordLight);
 
+        // 雕塑女性皇家法師外觀 (S型曼妙曲線、深V高衩華麗法袍、飽滿上圍、飄逸長髮)
+        const mageMeshGroup = new THREE.Group();
+        mageMeshGroup.visible = false;
+        body.add(mageMeshGroup);
+
+        const mageRobeMat = new THREE.MeshStandardMaterial({
+            color: 0x3b1254, map: sharedTEX.cloth, roughness: 0.62, metalness: 0.18, side: THREE.DoubleSide
+        });
+        const mageGoldTrim = M.gold;
+
+        // 纖細修長雙腿 + 高筒法師長靴
+        for (const s of [-1, 1]) {
+            addM(mageMeshGroup, new THREE.CapsuleGeometry(0.068, 0.34, 8, 10), M.skin, s * 0.105, 0.56, 0.01);
+            addM(mageMeshGroup, new THREE.CylinderGeometry(0.068, 0.052, 0.38, 10), M.darkSteel, s * 0.105, 0.21, 0);
+            addM(mageMeshGroup, new THREE.TorusGeometry(0.068, 0.01, 6, 12), mageGoldTrim, s * 0.105, 0.4, 0).rotation.x = Math.PI / 2;
+        }
+
+        // 曼妙沙漏曲線身軀 (豐滿臀部 -> 纖細蜂腰 -> 緊身馬甲胸圍)
+        const femPts = [
+            new THREE.Vector2(0.18, 0.72), // 臀部曲線
+            new THREE.Vector2(0.205, 0.84),
+            new THREE.Vector2(0.135, 1.02), // 纖細腰身
+            new THREE.Vector2(0.175, 1.24), // 胸廓
+            new THREE.Vector2(0.14, 1.42)
+        ];
+        const femBody = addM(mageMeshGroup, new THREE.LatheGeometry(femPts, 18), mageRobeMat, 0, 0, 0);
+        femBody.scale.set(1.06, 1.0, 0.88);
+        // 胸口白皙鎖骨與飽滿曲線雕塑
+        addM(mageMeshGroup, new THREE.SphereGeometry(0.115, 14, 12), M.skin, 0, 1.36, 0.055).scale.set(1.18, 0.85, 0.78);
+        for (const s of [-1, 1]) {
+            const bust = addM(mageMeshGroup, new THREE.SphereGeometry(0.112, 16, 14), mageRobeMat, s * 0.088, 1.255, 0.125);
+            bust.scale.set(1.02, 0.96, 1.05);
+            addM(mageMeshGroup, new THREE.SphereGeometry(0.082, 12, 10), M.skin, s * 0.075, 1.315, 0.135); // 上胸露肌
+        }
+        // 金色束腰腰帶與高衩飄逸後擺長袍
+        addM(mageMeshGroup, new THREE.TorusGeometry(0.145, 0.018, 8, 16), mageGoldTrim, 0, 1.02, 0).rotation.x = Math.PI / 2;
+        const skirtGeo = new THREE.CylinderGeometry(0.19, 0.46, 0.82, 16, 1, true, Math.PI * 0.25, Math.PI * 1.5);
+        addM(mageMeshGroup, skirtGeo, mageRobeMat, 0, 0.44, -0.02);
+        addM(mageMeshGroup, new THREE.TorusGeometry(0.45, 0.014, 6, 18, Math.PI * 1.5), mageGoldTrim, 0, 0.04, -0.02).rotation.set(Math.PI / 2, 0, Math.PI * 0.25);
+
+        // 優雅露肩法師雙臂 + 精緻女性頭像與長捲髮
+        for (const s of [-1, 1]) {
+            addM(mageMeshGroup, new THREE.CapsuleGeometry(0.048, 0.34, 8, 10), M.skin, s * 0.23, 1.22, 0.04).rotation.z = s * 0.22;
+            addM(mageMeshGroup, new THREE.TorusGeometry(0.054, 0.012, 6, 10), mageGoldTrim, s * 0.25, 1.32, 0.03).rotation.x = Math.PI / 2;
+        }
+        const mageHead = new THREE.Group();
+        mageHead.position.set(0, 1.54, 0.02);
+        mageMeshGroup.add(mageHead);
+        addM(mageHead, new THREE.CylinderGeometry(0.055, 0.068, 0.14, 10), M.skin, 0, -0.06, 0);
+        addM(mageHead, new THREE.SphereGeometry(0.125, 16, 14), M.skin, 0, 0.08, 0).scale.set(0.9, 1.04, 0.94);
+        const longHairMat = new THREE.MeshStandardMaterial({ color: 0xd97742, roughness: 0.48, metalness: 0.15 });
+        addM(mageHead, new THREE.SphereGeometry(0.138, 16, 12, 0, TAU, 0, Math.PI * 0.65), longHairMat, 0, 0.1, -0.02);
+        // 飄逸波浪長髮垂落背後
+        const hairBack = addM(mageHead, new THREE.ConeGeometry(0.22, 0.68, 12), longHairMat, 0, -0.22, -0.14);
+        hairBack.rotation.x = -0.22;
+        // 皇家魔導頭冠
+        addM(mageHead, new THREE.TorusGeometry(0.128, 0.015, 6, 16), mageGoldTrim, 0, 0.15, 0.01).rotation.x = Math.PI / 2;
+        addM(mageHead, new THREE.OctahedronGeometry(0.036, 0), M.purpleGlow, 0, 0.17, 0.135, false);
+
+        // 將原本騎士軀幹與雙腿歸類到 knightMeshGroup 方便一鍵切換
+        const knightMeshGroup = new THREE.Group();
+        body.remove(pelvis, legL, legR, torso);
+        knightMeshGroup.add(pelvis, legL, legR, torso);
+        body.add(knightMeshGroup);
+        // 法師也共用右手武器掛點 (把法杖移到獨立掛點讓女法師手持)
+        const mageStaffHolder = new THREE.Group();
+        mageStaffHolder.position.set(0.28, 1.06, 0.16);
+        mageStaffHolder.rotation.x = 0.25;
+        mageMeshGroup.add(mageStaffHolder);
+        const mageStaff = wStaff.clone();
+        mageStaff.visible = true;
+        mageStaffHolder.add(mageStaff);
+
         setShadows(body, true);
 
         return {
-            root, body, torso, head, polyHeads, legL, legR, armL, armR, foreR, foreL,
+            root, body, knightMeshGroup, mageMeshGroup, mageStaffHolder,
+            torso, head, polyHeads, legL, legR, armL, armR, foreR, foreL,
             shield, offDagger, weaponModels,
             capeMesh, capeBasePos, armorMat, armorAuraMat, armorAuraMeshes, capeMat, bladeMat, bladeCoreMat, bladeAuraMat,
             swordLight, bladeSparks,
@@ -826,6 +900,12 @@ export function createModelFactory(sharedTEX) {
         }
         // 冰凍異常狀態泛冰藍
         if (state.isFrozen) rig.armorMat.color.lerp(new THREE.Color(0x38bdf8), 0.72);
+        // 同步法師身體切換 (騎士體 vs 性感女性法師體)
+        if (rig.knightMeshGroup && rig.mageMeshGroup) {
+            const isMage = (state.charClass === 'mage') && !poly;
+            rig.knightMeshGroup.visible = !isMage;
+            rig.mageMeshGroup.visible = isMage;
+        }
 
         // 武器每 +10 階色階光芒 (+10白 / +20綠 / +30藍 / +40紫 / +50紅 / +60金)
         const wEnch = state.weaponEnchant || 0;
@@ -1286,10 +1366,12 @@ export function createModelFactory(sharedTEX) {
 
     function animateMonster(rig, m, t, dt, isTarget, isHover) {
         const targetYaw = Math.atan2(m.dirX || 0, m.dirY || 1);
-        rig.yaw = lerpAngle(rig.yaw, targetYaw, clamp(dt * 10, 0, 1));
-        rig.root.rotation.y = rig.yaw;
-
-        const lunge = m.attackAnimTimer > 0 ? Math.sin((m.attackAnimTimer / 0.35) * Math.PI) : 0;
+        const immobilized = (m.frozenTimer > 0 || m.stunTimer > 0);
+        if (!immobilized) {
+            rig.yaw = lerpAngle(rig.yaw, targetYaw, clamp(dt * 10, 0, 1));
+            rig.root.rotation.y = rig.yaw;
+        }
+        const lunge = (!immobilized && m.attackAnimTimer > 0) ? Math.sin((m.attackAnimTimer / 0.35) * Math.PI) : 0;
         const hurt = m.hurtFlashTimer > 0;
 
         if (m.type === 'werewolf') {

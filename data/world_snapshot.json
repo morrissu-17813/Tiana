@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "worldName": "Tiana_Aden_108x108",
+  "note": "Initial baseline world snapshot. Live multiplayer world state (monster positions, HP, online roster) is persisted in real time via MQTT Retained World State (tiana_rpg_25d_global_room_v2/world_state) without requiring a database.",
+  "lairCount": 12,
+  "updatedAt": 0,
+  "monsters": []
+}
