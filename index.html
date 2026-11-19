@@ -216,6 +216,10 @@
             <div class="flex items-center gap-1 shrink-0">
                 <span id="hasteBadge" class="hidden bg-emerald-800/90 text-[9px] text-emerald-200 px-1 rounded border border-emerald-400">綠</span>
                 <span id="braveBadge" class="hidden bg-red-800/90 text-[9px] text-red-200 px-1 rounded border border-yellow-400">勇</span>
+                <span id="polyBadge" class="hidden bg-purple-900/95 text-[9px] text-purple-200 px-1 rounded border border-purple-400">變</span>
+                <span id="frozenBadge" class="hidden bg-cyan-900/95 text-[9px] text-cyan-200 px-1 rounded border border-cyan-300 animate-pulse">❄凍</span>
+                <span id="burnBadge" class="hidden bg-orange-900/95 text-[9px] text-orange-200 px-1 rounded border border-orange-400">🔥灼</span>
+                <span id="poisonBadge" class="hidden bg-lime-900/95 text-[9px] text-lime-200 px-1 rounded border border-lime-400">☠毒</span>
             </div>
         </div>
 
@@ -295,11 +299,14 @@
         </div>
 
         <!-- 預設收合的召喚怪物小抽屜 -->
-        <div id="spawnDrawer" class="hidden mt-1 lineage-panel p-1.5 flex flex-wrap gap-1 max-w-[210px] justify-end">
+        <div id="spawnDrawer" class="hidden mt-1 lineage-panel p-1.5 flex flex-wrap gap-1 max-w-[235px] justify-end">
             <button onclick="spawnSpecificMonster('werewolf')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-amber-200 cursor-pointer">+狼人</button>
-            <button onclick="spawnSpecificMonster('shelob')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-red-300 cursor-pointer">+夏洛柏</button>
-            <button onclick="spawnSpecificMonster('croc')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-emerald-300 cursor-pointer">+鱷魚</button>
-            <button onclick="spawnSpecificMonster('drake')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-orange-300 font-bold cursor-pointer">+黑暗之龍Boss</button>
+            <button onclick="spawnSpecificMonster('shelob')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-lime-300 cursor-pointer">+夏洛柏</button>
+            <button onclick="spawnSpecificMonster('niss')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-teal-300 cursor-pointer">+泥斯水怪</button>
+            <button onclick="spawnSpecificMonster('de_archer')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-violet-300 cursor-pointer">+暗黑弓手</button>
+            <button onclick="spawnSpecificMonster('dark_mage')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-fuchsia-300 cursor-pointer">+暗黑法師</button>
+            <button onclick="spawnSpecificMonster('drake')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-orange-300 font-bold cursor-pointer">+飛龍Boss</button>
+            <button onclick="spawnSpecificMonster('water_dragon')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-cyan-300 font-bold cursor-pointer">+末日水龍Boss</button>
         </div>
 
         <!-- 經典圓形雷達小地圖 (永遠顯示目前位置、朝向箭頭、怪物與 Boss) -->
@@ -356,6 +363,39 @@
                 <div id="itemTooltip" class="bg-black/85 border border-amber-900/70 rounded p-1.5 text-[11px] min-h-[42px] flex flex-col justify-center">
                     <div class="text-amber-200/80">💡 點擊背包內的武器、防具或卷軸即可直接穿戴與強化！</div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 變身卷軸選擇彈窗 -->
+    <div id="polyModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4" onclick="if(event.target===this) closePolyModal()">
+        <div class="lineage-panel w-full max-w-[330px] overflow-hidden border border-purple-500/80 shadow-2xl">
+            <div class="lineage-header px-3 py-2 flex items-center justify-between text-xs font-bold">
+                <span>✨ 選擇傳說變身型態 (持續 120 秒)</span>
+                <button onclick="closePolyModal()" class="text-amber-200 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-3 space-y-2">
+                <button onclick="confirmPolymorph('death_knight')" class="lineage-btn w-full p-2.5 rounded text-left flex items-center gap-2.5 cursor-pointer border-rose-500/70">
+                    <span class="text-2xl">💀</span>
+                    <div>
+                        <div class="text-xs font-bold text-rose-300">死亡騎士 (巨劍型態)</div>
+                        <div class="text-[10px] text-stone-300">攻速 +30%、近戰攻擊 +25%、附帶烈焰斬擊</div>
+                    </div>
+                </button>
+                <button onclick="confirmPolymorph('baphomet')" class="lineage-btn w-full p-2.5 rounded text-left flex items-center gap-2.5 cursor-pointer border-purple-500/70">
+                    <span class="text-2xl">🐐</span>
+                    <div>
+                        <div class="text-xs font-bold text-purple-300">巴風特 (權杖型態)</div>
+                        <div class="text-[10px] text-stone-300">魔法傷害 +60%、回魔翻倍、普攻附帶暗黑魔彈</div>
+                    </div>
+                </button>
+                <button onclick="confirmPolymorph('dark_elf_king')" class="lineage-btn w-full p-2.5 rounded text-left flex items-center gap-2.5 cursor-pointer border-indigo-400/70">
+                    <span class="text-2xl">🗡️</span>
+                    <div>
+                        <div class="text-xs font-bold text-indigo-300">暗黑精靈王 (雙刀型態)</div>
+                        <div class="text-[10px] text-stone-300">移速 +35%、暴擊率 55%、極速雙刀連斬</div>
+                    </div>
+                </button>
             </div>
         </div>
     </div>
@@ -682,6 +722,25 @@
                     osc.start(now + idx * 0.055); osc.stop(now + idx * 0.055 + 0.29);
                 });
             }
+            playDeathShaft() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                // 經典《小朋友下樓梯》墜落死亡階梯式下墜音效
+                const steps = [740, 622, 523, 415, 330, 247, 175, 110, 68];
+                steps.forEach((f, idx) => {
+                    const t0 = this.ctx.currentTime + idx * 0.055;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = idx < 6 ? 'square' : 'sawtooth';
+                    osc.frequency.setValueAtTime(f, t0);
+                    osc.frequency.exponentialRampToValueAtTime(Math.max(40, f * 0.78), t0 + 0.055);
+                    gain.gain.setValueAtTime(0.14, t0);
+                    gain.gain.exponentialRampToValueAtTime(0.004, t0 + 0.065);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(t0); osc.stop(t0 + 0.07);
+                });
+            }
             playLevelUp() {
                 if (!this.enabled) return;
                 this.init();
@@ -713,38 +772,76 @@
 
         // 熱血動漫搖滾 BGM 控制器 (支援自動讀取 assets/audio/dive.mp3 或匯入本機 MP3)
         const bgmState = { enabled: true, audioEl: null, synthTimer: null, step: 0, customUrl: null };
+        // 天堂《說話之島／奇岩安全區》懷舊中世紀豎琴＋長笛＋溫暖弦樂背景音樂
         function startSynthBgmLoop() {
             if (bgmState.synthTimer || !bgmState.enabled) return;
-            const bassSeq = [146.83, 146.83, 174.61, 174.61, 130.81, 130.81, 110.00, 130.81]; // Dm - F - C - Am 疾走貝斯
-            const leadSeq = [587.33, 0, 659.25, 698.46, 880, 0, 698.46, 659.25, 523.25, 0, 587.33, 659.25, 440, 523.25, 587.33, 0];
+            // 經典中世紀小調和弦分解 (Am - F - C - G - Dm - Am - E7 - Am)
+            const chords = [
+                [220.00, 261.63, 329.63, 440.00], // Am
+                [174.61, 220.00, 261.63, 349.23], // F
+                [130.81, 196.00, 261.63, 329.63], // C
+                [196.00, 246.94, 293.66, 392.00], // G
+                [146.83, 220.00, 293.66, 349.23], // Dm
+                [220.00, 261.63, 329.63, 440.00], // Am
+                [164.81, 207.65, 246.94, 329.63], // E
+                [220.00, 261.63, 329.63, 440.00]  // Am
+            ];
+            const fluteMelody = [
+                659.25, 0, 587.33, 523.25,  659.25, 0, 440.00, 0,
+                523.25, 0, 587.33, 659.25,  783.99, 0, 659.25, 0,
+                587.33, 659.25, 587.33, 523.25,  440.00, 0, 392.00, 440.00,
+                493.88, 0, 523.25, 493.88,  440.00, 0, 0, 0
+            ];
             bgmState.synthTimer = setInterval(() => {
                 if (!bgmState.enabled || !sound.ctx || sound.ctx.state !== 'running') return;
                 const now = sound.ctx.currentTime;
                 const s = bgmState.step++;
-                // Bass
-                const bFreq = bassSeq[Math.floor(s / 2) % bassSeq.length];
-                const bo = sound.ctx.createOscillator();
-                const bg = sound.ctx.createGain();
-                bo.type = 'sawtooth';
-                const bf = sound.ctx.createBiquadFilter(); bf.type = 'lowpass'; bf.frequency.value = 420;
-                bo.frequency.setValueAtTime(bFreq, now);
-                bg.gain.setValueAtTime(0.032, now);
-                bg.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
-                bo.connect(bf); bf.connect(bg); bg.connect(sound.ctx.destination);
-                bo.start(now); bo.stop(now + 0.2);
-                // Lead
-                const lFreq = leadSeq[s % leadSeq.length];
-                if (lFreq > 0) {
-                    const lo = sound.ctx.createOscillator();
-                    const lg = sound.ctx.createGain();
-                    lo.type = 'triangle';
-                    lo.frequency.setValueAtTime(lFreq, now);
-                    lg.gain.setValueAtTime(0.028, now);
-                    lg.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
-                    lo.connect(lg); lg.connect(sound.ctx.destination);
-                    lo.start(now); lo.stop(now + 0.25);
+                const bar = Math.floor(s / 4) % chords.length;
+                const ch = chords[bar];
+
+                // 1. 撥弦中世紀豎琴琶音 (柔和自然衰減)
+                const harpFreq = ch[s % 4];
+                const ho = sound.ctx.createOscillator();
+                const hg = sound.ctx.createGain();
+                const hf = sound.ctx.createBiquadFilter();
+                ho.type = 'triangle';
+                hf.type = 'lowpass'; hf.frequency.setValueAtTime(1400, now); hf.frequency.exponentialRampToValueAtTime(420, now + 0.85);
+                ho.frequency.setValueAtTime(harpFreq, now);
+                hg.gain.setValueAtTime(0.001, now);
+                hg.gain.linearRampToValueAtTime(0.048, now + 0.018);
+                hg.gain.exponentialRampToValueAtTime(0.001, now + 0.92);
+                ho.connect(hf); hf.connect(hg); hg.connect(sound.ctx.destination);
+                ho.start(now); ho.stop(now + 0.95);
+
+                // 2. 每小節首拍加入溫暖低音弦樂 Pad
+                if (s % 4 === 0) {
+                    const po = sound.ctx.createOscillator();
+                    const pg = sound.ctx.createGain();
+                    const pf = sound.ctx.createBiquadFilter();
+                    po.type = 'sine';
+                    pf.type = 'lowpass'; pf.frequency.value = 320;
+                    po.frequency.setValueAtTime(ch[0] * 0.5, now);
+                    pg.gain.setValueAtTime(0.001, now);
+                    pg.gain.linearRampToValueAtTime(0.042, now + 0.35);
+                    pg.gain.exponentialRampToValueAtTime(0.001, now + 1.55);
+                    po.connect(pf); pf.connect(pg); pg.connect(sound.ctx.destination);
+                    po.start(now); po.stop(now + 1.6);
                 }
-            }, 210);
+
+                // 3. 懷舊柔和長笛主旋律 (帶輕微自然顫音)
+                const mFreq = fluteMelody[s % fluteMelody.length];
+                if (mFreq > 0) {
+                    const fo = sound.ctx.createOscillator();
+                    const fg = sound.ctx.createGain();
+                    fo.type = 'sine';
+                    fo.frequency.setValueAtTime(mFreq, now);
+                    fg.gain.setValueAtTime(0.001, now);
+                    fg.gain.linearRampToValueAtTime(0.032, now + 0.09);
+                    fg.gain.exponentialRampToValueAtTime(0.001, now + 0.72);
+                    fo.connect(fg); fg.connect(sound.ctx.destination);
+                    fo.start(now); fo.stop(now + 0.75);
+                }
+            }, 390);
         }
         function stopSynthBgmLoop() {
             if (bgmState.synthTimer) { clearInterval(bgmState.synthTimer); bgmState.synthTimer = null; }
@@ -820,7 +917,7 @@
         const TILE_WIDTH = 64;
         const TILE_HEIGHT = 32;
         const ELEVATION_PX = 20;
-        const MAP_SIZE = 72;
+        const MAP_SIZE = 108;
         const mapGrid = [];
         const heightMap = [];
         const mapRamp = [];
@@ -870,18 +967,18 @@
             mapBuildings.length = 0;
 
             mapBuildings.push(
-                { id: 'castle_keep', type: 'castle_keep', name: '奇岩王城主殿', x: 33, y: 5, w: 6, h: 4 },
-                { id: 'tower_nw', type: 'guard_tower', name: '左翼皇家箭塔', x: 25, y: 7, w: 2, h: 2 },
-                { id: 'tower_ne', type: 'guard_tower', name: '右翼皇家箭塔', x: 45, y: 7, w: 2, h: 2 },
-                { id: 'gate_w', type: 'gate_tower', name: '奇岩西城門塔', x: 31, y: 17, w: 2, h: 2 },
-                { id: 'gate_e', type: 'gate_tower', name: '奇岩東城門塔', x: 39, y: 17, w: 2, h: 2 },
-                { id: 'blacksmith', type: 'blacksmith', name: '矮人鐵匠鋪', x: 27, y: 31, w: 3, h: 2 },
-                { id: 'magic_shop', type: 'magic_shop', name: '吉倫魔法屋', x: 42, y: 31, w: 3, h: 2 },
-                { id: 'inn_house', type: 'cottage', name: '說話之島旅店', x: 27, y: 39, w: 3, h: 2 },
-                { id: 'chapel', type: 'chapel', name: '亞丁聖光鐘樓', x: 42, y: 39, w: 3, h: 2 },
-                { id: 'fountain', type: 'fountain', name: '守護神噴泉', x: 35, y: 35, w: 2, h: 2 },
-                { id: 'elven_tower', type: 'guard_tower', name: '妖精森林古塔', x: 11, y: 28, w: 2, h: 2 },
-                { id: 'dragon_tower', type: 'gate_tower', name: '龍之谷鎮龍塔', x: 58, y: 28, w: 2, h: 2 }
+                { id: 'castle_keep', type: 'castle_keep', name: '奇岩王城主殿', x: 51, y: 8, w: 6, h: 4 },
+                { id: 'tower_nw', type: 'guard_tower', name: '左翼皇家箭塔', x: 42, y: 10, w: 2, h: 2 },
+                { id: 'tower_ne', type: 'guard_tower', name: '右翼皇家箭塔', x: 64, y: 10, w: 2, h: 2 },
+                { id: 'gate_w', type: 'gate_tower', name: '奇岩西城門塔', x: 49, y: 21, w: 2, h: 2 },
+                { id: 'gate_e', type: 'gate_tower', name: '奇岩東城門塔', x: 57, y: 21, w: 2, h: 2 },
+                { id: 'blacksmith', type: 'blacksmith', name: '矮人鐵匠鋪', x: 44, y: 48, w: 3, h: 2 },
+                { id: 'magic_shop', type: 'magic_shop', name: '吉倫魔法屋', x: 61, y: 48, w: 3, h: 2 },
+                { id: 'inn_house', type: 'cottage', name: '說話之島旅店', x: 44, y: 58, w: 3, h: 2 },
+                { id: 'chapel', type: 'chapel', name: '亞丁聖光鐘樓', x: 61, y: 58, w: 3, h: 2 },
+                { id: 'fountain', type: 'fountain', name: '療癒溫泉噴泉', x: 53, y: 53, w: 2, h: 2 },
+                { id: 'elven_tower', type: 'guard_tower', name: '妖精森林古塔', x: 16, y: 46, w: 2, h: 2 },
+                { id: 'dragon_tower', type: 'gate_tower', name: '龍之谷鎮龍塔', x: 88, y: 40, w: 2, h: 2 }
             );
 
             for (let y = 0; y < MAP_SIZE; y++) {
@@ -890,19 +987,18 @@
                 for (let x = 0; x < MAP_SIZE; x++) {
                     let h = 0;
                     mapRamp[y][x] = false;
-
-                    if (y >= 2 && y <= 18 && x >= 20 && x <= 51) {
+                    if (y >= 4 && y <= 22 && x >= 37 && x <= 71) {
                         h = 2;
-                        if (y >= 3 && y <= 10 && x >= 30 && x <= 41) h = 3;
-                    } else if (y >= 19 && y <= 24 && x >= 28 && x <= 43) {
+                        if (y >= 6 && y <= 14 && x >= 47 && x <= 61) h = 3;
+                    } else if (y >= 23 && y <= 34 && x >= 46 && x <= 62) {
                         h = 1;
-                    } else if (y >= 28 && y <= 43 && x >= 25 && x <= 46) {
+                    } else if (y >= 43 && y <= 65 && x >= 41 && x <= 67) {
                         h = 1;
-                    } else if (x >= 4 && x <= 16 && y >= 18 && y <= 42) {
-                        h = (x >= 7 && x <= 13 && y >= 24 && y <= 34) ? 2 : 1;
-                    } else if (x >= 54 && x <= 67 && y >= 16 && y <= 46) {
-                        h = (x >= 57 && x <= 64 && y >= 22 && y <= 38) ? 2 : 1;
-                    } else if (x >= 29 && x <= 42 && y >= 54 && y <= 64) {
+                    } else if (x >= 6 && x <= 26 && y >= 26 && y <= 66) {
+                        h = (x >= 10 && x <= 22 && y >= 36 && y <= 54) ? 2 : 1;
+                    } else if (x >= 78 && x <= 100 && y >= 20 && y <= 64) {
+                        h = (x >= 83 && x <= 95 && y >= 28 && y <= 52) ? 2 : 1;
+                    } else if (x >= 44 && x <= 64 && y >= 78 && y <= 94) {
                         h = 1;
                     }
                     heightMap[y][x] = h;
@@ -911,18 +1007,18 @@
 
             for (let y = 1; y < MAP_SIZE - 1; y++) {
                 for (let x = 1; x < MAP_SIZE - 1; x++) {
-                    if (y === 10 && x >= 34 && x <= 37) { heightMap[y][x] = 2.5; mapRamp[y][x] = true; }
-                    if (y === 18 && x >= 34 && x <= 37) { heightMap[y][x] = 1.5; mapRamp[y][x] = true; }
-                    if ((y === 24 || y === 28) && x >= 34 && x <= 37) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
-                    if (y === 43 && x >= 34 && x <= 37) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
-                    if ((x === 25 || x === 46) && y >= 34 && y <= 37) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
-                    if ((x === 16 && y >= 28 && y <= 31) || (x === 13 && y >= 28 && y <= 30)) {
-                        heightMap[y][x] = x === 16 ? 0.5 : 1.5; mapRamp[y][x] = true;
+                    if (y === 14 && x >= 52 && x <= 55) { heightMap[y][x] = 2.5; mapRamp[y][x] = true; }
+                    if (y === 22 && x >= 52 && x <= 55) { heightMap[y][x] = 1.5; mapRamp[y][x] = true; }
+                    if ((y === 34 || y === 43) && x >= 52 && x <= 55) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
+                    if (y === 65 && x >= 52 && x <= 55) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
+                    if ((x === 41 || x === 67) && y >= 52 && y <= 55) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
+                    if ((x === 26 && y >= 46 && y <= 49) || (x === 22 && y >= 46 && y <= 49)) {
+                        heightMap[y][x] = x === 26 ? 0.5 : 1.5; mapRamp[y][x] = true;
                     }
-                    if ((x === 54 && y >= 28 && y <= 31) || (x === 57 && y >= 28 && y <= 30)) {
-                        heightMap[y][x] = x === 54 ? 0.5 : 1.5; mapRamp[y][x] = true;
+                    if ((x === 78 && y >= 42 && y <= 45) || (x === 83 && y >= 42 && y <= 45)) {
+                        heightMap[y][x] = x === 78 ? 0.5 : 1.5; mapRamp[y][x] = true;
                     }
-                    if (y === 54 && x >= 34 && x <= 37) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
+                    if (y === 78 && x >= 52 && x <= 55) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
                 }
             }
 
@@ -947,35 +1043,45 @@
                     }
 
                     const isCastleWallBorder = (
-                        ((y === 4 || y === 17) && x >= 22 && x <= 49) ||
-                        ((x === 22 || x === 49) && y >= 4 && y <= 17)
+                        ((y === 6 || y === 21) && x >= 39 && x <= 69) ||
+                        ((x === 39 || x === 69) && y >= 6 && y <= 21)
                     );
-                    const isCastleGateOpening = (y === 17 && x >= 33 && x <= 38);
+                    const isCastleGateOpening = (y === 21 && x >= 51 && x <= 56);
 
                     if (isCastleWallBorder && !isCastleGateOpening) {
                         mapGrid[y][x] = 6;
                         continue;
                     }
 
-                    if ((x === 35 || x === 36) && y >= 9 && y <= 42) {
+                    if ((x === 53 || x === 54) && y >= 13 && y <= 64) {
                         mapGrid[y][x] = 5;
                         continue;
                     }
 
-                    if ((x >= 23 && x <= 48 && y >= 5 && y <= 16) ||
-                        (x >= 26 && x <= 45 && y >= 29 && y <= 42) ||
-                        (x >= 33 && x <= 38 && y >= 17 && y <= 28)) {
+                    if ((x >= 40 && x <= 68 && y >= 7 && y <= 20) ||
+                        (x >= 42 && x <= 66 && y >= 44 && y <= 64) ||
+                        (x >= 51 && x <= 56 && y >= 21 && y <= 43)) {
                         mapGrid[y][x] = 1;
                         continue;
                     }
 
+                    // 淺水區 (tile 2，可踩水走過 + 泥斯水怪棲息) 與 深藍深水區 (tile 8，不可走入 + 末日水龍海域)
+                    const dLakeW = Math.hypot(x - 24, y - 80);
+                    const dLakeE = Math.hypot(x - 82, y - 80);
+                    const dAbyss = Math.hypot(x - 86, y - 84);
                     if (heightMap[y][x] === 0 && (
-                        ((x >= 17 && x <= 19) && y >= 5 && y <= 17) ||
-                        ((x >= 52 && x <= 54) && y >= 5 && y <= 17) ||
-                        (Math.hypot(x - 16, y - 54) < 4.5) ||
-                        (Math.hypot(x - 55, y - 54) < 4.8)
+                        dAbyss < 6.8 ||
+                        (Math.hypot(x - 24, y - 80) < 3.6)
                     )) {
-                        mapGrid[y][x] = 2;
+                        mapGrid[y][x] = 8; // 深藍深水區
+                        continue;
+                    }
+                    if (heightMap[y][x] === 0 && (
+                        dLakeW < 9.5 || dLakeE < 11.5 ||
+                        ((x >= 31 && x <= 35) && y >= 10 && y <= 24) ||
+                        ((x >= 72 && x <= 76) && y >= 10 && y <= 24)
+                    )) {
+                        mapGrid[y][x] = 2; // 淺水區 (可踩過去！)
                         continue;
                     }
 
@@ -985,8 +1091,8 @@
                     }
 
                     const r = mapRnd();
-                    const distFromTownCenter = Math.hypot(x - 36, y - 36);
-                    const isElvenForest = (x < 22 && y > 14 && y < 52);
+                    const distFromTownCenter = Math.hypot(x - 54, y - 54);
+                    const isElvenForest = (x < 30 && y > 22 && y < 70);
                     const treeChance = isElvenForest ? 0.11 : 0.065;
 
                     if (r < treeChance && distFromTownCenter > 8.5) {
@@ -1014,8 +1120,8 @@
 
         function isInSafeZone(wx, wy) {
             // 說話之島城鎮廣場 或 奇岩王城內部 = 安全區 (不可 PVP)
-            const inTown = (wx >= 25 && wx <= 46 && wy >= 28 && wy <= 43);
-            const inCastle = (wx >= 22 && wx <= 49 && wy >= 4 && wy <= 17);
+            const inTown = (wx >= 41 && wx <= 67 && wy >= 43 && wy <= 65);
+            const inCastle = (wx >= 39 && wx <= 69 && wy >= 6 && wy <= 21);
             return inTown || inCastle;
         }
 
@@ -1028,8 +1134,8 @@
             // 樹木(3)、城牆(6)、建築物無論走路或跳躍都不可穿透
             if (tile === 3 || tile === 6) return false;
             if (isInsideBuildingFootprint(tx, ty)) return false;
-            // 水域(2)：走路不可直接踩進深水，但跳躍時可以飛越！
-            if (tile === 2 && !isJumping) return false;
+            // 淺水(2)可直接踩水走過不卡點！只有深藍深水(8)不可直接走入 (跳躍可飛越邊緣)
+            if (tile === 8 && !isJumping) return false;
 
             // 符合人體力學：1 階高低差都能自然上下走動不卡牆；超過 1 階陡峭斷崖需跳躍或走階梯
             if (!isJumping && fromX !== null && fromY !== null) {
@@ -1105,8 +1211,8 @@
                 baseAtkMax: 22,
                 baseDef: 3,
                 gold: 2000,
-                x: 36.0,
-                y: 37.5,
+                x: 54.0,
+                y: 56.5,
                 equipped: {
                     helmet:   { id: 'eq_helm_1',  name: '+4 騎士面甲',       type: 'helmet',   def: 4,  atk: 0,  sp: 0,  icon: '🪖', desc: '防禦 -4 的標準亞丁騎士面甲' },
                     earring:  { id: 'eq_ear_1',   name: '靈魂耳環',          type: 'earring',  def: 1,  atk: 1,  sp: 5,  icon: '💎', desc: '防禦 -1、額外攻擊 +1、魔傷 +5%' },
@@ -1125,6 +1231,7 @@
                     { id: 'pot_blue',  name: '藍色魔力藥水',       type: 'consumable', subType: 'blue',  count: 8,  icon: '💧', desc: '恢復 45 MP 並加速回魔' },
                     { id: 'zel_scroll',name: '對武器施法的卷軸',   type: 'scroll',     subType: 'dai',   count: 15, icon: '📜', desc: '強化目前主手武器 (+1，每 +10 升級光芒色階)' },
                     { id: 'arm_scroll',name: '對防具施法的卷軸',   type: 'scroll',     subType: 'zel',   count: 15, icon: '🛡️', desc: '強化目前身體防具 (+1，每 +10 升級盔甲光芒色階)' },
+                    { id: 'poly_scroll',name: '變身卷軸',          type: 'scroll',     subType: 'poly',  count: 2,  icon: '🎭', desc: '雙擊選擇變身為：死亡騎士(巨劍) / 巴風特(權杖) / 暗黑精靈王(雙刀)' },
                     { id: 'w_greatsw', name: '+10 亞丁雙手巨劍',   type: 'weapon',     weaponClass: '2h_sword', atk: 22, def: 0, sp: 12, enchant: 10, bladeColor: '#f8fafc', icon: '🗡️', desc: '雙手巨劍 (自動卸下盾牌)，+10 散發純白聖光！' },
                     { id: 'w_dagger',  name: '+6 暗影雙刃短刀',    type: 'weapon',     weaponClass: 'dagger',   atk: 13, def: 0, sp: 8,  enchant: 6,  bladeColor: '#38bdf8', icon: '🔪', desc: '雙刀流敏捷短刀 (無盾牌)，高攻速連斬！' },
                     { id: 'w_tsurugi', name: '+8 瑟魯基之劍',      type: 'weapon',     weaponClass: '1h_sword', atk: 16, def: 0, sp: 10, enchant: 8, bladeColor: '#fde047', icon: '⚔️', desc: '額外攻擊 +16、魔法增傷 +10% (單手劍配盾)' },
@@ -1171,6 +1278,12 @@
             jumpZ: 0,
             jumpVel: 0,
             springHealAccum: 0,
+            polyForm: null,
+            polyTimer: 0,
+            frozenTimer: 0,
+            burnTimer: 0,
+            poisonTimer: 0,
+            dotAccum: 0,
             levelUpBeamTimer: 0,
             chatBubbleText: '',
             chatBubbleTimer: 0,
@@ -1379,6 +1492,7 @@
         const monsters = [];
         const particles = [];
         const activeSpells = [];
+        const enemyProjectiles = [];
         const remotePlayers = {};
         window.player = player;
 
@@ -1404,10 +1518,10 @@
 
         function teleportToCastle() {
             player.attackTarget = null;
-            player.x = 36.0;
-            player.y = 19.5;
-            player.targetX = 36.0;
-            player.targetY = 19.5;
+            player.x = 54.0;
+            player.y = 23.5;
+            player.targetX = 54.0;
+            player.targetY = 23.5;
             if (window.R3D && window.R3D.snapCamera) window.R3D.snapCamera();
             sound.playLevelUp();
             spawnHitSparks(player.x, player.y, '#38bdf8', 20, 28);
@@ -1421,41 +1535,61 @@
          * 4. 經典《天堂》五大怪物種類資料庫與建模參數
          **************************************************************/
         const MONSTER_TYPES = {
-            slime: {
-                type: 'slime', name: '史萊姆', level: 2, maxHp: 55, atkMin: 5, atkMax: 9,
-                speed: 1.35, aggroRange: 3.5, attackRange: 1.25, exp: 28, scale: 1.0, isFlying: false, hitRadius: 26
-            },
-            werewolf: {
-                type: 'werewolf', name: '狼人', level: 6, maxHp: 135, atkMin: 12, atkMax: 19,
-                speed: 2.35, aggroRange: 4.8, attackRange: 1.35, exp: 68, scale: 1.12, isFlying: false, hitRadius: 32
-            },
-            shelob: {
-                type: 'shelob', name: '夏洛柏', level: 8, maxHp: 175, atkMin: 15, atkMax: 23,
-                speed: 2.1, aggroRange: 5.0, attackRange: 1.5, exp: 95, scale: 1.18, isFlying: false, hitRadius: 35
-            },
-            croc: {
-                type: 'croc', name: '巨大鱷魚', level: 9, maxHp: 220, atkMin: 17, atkMax: 26,
-                speed: 1.75, aggroRange: 4.5, attackRange: 1.45, exp: 115, scale: 1.2, isFlying: false, hitRadius: 35
-            },
-            drake: {
-                type: 'drake', name: '飛龍', level: 15, maxHp: 460, atkMin: 26, atkMax: 40,
-                speed: 2.5, aggroRange: 6.2, attackRange: 2.2, exp: 320, scale: 1.38, isFlying: true, hitRadius: 46
-            }
+            slime:        { type: 'slime',        name: '史萊姆',         level: 2,  maxHp: 60,  atkMin: 5,  atkMax: 9,  speed: 1.4, aggroRange: 4.0, attackRange: 1.25, exp: 30,  scale: 1.0,  isFlying: false, hitRadius: 26 },
+            werewolf:     { type: 'werewolf',     name: '嗜血狼人',       level: 6,  maxHp: 145, atkMin: 12, atkMax: 19, speed: 2.4, aggroRange: 5.2, attackRange: 1.35, exp: 72,  scale: 1.12, isFlying: false, hitRadius: 32 },
+            shelob:       { type: 'shelob',       name: '夏洛柏(劇毒)',   level: 8,  maxHp: 185, atkMin: 15, atkMax: 23, speed: 2.1, aggroRange: 5.2, attackRange: 1.5,  exp: 100, scale: 1.18, isFlying: false, hitRadius: 35 },
+            croc:         { type: 'croc',         name: '巨大鱷魚',       level: 9,  maxHp: 225, atkMin: 17, atkMax: 26, speed: 1.8, aggroRange: 4.8, attackRange: 1.45, exp: 120, scale: 1.2,  isFlying: false, hitRadius: 35 },
+            niss:         { type: 'niss',         name: '泥斯水怪',       level: 10, maxHp: 240, atkMin: 18, atkMax: 27, speed: 2.1, aggroRange: 5.5, attackRange: 1.6,  exp: 135, scale: 1.15, isFlying: false, hitRadius: 34, waterDweller: true },
+            de_archer:    { type: 'de_archer',    name: '暗黑精靈弓箭手', level: 11, maxHp: 210, atkMin: 19, atkMax: 29, speed: 2.2, aggroRange: 7.5, attackRange: 6.2,  exp: 150, scale: 1.08, isFlying: false, hitRadius: 32, ranged: 'arrow' },
+            dark_mage:    { type: 'dark_mage',    name: '暗黑法師',       level: 13, maxHp: 235, atkMin: 24, atkMax: 36, speed: 1.85,aggroRange: 7.8, attackRange: 6.8,  exp: 185, scale: 1.1,  isFlying: false, hitRadius: 32, ranged: 'dark_fireball' },
+            drake:        { type: 'drake',        name: '高空飛龍 Boss',  level: 16, maxHp: 560, atkMin: 28, atkMax: 42, speed: 2.55,aggroRange: 7.5, attackRange: 3.6,  exp: 380, scale: 1.38, isFlying: true,  hitRadius: 48 },
+            water_dragon: { type: 'water_dragon', name: '末日水龍 Boss',  level: 20, maxHp: 880, atkMin: 34, atkMax: 52, speed: 2.35,aggroRange: 8.5, attackRange: 5.2,  exp: 680, scale: 1.55, isFlying: true,  hitRadius: 54, ranged: 'icicle' }
         };
 
-        let monsterIdSeq = 1;
+        // 12 座怪物生態群聚巢穴 (自動群聚活動 + 自動重生)
+        const MONSTER_LAIRS = [
+            { id: 'lair_1',  name: '史萊姆北沼',       type: 'slime',        x: 34, y: 34, radius: 5.5, maxCount: 5 },
+            { id: 'lair_2',  name: '狼人荒原東巢',     type: 'werewolf',     x: 74, y: 54, radius: 6.0, maxCount: 5 },
+            { id: 'lair_3',  name: '狼人古森西巢',     type: 'werewolf',     x: 30, y: 54, radius: 6.0, maxCount: 5 },
+            { id: 'lair_4',  name: '夏洛柏毒蛛穴',     type: 'shelob',       x: 18, y: 36, radius: 5.5, maxCount: 4 },
+            { id: 'lair_5',  name: '巨鱷南岸灘',       type: 'croc',         x: 54, y: 74, radius: 5.5, maxCount: 4 },
+            { id: 'lair_6',  name: '泥斯西湖淺水區',   type: 'niss',         x: 24, y: 74, radius: 5.5, maxCount: 5 },
+            { id: 'lair_7',  name: '泥斯東灣淺水區',   type: 'niss',         x: 76, y: 78, radius: 5.5, maxCount: 4 },
+            { id: 'lair_8',  name: '暗黑精靈弓手營地', type: 'de_archer',    x: 16, y: 58, radius: 6.0, maxCount: 4 },
+            { id: 'lair_9',  name: '暗黑法師祭壇',     type: 'dark_mage',    x: 88, y: 54, radius: 6.0, maxCount: 4 },
+            { id: 'lair_10', name: '暗黑前哨混編巢',   type: 'de_archer',    x: 54, y: 88, radius: 6.0, maxCount: 4, altType: 'dark_mage' },
+            { id: 'lair_11', name: '龍之谷飛龍峭壁',   type: 'drake',        x: 90, y: 34, radius: 6.5, maxCount: 2 },
+            { id: 'lair_12', name: '末日水龍深藍海淵', type: 'water_dragon', x: 84, y: 82, radius: 5.5, maxCount: 1 }
+        ];
 
+        let monsterIdSeq = 1;
         const worldMonsterRng = createSeededRng(88817813);
 
+        function spawnInLair(lair, customRnd = null) {
+            const rfn = customRnd || Math.random;
+            const pickType = (lair.altType && rfn() < 0.5) ? lair.altType : lair.type;
+            const cfg = MONSTER_TYPES[pickType] || MONSTER_TYPES.slime;
+            let sx = lair.x, sy = lair.y;
+            for (let tries = 0; tries < 25; tries++) {
+                const ang = rfn() * Math.PI * 2;
+                const dist = 0.8 + rfn() * lair.radius;
+                const tx = Math.max(3, Math.min(MAP_SIZE - 4, lair.x + Math.cos(ang) * dist));
+                const ty = Math.max(3, Math.min(MAP_SIZE - 4, lair.y + Math.sin(ang) * dist));
+                if (isWalkable(tx, ty, cfg.isFlying)) { sx = tx; sy = ty; break; }
+            }
+            const m = createMonster(pickType, sx, sy, null, rfn);
+            m.lairId = lair.id;
+            m.homeX = lair.x;
+            m.homeY = lair.y;
+            return m;
+        }
+
         function spawnInitialMonsters() {
-            const initialPool = [
-                'slime', 'slime', 'slime', 'slime', 'slime', 'slime', 'slime',
-                'werewolf', 'werewolf', 'werewolf', 'werewolf', 'werewolf', 'werewolf', 'werewolf',
-                'shelob', 'shelob', 'shelob', 'shelob', 'shelob', 'shelob', 'shelob',
-                'croc', 'croc', 'croc', 'croc', 'croc', 'croc',
-                'drake', 'drake', 'drake', 'drake'
-            ];
-            initialPool.forEach(t => createMonster(t, null, null, null, worldMonsterRng));
+            for (const lair of MONSTER_LAIRS) {
+                for (let i = 0; i < lair.maxCount; i++) {
+                    spawnInLair(lair, worldMonsterRng);
+                }
+            }
         }
 
         function createMonster(typeKey, customX = null, customY = null, forcedId = null, customRnd = null) {
@@ -1799,9 +1933,28 @@
             { id: 'b_dark',   name: '+6 黑暗長靴',       type: 'boots',    def: 6,  atk: 2, sp: 5,  icon: '👢', desc: '防禦 -6、近戰傷害 +2' }
         ];
 
+        // 三大最強傳說專屬武器 (10% 機率獲得，各有完全不同超強特效！)
+        const LEGENDARY_POLY_WEAPONS = [
+            {
+                id: 'w_dk_greatsword', name: '+10 死亡騎士巨劍', type: 'weapon', weaponClass: '2h_sword',
+                specialEffect: 'dk_hellfire', atk: 38, def: 0, sp: 18, enchant: 10, bladeColor: '#ef4444',
+                icon: '🔥', desc: '【傳說神兵】雙手巨劍(無盾)：普攻 35% 觸發「地獄火斬」範圍烈焰爆發＋灼傷！'
+            },
+            {
+                id: 'w_bapho_staff', name: '+10 巴風特權杖', type: 'weapon', weaponClass: 'staff',
+                specialEffect: 'bapho_quake', atk: 32, def: 0, sp: 45, enchant: 10, bladeColor: '#a855f7',
+                icon: '🔮', desc: '【傳說神兵】惡魔權杖(無盾)：普攻 35% 召喚「地裂暗雷」高倍魔傷並回魔 +8 MP！'
+            },
+            {
+                id: 'w_de_duals', name: '+10 暗黑精靈王雙刀', type: 'weapon', weaponClass: 'dagger',
+                specialEffect: 'de_phantom', atk: 35, def: 0, sp: 22, enchant: 10, bladeColor: '#38bdf8',
+                icon: '⚡', desc: '【傳說神兵】雙刀流(無盾)：攻速 +25%，普攻 40% 觸發「暗影雙重暴擊」並吸血 +15 HP！'
+            }
+        ];
+
         function dropMonsterLoot(m) {
-            const isBoss = m.type === 'drake';
-            const goldAmt = Math.floor((18 + Math.random() * 35) * m.level * (isBoss ? 2.5 : 1));
+            const isBoss = (m.type === 'drake' || m.type === 'water_dragon');
+            const goldAmt = Math.floor((18 + Math.random() * 35) * m.level * (isBoss ? 3.2 : 1));
             groundLoots.push({
                 id: 'loot_' + Date.now() + '_' + Math.random(),
                 wx: m.x + (Math.random() - 0.5) * 0.45,
@@ -1812,6 +1965,30 @@
                 icon: '🪙',
                 color: '#facc15'
             });
+
+            // (A) 10% 機率掉落三大最強傳說專屬武器 (死亡騎士巨劍 / 巴風特權杖 / 暗黑精靈王雙刀)
+            if (Math.random() < (isBoss ? 0.35 : 0.10)) {
+                const tpl = LEGENDARY_POLY_WEAPONS[Math.floor(Math.random() * LEGENDARY_POLY_WEAPONS.length)];
+                const legItem = { ...tpl, id: tpl.id + '_' + Date.now() + '_' + Math.floor(Math.random() * 999) };
+                groundLoots.push({
+                    id: 'loot_leg_' + Date.now() + '_' + Math.random(),
+                    wx: m.x + (Math.random() - 0.5) * 0.7,
+                    wy: m.y + (Math.random() - 0.5) * 0.7,
+                    kind: 'item', itemData: legItem, name: legItem.name, icon: legItem.icon, color: '#facc15'
+                });
+                addChatLog(`🌟 傳說降臨！【${m.name}】掉落了 <span class="text-yellow-300 font-bold">${legItem.name}</span>！`, 'text-amber-300 font-bold');
+            }
+
+            // (B) 22% (Boss 70%) 機率掉落「變身卷軸」
+            if (Math.random() < (isBoss ? 0.70 : 0.22)) {
+                const polyScroll = { id: 'poly_scroll', name: '變身卷軸', type: 'scroll', subType: 'poly', count: 1, icon: '🎭', desc: '雙擊選擇變身：死亡騎士(巨劍) / 巴風特(權杖) / 暗黑精靈王(雙刀)' };
+                groundLoots.push({
+                    id: 'loot_poly_' + Date.now() + '_' + Math.random(),
+                    wx: m.x + (Math.random() - 0.5) * 0.65,
+                    wy: m.y + (Math.random() - 0.5) * 0.65,
+                    kind: 'item', itemData: polyScroll, name: polyScroll.name, icon: '🎭', color: '#c084fc'
+                });
+            }
 
             const roll = Math.random();
             let itemData = null;
@@ -1915,6 +2092,10 @@
 
             document.getElementById('hasteBadge').classList.toggle('hidden', player.hasteTimer <= 0);
             document.getElementById('braveBadge').classList.toggle('hidden', player.braveTimer <= 0);
+            const pb = document.getElementById('polyBadge'); if (pb) pb.classList.toggle('hidden', !player.polyForm || player.polyTimer <= 0);
+            const fb = document.getElementById('frozenBadge'); if (fb) fb.classList.toggle('hidden', player.frozenTimer <= 0);
+            const bb = document.getElementById('burnBadge'); if (bb) bb.classList.toggle('hidden', player.burnTimer <= 0);
+            const psb = document.getElementById('poisonBadge'); if (psb) psb.classList.toggle('hidden', player.poisonTimer <= 0);
 
             const redPot = player.inventory.find(i => i.subType === 'red');
             const greenPot = player.inventory.find(i => i.subType === 'green');
@@ -2090,6 +2271,8 @@
                 useWeaponScroll(index);
             } else if (item.type === 'scroll' && item.subType === 'zel') {
                 useArmorScroll(index);
+            } else if (item.type === 'scroll' && item.subType === 'poly') {
+                openPolyModal(index);
             } else if (VALID_EQUIP_TYPES.has(item.type)) {
                 const slotKey = item.type;
                 const prevEquipped = player.equipped[slotKey];
@@ -2138,6 +2321,37 @@
             saveCharacterProgress();
             updateUI();
         }
+
+        let pendingPolyScrollIdx = -1;
+        function openPolyModal(invIndex) {
+            pendingPolyScrollIdx = invIndex;
+            const m = document.getElementById('polyModal');
+            if (m) m.classList.remove('hidden');
+        }
+        function closePolyModal() {
+            pendingPolyScrollIdx = -1;
+            const m = document.getElementById('polyModal');
+            if (m) m.classList.add('hidden');
+        }
+        function confirmPolymorph(formKey) {
+            const idx = pendingPolyScrollIdx;
+            if (idx >= 0 && player.inventory[idx]) {
+                player.inventory[idx].count -= 1;
+                if (player.inventory[idx].count <= 0) player.inventory.splice(idx, 1);
+            }
+            player.polyForm = formKey;
+            player.polyTimer = 120;
+            player.levelUpBeamTimer = 1.1;
+            sound.playLevelUp();
+            const labels = { death_knight: '💀 死亡騎士(巨劍)', baphomet: '🐐 巴風特(權杖)', dark_elf_king: '🗡️ 暗黑精靈王(雙刀)' };
+            addFloatingText(player.x, player.y, `🎭 變身：${labels[formKey]}!`, '#e879f9', 15);
+            addChatLog(`🎭 你使用了變身卷軸，化身為 <span class="text-purple-300 font-bold">${labels[formKey]}</span>！(120秒)`, 'text-purple-300');
+            closePolyModal();
+            saveCharacterProgress();
+            updateUI();
+        }
+        window.closePolyModal = closePolyModal;
+        window.confirmPolymorph = confirmPolymorph;
 
         function useArmorScroll(invIndex) {
             const scrollItem = player.inventory[invIndex];
@@ -2522,7 +2736,10 @@
             let interval = 0.56;
             if (player.hasteTimer > 0) interval *= 0.78;
             if (player.braveTimer > 0) interval *= 0.72;
-            return interval;
+            if (player.polyForm === 'death_knight') interval *= 0.75;
+            if (player.polyForm === 'dark_elf_king') interval *= 0.70;
+            if (player.equipped.weapon?.specialEffect === 'de_phantom') interval *= 0.78;
+            return Math.max(0.2, interval);
         }
 
         function performPlayerAttack(target) {
@@ -2535,10 +2752,13 @@
             player.dirX = target.x - player.x;
             player.dirY = target.y - player.y;
 
+            if (player.frozenTimer > 0) return; // 冰凍中無法攻擊
             const stats = getPlayerStats();
-            const isCrit = Math.random() < 0.26;
+            const critChance = (player.polyForm === 'dark_elf_king') ? 0.55 : 0.26;
+            const isCrit = Math.random() < critChance;
             let dmg = Math.floor(stats.minAtk + Math.random() * (stats.maxAtk - stats.minAtk + 1));
-            if (isCrit) dmg = Math.floor(dmg * 1.55);
+            if (player.polyForm === 'death_knight') dmg = Math.floor(dmg * 1.25);
+            if (isCrit) dmg = Math.floor(dmg * 1.6);
 
             sound.playSwing(player.braveTimer > 0);
             sound.playHit(isCrit);
@@ -2568,6 +2788,37 @@
             spawnHitSparks(target.x, target.y, isCrit ? '#f43f5e' : weaponColor, isCrit ? 14 : 8, target.isFlying ? 32 : 12);
             addFloatingText(target.x, target.y, isCrit ? `暴擊 -${dmg}!` : `-${dmg}`, isCrit ? '#fde047' : '#ffffff', isCrit ? 15 : 13);
             broadcastPlayerState('monster_hit', JSON.stringify({ id: target.id, dmg, hp: Math.max(0, target.hp), x: Number(target.x.toFixed(2)), y: Number(target.y.toFixed(2)), tag: isCrit ? '暴擊' : '' }));
+
+            // 三大傳說神兵獨特觸發特效 (完全不同效果！)
+            const spEff = player.equipped.weapon?.specialEffect;
+            if (spEff === 'dk_hellfire' && Math.random() < 0.35) {
+                // 死亡騎士巨劍：地獄火斬 (範圍烈焰爆發)
+                sound.playFireball();
+                addFloatingText(target.x, target.y, '🔥地獄火斬!', '#fb923c', 15);
+                spawnHitSparks(target.x, target.y, '#f97316', 20, 18);
+                monsters.forEach(om => {
+                    if (om.hp > 0 && Math.hypot(om.x - target.x, om.y - target.y) <= 2.8) {
+                        const fd = Math.floor(dmg * 0.65);
+                        om.hp -= fd; om.hurtFlashTimer = 0.16;
+                        if (om.hp <= 0) handleMonsterDeath(om, false);
+                    }
+                });
+            } else if ((spEff === 'bapho_quake' || player.polyForm === 'baphomet') && Math.random() < 0.35) {
+                // 巴風特權杖：地裂暗雷 + 回復 8 MP
+                sound.playLightning();
+                const qd = Math.floor(dmg * 0.85 * (1 + stats.spellPowerPct / 100));
+                target.hp -= qd;
+                player.mp = Math.min(player.maxMp, player.mp + 8);
+                addFloatingText(target.x, target.y, `🔮暗雷 -${qd}`, '#c084fc', 15);
+                spawnHitSparks(target.x, target.y, '#a855f7', 16, 20);
+            } else if (spEff === 'de_phantom' && Math.random() < 0.40) {
+                // 暗黑精靈王雙刀：暗影雙重暴擊 + 吸血 15 HP
+                const pd = Math.floor(dmg * 0.9);
+                target.hp -= pd;
+                player.hp = Math.min(player.maxHp, player.hp + 15);
+                addFloatingText(target.x, target.y, `⚡雙重影斬 -${pd}`, '#38bdf8', 14);
+                spawnHitSparks(target.x, target.y, '#38bdf8', 14, 16);
+            }
 
             if (target.hp <= 0) {
                 handleMonsterDeath(target, false);
@@ -2876,9 +3127,10 @@
                         spawnHitSparks(player.x, player.y, '#ef4444', 12, 16);
                         addFloatingText(player.x, player.y, `⚔️ -${finalDmg}`, '#f87171', 14);
                         if (player.hp <= 0) {
+                            sound.playDeathShaft();
                             player.hp = player.maxHp;
-                            player.x = 36.0; player.y = 37.5;
-                            player.targetX = 36.0; player.targetY = 37.5;
+                            player.x = 54.0; player.y = 56.5;
+                            player.targetX = 54.0; player.targetY = 56.5;
                             player.attackTarget = null;
                             if (window.R3D && window.R3D.snapCamera) window.R3D.snapCamera();
                             addChatLog(`💀 你被玩家【${escapeHtml(info.attacker || '神秘騎士')}】擊敗，已傳送回說話之島安全區！`, 'text-rose-400 font-bold');
@@ -2902,6 +3154,22 @@
         let netSyncAccum = 0;
         let autoSaveAccum = 0;
 
+        function applyPlayerDamage(finalDmg, deathMsg = '💀 體力耗盡，已由守護神傳送回說話之島廣場！') {
+            player.hp = Math.max(0, player.hp - finalDmg);
+            addFloatingText(player.x, player.y, `-${finalDmg}`, '#f87171', 13);
+            if (player.hp <= 0) {
+                sound.playDeathShaft(); // 小朋友下樓梯經典死亡音效！
+                player.hp = player.maxHp;
+                player.frozenTimer = 0; player.burnTimer = 0; player.poisonTimer = 0;
+                player.x = 54.0; player.y = 56.5;
+                player.targetX = 54.0; player.targetY = 56.5;
+                player.attackTarget = null;
+                if (window.R3D && window.R3D.snapCamera) window.R3D.snapCamera();
+                addChatLog(deathMsg, 'text-red-400 font-bold');
+            }
+            updateStatusNumbersUI();
+        }
+
         function updateGame(dt) {
             if (player.attackCooldown > 0) player.attackCooldown = Math.max(0, player.attackCooldown - dt);
             if (player.swingAnimTimer > 0) player.swingAnimTimer = Math.max(0, player.swingAnimTimer - dt);
@@ -2916,8 +3184,52 @@
                 }
             }
 
-            // 城鎮中央療癒溫泉 (座標 36, 36 周圍 3.4 格自動回血回魔！)
-            if (Math.hypot(player.x - 36.0, player.y - 36.0) <= 3.4) {
+            // 變身與異常狀態倒數 (冰凍 / 灼傷 / 中毒)
+            if (player.polyTimer > 0) {
+                player.polyTimer = Math.max(0, player.polyTimer - dt);
+                if (player.polyTimer === 0) {
+                    player.polyForm = null;
+                    addChatLog('🎭 變身效果已結束，恢復原本樣貌。', 'text-stone-400');
+                    updateStatusNumbersUI();
+                }
+            }
+            if (player.frozenTimer > 0) {
+                player.frozenTimer = Math.max(0, player.frozenTimer - dt);
+                if (player.frozenTimer === 0) updateStatusNumbersUI();
+            }
+            if (player.burnTimer > 0 || player.poisonTimer > 0) {
+                if (player.burnTimer > 0) player.burnTimer = Math.max(0, player.burnTimer - dt);
+                if (player.poisonTimer > 0) player.poisonTimer = Math.max(0, player.poisonTimer - dt);
+                player.dotAccum = (player.dotAccum || 0) + dt;
+                if (player.dotAccum >= 1.0) {
+                    player.dotAccum = 0;
+                    if (player.burnTimer > 0) {
+                        player.hp = Math.max(1, player.hp - 12);
+                        addFloatingText(player.x, player.y, '🔥灼傷 -12', '#fb923c', 12);
+                    }
+                    if (player.poisonTimer > 0) {
+                        player.hp = Math.max(1, player.hp - 9);
+                        addFloatingText(player.x, player.y, '☠️中毒 -9', '#a3e635', 12);
+                    }
+                    updateStatusNumbersUI();
+                }
+            }
+
+            // 12 座生態巢穴每 6 秒自動巡檢補充重生 (全圖源源不絕且維持群聚生態！)
+            player._lairRespawnAccum = (player._lairRespawnAccum || 0) + dt;
+            if (player._lairRespawnAccum >= 6.0) {
+                player._lairRespawnAccum = 0;
+                for (const lair of MONSTER_LAIRS) {
+                    const count = monsters.filter(m => m.lairId === lair.id && m.hp > 0).length;
+                    if (count < lair.maxCount) {
+                        const nm = spawnInLair(lair);
+                        broadcastPlayerState('monster_spawn', JSON.stringify({ id: nm.id, type: nm.type, x: Number(nm.x.toFixed(2)), y: Number(nm.y.toFixed(2)) }));
+                    }
+                }
+            }
+
+            // 城鎮中央療癒溫泉 (座標 54, 54 周圍 3.8 格自動回血回魔！)
+            if (Math.hypot(player.x - 54.0, player.y - 54.0) <= 3.8) {
                 player.springHealAccum = (player.springHealAccum || 0) + dt;
                 if (player.springHealAccum >= 0.85) {
                     player.springHealAccum = 0;
@@ -3013,6 +3325,8 @@
             let speedMult = 1.0;
             if (player.hasteTimer > 0) speedMult *= 1.32;
             if (player.braveTimer > 0) speedMult *= 1.28;
+            if (player.polyForm === 'dark_elf_king') speedMult *= 1.35;
+            if (player.frozenTimer > 0) speedMult = 0; // 冰凍時完全無法移動！
             const currentSpeed = player.baseSpeed * speedMult;
 
             if (player.attackTarget) {
@@ -3143,28 +3457,40 @@
                         m.dirX = player.x - m.x;
                         m.dirY = player.y - m.y;
                         if (m.attackCooldown <= 0) {
-                            m.attackCooldown = m.type === 'drake' ? 1.65 : 1.25;
+                            const cfg = MONSTER_TYPES[m.type] || {};
+                            m.attackCooldown = (m.type === 'drake' || m.type === 'water_dragon') ? 1.75 : (cfg.ranged ? 1.55 : 1.25);
                             m.attackAnimTimer = 0.35;
-
-                            if (m.type === 'drake') {
-                                spawnFireBreathParticles(m.x, m.y, player.x, player.y);
-                            } else if (m.type === 'shelob') {
-                                spawnSpiderWebEffect(m.x, m.y, player.x, player.y);
-                            }
 
                             const rawDmg = Math.floor(m.atkMin + Math.random() * (m.atkMax - m.atkMin + 1));
                             const finalDmg = Math.max(1, rawDmg - Math.floor(stats.totalDef * 0.55));
-                            player.hp = Math.max(0, player.hp - finalDmg);
-                            addFloatingText(player.x, player.y, `-${finalDmg}`, '#f87171', 13);
 
-                            if (player.hp <= 0) {
-                                player.hp = player.maxHp;
-                                player.x = 36.0;
-                                player.y = 37.5;
-                                player.targetX = 36.0;
-                                player.targetY = 37.5;
-                                player.attackTarget = null;
-                                addChatLog('💀 體力耗盡，已由守護神傳送回說話之島廣場！', 'text-red-400 font-bold');
+                            if (cfg.ranged) {
+                                // 遠距離投射物：暗黑箭矢 / 黑元素火球 / 末日水龍冰錐 + 極寒冰霜
+                                const isFrostSkill = (m.type === 'water_dragon' && Math.random() < 0.35);
+                                enemyProjectiles.push({
+                                    kind: isFrostSkill ? 'frost_nova' : cfg.ranged,
+                                    x: m.x, y: m.y, tx: player.x, ty: player.y,
+                                    speed: cfg.ranged === 'arrow' ? 13 : 9.5,
+                                    dmg: isFrostSkill ? Math.floor(finalDmg * 1.25) : finalDmg,
+                                    freeze: isFrostSkill
+                                });
+                                if (isFrostSkill) addFloatingText(m.x, m.y, '❄️極寒冰霜!', '#38bdf8', 15);
+                                else if (m.type === 'water_dragon') addFloatingText(m.x, m.y, '🧊冰錐!', '#7dd3fc', 13);
+                            } else {
+                                if (m.type === 'drake') {
+                                    spawnFireBreathParticles(m.x, m.y, player.x, player.y);
+                                    if (Math.random() < 0.48) {
+                                        player.burnTimer = 5.0;
+                                        addFloatingText(player.x, player.y, '🔥龍息灼傷!', '#fb923c', 14);
+                                    }
+                                } else if (m.type === 'shelob') {
+                                    spawnSpiderWebEffect(m.x, m.y, player.x, player.y);
+                                    if (Math.random() < 0.38) {
+                                        player.poisonTimer = 6.0;
+                                        addFloatingText(player.x, player.y, '☠️劇毒中毒(6秒)!', '#a3e635', 14);
+                                    }
+                                }
+                                applyPlayerDamage(finalDmg);
                             }
                             updateStatusNumbersUI();
                         }
@@ -3175,8 +3501,9 @@
                         m.patrolTimer = 2.0 + Math.random() * 2.8;
                         const angle = Math.random() * Math.PI * 2;
                         const dist = 1.5 + Math.random() * 2.5;
-                        const tx = m.x + Math.cos(angle) * dist;
-                        const ty = m.y + Math.sin(angle) * dist;
+                        // 群聚生態：以巢穴中心 (homeX, homeY) 為圓心群聚巡邏，不會亂跑散掉
+                        const tx = (m.homeX || m.x) + Math.cos(angle) * (1.2 + Math.random() * 4.5);
+                        const ty = (m.homeY || m.y) + Math.sin(angle) * (1.2 + Math.random() * 4.5);
                         if (isWalkable(tx, ty, m.isFlying, m.x, m.y)) {
                             m.patrolTargetX = tx;
                             m.patrolTargetY = ty;
@@ -3196,6 +3523,29 @@
                             m.y = ny;
                         }
                     }
+                }
+            }
+
+            // 更新敵方遠距離投射物 (暗黑箭矢 / 黑元素火球 / 末日水龍冰錐與冰霜)
+            for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+                const ep = enemyProjectiles[i];
+                const dxp = player.x - ep.x, dyp = player.y - ep.y;
+                const dist = Math.hypot(dxp, dyp);
+                if (dist <= 0.65) {
+                    if (ep.freeze) {
+                        player.frozenTimer = 2.0;
+                        spawnHitSparks(player.x, player.y, '#38bdf8', 20, 16);
+                        addFloatingText(player.x, player.y, '❄️ 冰凍無法動作 2 秒!', '#7dd3fc', 15);
+                    } else if (ep.kind === 'dark_fireball') {
+                        spawnHitSparks(player.x, player.y, '#a855f7', 14, 16);
+                    } else {
+                        spawnHitSparks(player.x, player.y, '#bae6fd', 10, 16);
+                    }
+                    applyPlayerDamage(ep.dmg);
+                    enemyProjectiles.splice(i, 1);
+                } else {
+                    ep.x += (dxp / dist) * ep.speed * dt;
+                    ep.y += (dyp / dist) * ep.speed * dt;
                 }
             }
 
@@ -4449,6 +4799,7 @@
         import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { createModelFactory } from './js/models3d.js';
+        import { buildAllBuildings } from './js/buildings3d.js';
         import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js';
 
         const EH = 0.75;               // 每一階高度 = 0.75 世界單位
@@ -4770,7 +5121,8 @@
             if (mapRamp[y][x]) return getTerrainElevation(x + (cx ? 0.999 : 0.001), y + (cy ? 0.999 : 0.001)) * EH;
             let h = heightMap[y][x] * EH;
             const t = mapGrid[y][x];
-            if (t === 2) h -= 0.45;
+            if (t === 2) h -= 0.16;
+            else if (t === 8) h -= 0.72;
             // 野外草地與樹林加上連續柔和地形起伏，告別死板方格地磚
             if (t === 0 || t === 3 || t === 4) {
                 const vx = x + cx, vy = y + cy;
@@ -4801,6 +5153,7 @@
             const tops = { grass: new GeoBuilder(), cobble: new GeoBuilder(), road: new GeoBuilder(), bed: new GeoBuilder() };
             const cliff = new GeoBuilder();
             const water = new GeoBuilder();
+            const deepWater = new GeoBuilder();
             const steps = [];
             const UVS = { grass: 0.25, cobble: 0.5, road: 0.5, bed: 0.5 };
 
@@ -4824,7 +5177,7 @@
                         steps.push(g);
                     }
                 } else {
-                    const key = t === 2 ? 'bed' : (t === 1 || t === 6) ? 'cobble' : t === 5 ? 'road' : 'grass';
+                    const key = (t === 2 || t === 8) ? 'bed' : (t === 1 || t === 6) ? 'cobble' : t === 5 ? 'road' : 'grass';
                     const s = UVS[key];
                     let c = 1;
                     if (key === 'grass') c = 0.75 + vnoise(x * 0.16, y * 0.16) * 0.38 - (t === 3 ? 0.1 : 0);
@@ -4832,8 +5185,11 @@
                     tops[key].quad([x, h00, y], [x, h01, y + 1], [x + 1, h11, y + 1], [x + 1, h10, y],
                         [x * s, y * s], [x * s, (y + 1) * s], [(x + 1) * s, (y + 1) * s], [(x + 1) * s, y * s], c, c, c, c);
                     if (t === 2) {
-                        const wy = heightMap[y][x] * EH - 0.12;
+                        const wy = heightMap[y][x] * EH - 0.05;
                         water.quad([x, wy, y], [x, wy, y + 1], [x + 1, wy, y + 1], [x + 1, wy, y], [x / 4, y / 4], [x / 4, (y + 1) / 4], [(x + 1) / 4, (y + 1) / 4], [(x + 1) / 4, y / 4], 1, 1, 1, 1);
+                    } else if (t === 8) {
+                        const wy = heightMap[y][x] * EH - 0.06;
+                        deepWater.quad([x, wy, y], [x, wy, y + 1], [x + 1, wy, y + 1], [x + 1, wy, y], [x / 4, y / 4], [x / 4, (y + 1) / 4], [(x + 1) / 4, (y + 1) / 4], [(x + 1) / 4, y / 4], 1, 1, 1, 1);
                     }
                 }
 
@@ -4868,10 +5224,14 @@
                 sm.material.map = TEX.road.map;
             }
 
-            const waterMat = new THREE.MeshStandardMaterial({ color: 0x0e2a3c, roughness: 0.06, metalness: 0.3, normalMap: TEX.waterN, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, opacity: 0.86, envMap: ENV, envMapIntensity: 1.3 });
+            const waterMat = new THREE.MeshStandardMaterial({ color: 0x1e748c, roughness: 0.08, metalness: 0.25, normalMap: TEX.waterN, normalScale: new THREE.Vector2(0.35, 0.35), transparent: true, opacity: 0.72, envMap: ENV, envMapIntensity: 1.2 });
             const waterMesh = new THREE.Mesh(water.build(), waterMat);
             waterMesh.receiveShadow = true;
             group.add(waterMesh);
+            const deepWaterMat = new THREE.MeshStandardMaterial({ color: 0x061630, roughness: 0.05, metalness: 0.38, normalMap: TEX.waterN, normalScale: new THREE.Vector2(0.45, 0.45), transparent: true, opacity: 0.94, envMap: ENV, envMapIntensity: 1.4 });
+            const deepMesh = new THREE.Mesh(deepWater.build(), deepWaterMat);
+            deepMesh.receiveShadow = true;
+            group.add(deepMesh);
             R3D._water = waterMat;
 
             // 地圖外圍延伸地面
@@ -5108,68 +5468,11 @@
                 wm.castShadow = wm.receiveShadow = true; scene.add(wm);
             }
 
-            for (const b of mapBuildings) {
-                const cx = b.x + b.w / 2, cz = b.y + b.h / 2;
-                const g = new THREE.Group();
-                g.position.set(cx, heightMap[Math.floor(cz)][Math.floor(cx)] * EH, cz);
-                scene.add(g);
-                switch (b.type) {
-                    case 'castle_keep': {
-                        addMesh(g, new THREE.BoxGeometry(b.w - 1, 3.4, b.h - 0.8), wallMat, 0, 1.7, 0);
-                        const roof = addMesh(g, gableRoof(b.w - 1, b.h - 0.8, 1.4), roofMats.keep, 0, 3.4, 0); roof.rotation.y = 0;
-                        for (const [ox, oz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) stoneTower(g, 0.62, 4.4, 'keep', ox * (b.w / 2 - 0.55), oz * (b.h / 2 - 0.45));
-                        stoneTower(g, 0.9, 6.2, 'keep', 0, -0.3);
-                        addMesh(g, new THREE.BoxGeometry(0.9, 1.3, 0.1), darkWood, 0, 0.65, b.h / 2 - 0.38);
-                        windowsOn(g, b.w - 1.5, b.h - 0.8, 2.2, 5, 0.42);
-                        break;
-                    }
-                    case 'guard_tower': stoneTower(g, 0.85, 3.6, 'slate'); break;
-                    case 'gate_tower': {
-                        addMesh(g, new THREE.BoxGeometry(1.7, 3.2, 1.7), wallMat, 0, 1.6, 0);
-                        for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) {
-                            const s = j ? 1 : -1;
-                            addMesh(g, new THREE.BoxGeometry(0.28, 0.32, 0.28), wallMat, (i % 2 ? s : (i < 2 ? -0.42 : 0.42)) * 0.75, 3.36, (i % 2 ? (i < 2 ? -0.42 : 0.42) : s) * 0.75);
-                        }
-                        const banner = addMesh(g, new THREE.PlaneGeometry(0.6, 1.3), new THREE.MeshStandardMaterial({ color: 0x8f1d1d, side: THREE.DoubleSide, map: TEX.cloth, roughness: 0.8 }), 0, 2.0, 0.87);
-                        banner.castShadow = false;
-                        windowsOn(g, 0.6, 1.7, 2.6, 1);
-                        break;
-                    }
-                    case 'blacksmith': {
-                        house(g, b.w - 0.4, b.h - 0.3, 1.2, 'blacksmith');
-                        addMesh(g, new THREE.BoxGeometry(0.4, 2.6, 0.4), wallMat, b.w / 2 - 0.7, 1.3, -0.3);
-                        addMesh(g, new THREE.BoxGeometry(0.3, 0.2, 0.18), darkWood, -0.6, 0.45, b.h / 2 + 0.25);
-                        break;
-                    }
-                    case 'magic_shop': {
-                        house(g, b.w - 0.4, b.h - 0.3, 1.3, 'magic_shop');
-                        const crystal = addMesh(g, new THREE.OctahedronGeometry(0.22), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 0.7, 3.2), toneMapped: false }), 0, 2.9, 0, false);
-                        R3D._crystal = crystal;
-                        break;
-                    }
-                    case 'cottage': house(g, b.w - 0.4, b.h - 0.3, 1.1, 'cottage'); break;
-                    case 'chapel': {
-                        house(g, b.w - 0.4, b.h - 0.3, 1.4, 'chapel');
-                        addMesh(g, new THREE.BoxGeometry(0.7, 3.4, 0.7), wallMat, -b.w / 2 + 0.6, 1.7, 0);
-                        addMesh(g, new THREE.ConeGeometry(0.55, 1.6, 4), roofMats.chapel, -b.w / 2 + 0.6, 4.2, 0).rotation.y = Math.PI / 4;
-                        addMesh(g, new THREE.CircleGeometry(0.22, 16), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.6, 1.0, 2.4), toneMapped: false }), 0, 1.3, (b.h - 0.3) * 0.48 + 0.02, false);
-                        break;
-                    }
-                    case 'fountain': {
-                        addMesh(g, new THREE.CylinderGeometry(0.95, 1.0, 0.4, 10), wallMat, 0, 0.2, 0);
-                        const wtr = addMesh(g, new THREE.CylinderGeometry(0.85, 0.85, 0.05, 24), R3D._water, 0, 0.36, 0, false);
-                        wtr.receiveShadow = true;
-                        addMesh(g, new THREE.CylinderGeometry(0.12, 0.18, 1.1, 10), wallMat, 0, 0.75, 0);
-                        addMesh(g, new THREE.CylinderGeometry(0.4, 0.3, 0.12, 12), wallMat, 0, 1.3, 0);
-                        addMesh(g, new THREE.SphereGeometry(0.14, 16, 12), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 2.0, 3.0), toneMapped: false }), 0, 1.5, 0, false);
-                        break;
-                    }
-                }
-            }
+            R3D._buildings = buildAllBuildings({ scene, TEX, mapBuildings, heightMap, EH, waterMat: R3D._water });
 
             const th = (x, y) => heightMap[Math.floor(y)][Math.floor(x)] * EH;
-            addTorch(33.6, th(33.6, 19.4), 19.4, 4.2); addTorch(38.4, th(38.4, 19.4), 19.4, 4.2);
-            addTorch(34.2, th(34.2, 34.2), 34.2, 3.8);
+            addTorch(51.4, th(51.4, 22.8), 22.8, 4.2); addTorch(56.6, th(56.6, 22.8), 22.8, 4.2);
+            addTorch(51.2, th(51.2, 51.8), 51.8, 3.8);
         }
 
 
@@ -5531,6 +5834,38 @@
             }
         }
 
+        // 同步敵方遠距離投射物 3D 模型 (暗黑箭矢 / 黑元素火球 / 末日水龍冰錐與冰霜)
+        const epMeshes = new Map();
+        function syncEnemyProjectiles3D(t) {
+            const alive = new Set();
+            for (const ep of enemyProjectiles) {
+                alive.add(ep);
+                let m = epMeshes.get(ep);
+                if (!m) {
+                    if (ep.kind === 'arrow') {
+                        m = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.85, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.8, 3.6), toneMapped: false }));
+                        m.rotation.x = Math.PI / 2;
+                    } else if (ep.kind === 'dark_fireball') {
+                        m = new THREE.Group();
+                        m.add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), new THREE.MeshBasicMaterial({ color: 0x09040f })));
+                        const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: new THREE.Color(2.4, 0.5, 4.0), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+                        halo.scale.set(1.3, 1.3, 1); m.add(halo);
+                    } else {
+                        // 末日水龍：尖銳發光冰錐 / 冰霜球
+                        m = new THREE.Mesh(new THREE.ConeGeometry(ep.kind === 'frost_nova' ? 0.24 : 0.12, 0.95, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.8, 2.8, 4.2), toneMapped: false }));
+                        m.rotation.x = Math.PI / 2;
+                    }
+                    scene.add(m);
+                    epMeshes.set(ep, m);
+                }
+                m.position.set(ep.x, worldY(ep.x, ep.y) + 1.15, ep.y);
+                m.lookAt(player.x, worldY(player.x, player.y) + 1.1, player.y);
+            }
+            for (const [ep, m] of epMeshes) {
+                if (!alive.has(ep)) { scene.remove(m); epMeshes.delete(ep); }
+            }
+        }
+
         // 同步點擊水波紋 3D
         function syncClickRings3D(dt) {
             for (const ci of clickIndicators) {
@@ -5569,6 +5904,8 @@
                 bladeColor: player.equipped.weapon ? (player.equipped.weapon.bladeColor || '#38bdf8') : '#38bdf8',
                 weaponEnchant: getItemEnchantNum(player.equipped.weapon),
                 weaponClass: inferWeaponClass(player.equipped.weapon),
+                polyForm: player.polyForm,
+                isFrozen: player.frozenTimer > 0,
                 jumpZ: player.jumpZ || 0,
                 hasteTimer: player.hasteTimer, braveTimer: player.braveTimer, levelUpBeamTimer: player.levelUpBeamTimer
             }, t, dt);
@@ -5723,7 +6060,8 @@
             for (let y = 0; y < MAP_SIZE; y++) for (let x = 0; x < MAP_SIZE; x++) {
                 const t = mapGrid[y][x];
                 const h = heightMap[y][x];
-                if (t === 2) g.fillStyle = '#1d4e6e';
+                if (t === 8) g.fillStyle = '#091e3a';
+                else if (t === 2) g.fillStyle = '#24748f';
                 else if (t === 6) g.fillStyle = '#94a3b8';
                 else if (t === 1) g.fillStyle = '#646058';
                 else if (t === 5) g.fillStyle = '#7f2d24';
@@ -5752,8 +6090,9 @@
             }
             // 怪物紅點 / Boss 紫光點
             for (const m of monsters) {
-                g.fillStyle = m.type === 'drake' ? '#c084fc' : '#ef4444';
-                g.beginPath(); g.arc(m.x * sx, m.y * sy, m.type === 'drake' ? 3.8 : 2.0, 0, TAU); g.fill();
+                const isBoss = (m.type === 'drake' || m.type === 'water_dragon');
+                g.fillStyle = m.type === 'water_dragon' ? '#22d3ee' : (m.type === 'drake' ? '#c084fc' : '#ef4444');
+                g.beginPath(); g.arc(m.x * sx, m.y * sy, isBoss ? 3.8 : 2.0, 0, TAU); g.fill();
             }
             // 其他玩家青藍點
             for (const uid in remotePlayers) {
@@ -5932,7 +6271,9 @@
 
             syncEntities(simTime, dt);
             for (const mx of activeMixers) mx.update(dt);
+            if (R3D._buildings) R3D._buildings.update(simTime);
             syncActiveSpells3D(simTime);
+            syncEnemyProjectiles3D(simTime);
             syncParticles3D();
             syncGroundLoots3D(simTime);
             syncClickRings3D(dt);

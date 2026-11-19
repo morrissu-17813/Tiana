@@ -574,7 +574,60 @@ export function createModelFactory(sharedTEX) {
         wDag.visible = false;
         swordGroup.add(wDag);
 
-        const weaponModels = { '1h_sword': w1h, '2h_sword': w2h, 'katana': wKat, 'dagger': wDag };
+        // (E) 巴風特魔導權杖 (staff) — 羊角魔杖 + 懸浮魔能晶球 (雙手持握不拿盾)
+        const wStaff = new THREE.Group();
+        addM(wStaff, new THREE.CylinderGeometry(0.028, 0.034, 1.75, 10), M.darkSteel, 0, 0.55, 0);
+        addM(wStaff, new THREE.TorusGeometry(0.045, 0.01, 6, 12), M.gold, 0, 1.28, 0).rotation.x = Math.PI / 2;
+        for (const s of [-1, 1]) {
+            const prong = addM(wStaff, new THREE.TorusGeometry(0.15, 0.022, 6, 12, Math.PI * 1.1), M.gold, s * 0.11, 1.5, 0);
+            prong.rotation.z = s > 0 ? -0.4 : Math.PI + 0.4;
+        }
+        const orbGeo = new THREE.OctahedronGeometry(0.13, 1);
+        addM(wStaff, orbGeo, bladeMat, 0, 1.56, 0, false);
+        const orbAura = new THREE.Mesh(orbGeo, bladeAuraMat);
+        orbAura.position.set(0, 1.56, 0); orbAura.scale.setScalar(1.32);
+        wStaff.add(orbAura);
+        wStaff.visible = false;
+        swordGroup.add(wStaff);
+
+        const weaponModels = { '1h_sword': w1h, '2h_sword': w2h, 'katana': wKat, 'dagger': wDag, 'staff': wStaff };
+
+        // 三大變身專屬頭部雕塑外觀 (死亡騎士骸骨角盔 / 巴風特惡魔羊角首 / 暗黑精靈王銀髮紫眸)
+        const polyHeads = {};
+        // 1. 死亡騎士 (Death Knight)
+        const dkHead = new THREE.Group();
+        addM(dkHead, new THREE.SphereGeometry(0.155, 14, 12), M.darkSteel, 0, 0.11, 0);
+        addM(dkHead, new THREE.BoxGeometry(0.16, 0.11, 0.14), M.bone, 0, 0.03, 0.06); // 骸骨面罩
+        for (const s of [-1, 1]) {
+            addM(dkHead, new THREE.SphereGeometry(0.026, 6, 6), M.redGlow, s * 0.05, 0.09, 0.145, false);
+            const h1 = addM(dkHead, new THREE.ConeGeometry(0.042, 0.34, 6), M.bone, s * 0.14, 0.24, -0.02);
+            h1.rotation.z = -s * 0.55; h1.rotation.x = 0.25;
+        }
+        dkHead.visible = false; head.add(dkHead); polyHeads.death_knight = dkHead;
+
+        // 2. 巴風特 (Baphomet)
+        const bpHead = new THREE.Group();
+        addM(bpHead, new THREE.SphereGeometry(0.165, 14, 12), M.wolfDark, 0, 0.1, 0);
+        const bpSnout = addM(bpHead, new THREE.CylinderGeometry(0.06, 0.11, 0.26, 8), M.wolfSnout, 0, 0.03, 0.16);
+        bpSnout.rotation.x = Math.PI / 2;
+        for (const s of [-1, 1]) {
+            addM(bpHead, new THREE.SphereGeometry(0.028, 6, 6), M.purpleGlow, s * 0.06, 0.1, 0.14, false);
+            const ram = addM(bpHead, new THREE.TorusGeometry(0.16, 0.036, 7, 14, Math.PI * 1.45), M.dragonHorn, s * 0.16, 0.22, -0.04);
+            ram.rotation.y = s * 0.65; ram.rotation.z = -s * 0.4;
+        }
+        bpHead.visible = false; head.add(bpHead); polyHeads.baphomet = bpHead;
+
+        // 3. 暗黑精靈王 (Dark Elf King)
+        const deHead = new THREE.Group();
+        const silverHair = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.45, metalness: 0.2 });
+        addM(deHead, new THREE.SphereGeometry(0.15, 14, 12, 0, TAU, 0, Math.PI * 0.65), silverHair, 0, 0.13, -0.02);
+        addM(deHead, new THREE.ConeGeometry(0.14, 0.34, 8), silverHair, 0, 0.05, -0.14).rotation.x = -0.35;
+        for (const s of [-1, 1]) {
+            addM(deHead, new THREE.SphereGeometry(0.024, 6, 6), M.purpleGlow, s * 0.046, 0.11, 0.125, false);
+            const ear = addM(deHead, new THREE.ConeGeometry(0.026, 0.16, 5), M.skin, s * 0.15, 0.11, 0);
+            ear.rotation.z = -s * 1.15;
+        }
+        deHead.visible = false; head.add(deHead); polyHeads.dark_elf_king = deHead;
 
         // 緊貼劍刃邊緣的細小符文火星 (4 顆精簡高效)
         const bladeSparks = [];
@@ -657,7 +710,7 @@ export function createModelFactory(sharedTEX) {
         setShadows(body, true);
 
         return {
-            root, body, torso, head, legL, legR, armL, armR, foreR, foreL,
+            root, body, torso, head, polyHeads, legL, legR, armL, armR, foreR, foreL,
             shield, offDagger, weaponModels,
             capeMesh, capeBasePos, armorMat, armorAuraMat, armorAuraMeshes, capeMat, bladeMat, bladeCoreMat, bladeAuraMat,
             swordLight, bladeSparks,
@@ -682,8 +735,19 @@ export function createModelFactory(sharedTEX) {
         rig.yaw = lerpAngle(rig.yaw, targetYaw, clamp(dt * 14, 0, 1));
         rig.root.rotation.y = rig.yaw;
 
-        // 武器外型切換 + 依武器種類自動隱藏/顯示盾牌 (雙手劍/武士刀/短刀絕不拿盾牌！)
-        const wClass = state.weaponClass || '1h_sword';
+        // 變身系統外觀覆寫 (死亡騎士 / 巴風特 / 暗黑精靈王)
+        const poly = state.polyForm || null;
+        if (rig.polyHeads) {
+            for (const k in rig.polyHeads) rig.polyHeads[k].visible = (k === poly);
+        }
+        rig.root.scale.setScalar(poly === 'death_knight' ? 1.18 : (poly === 'baphomet' ? 1.24 : (poly === 'dark_elf_king' ? 1.06 : 1.0)));
+
+        // 武器外型切換 + 依武器種類/變身自動隱藏/顯示盾牌 (雙手劍/武士刀/短刀/權杖絕不拿盾牌！)
+        let wClass = state.weaponClass || '1h_sword';
+        if (poly === 'death_knight') wClass = '2h_sword';
+        else if (poly === 'baphomet') wClass = 'staff';
+        else if (poly === 'dark_elf_king') wClass = 'dagger';
+
         if (rig.weaponModels) {
             for (const k in rig.weaponModels) rig.weaponModels[k].visible = (k === wClass);
         }
@@ -753,8 +817,15 @@ export function createModelFactory(sharedTEX) {
             rig.slashInnerMat.opacity = 0;
         }
 
-        if (state.armorTint) rig.armorMat.color.set(state.armorTint);
-        if (state.capeColor) rig.capeMat.color.set(state.capeColor);
+        if (poly === 'death_knight') { rig.armorMat.color.set('#27272a'); rig.capeMat.color.set('#7f1d1d'); }
+        else if (poly === 'baphomet') { rig.armorMat.color.set('#450a0a'); rig.capeMat.color.set('#3b0764'); }
+        else if (poly === 'dark_elf_king') { rig.armorMat.color.set('#1e1b4b'); rig.capeMat.color.set('#312e81'); }
+        else {
+            if (state.armorTint) rig.armorMat.color.set(state.armorTint);
+            if (state.capeColor) rig.capeMat.color.set(state.capeColor);
+        }
+        // 冰凍異常狀態泛冰藍
+        if (state.isFrozen) rig.armorMat.color.lerp(new THREE.Color(0x38bdf8), 0.72);
 
         // 武器每 +10 階色階光芒 (+10白 / +20綠 / +30藍 / +40紫 / +50紅 / +60金)
         const wEnch = state.weaponEnchant || 0;
@@ -893,143 +964,154 @@ export function createModelFactory(sharedTEX) {
     }
 
     /* =====================================================================
-     * 5. BOSS：黑暗之龍 Tiamat (Massive Sculpted Black Dragon)
+     * 5. BOSS：高空飛龍 (Drake) ＆ 末日水龍 (Water Dragon Boss)
+     *    全面優化：更高空盤旋、更修長流線龍軀、三段相位差自然拍動蝙蝠巨翼！
      * ===================================================================== */
-    function createDragonRig() {
+    function createDragonRig(isWaterBoss = false) {
         const root = new THREE.Group();
         const body = new THREE.Group();
-        body.position.y = 1.95;
+        body.position.y = isWaterBoss ? 2.55 : 3.35; // 飛龍飛得更高更壯觀！
         root.add(body);
 
-        // 巨大黑曜石龍軀 (Lathe 雕塑流線軀幹)
-        const bodyPts = [
-            new THREE.Vector2(0.18, -1.05), new THREE.Vector2(0.45, -0.55),
-            new THREE.Vector2(0.7, 0.15), new THREE.Vector2(0.66, 0.72), new THREE.Vector2(0.36, 1.08)
-        ];
-        const torsoMesh = addM(body, new THREE.LatheGeometry(bodyPts, 16), M.dragonBody, 0, 0, 0);
-        torsoMesh.rotation.x = Math.PI / 2;
-        torsoMesh.scale.set(1.05, 1.0, 0.85);
+        const bodyMat = isWaterBoss ? new THREE.MeshStandardMaterial({
+            map: T.dragonMap, normalMap: T.dragonNormal, normalScale: new THREE.Vector2(1.8, 1.8),
+            color: 0x164e63, emissiveMap: T.dragonEmissive, emissive: new THREE.Color(0x22d3ee), emissiveIntensity: 1.5,
+            metalness: 0.62, roughness: 0.28
+        }) : M.dragonBody;
+        const wingMat = isWaterBoss ? new THREE.MeshStandardMaterial({
+            color: 0x0e3b5c, emissive: 0x0891b2, emissiveIntensity: 0.45,
+            roughness: 0.45, transparent: true, opacity: 0.9, side: THREE.DoubleSide
+        }) : new THREE.MeshStandardMaterial({
+            color: 0x20152b, emissiveMap: T.dragonEmissive, emissive: new THREE.Color(0x6b21a8), emissiveIntensity: 0.65,
+            roughness: 0.65, transparent: true, opacity: 0.92, side: THREE.DoubleSide
+        });
+        const eyeGlow = isWaterBoss
+            ? new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 3.2, 4.5), toneMapped: false })
+            : M.purpleGlow;
+        const hornMat = isWaterBoss
+            ? new THREE.MeshStandardMaterial({ color: 0x7dd3fc, emissive: 0x0284c7, emissiveIntensity: 0.7, metalness: 0.4, roughness: 0.2 })
+            : M.dragonHorn;
 
-        // 胸口紫色發光龍核與動態紫光
-        const chestCore = addM(body, new THREE.SphereGeometry(0.42, 12, 10), M.purpleGlow, 0, -0.2, 0.5, false);
-        chestCore.scale.set(0.9, 0.52, 1.15);
-        const dragonLight = new THREE.PointLight(0xa855f7, 6.5, 12, 1.8);
+        // 修長流線龍軀 (胸厚腰收，比例更自然)
+        const bodyPts = [
+            new THREE.Vector2(0.14, -1.15), new THREE.Vector2(0.32, -0.65),
+            new THREE.Vector2(0.58, 0.05), new THREE.Vector2(0.62, 0.68), new THREE.Vector2(0.32, 1.15)
+        ];
+        const torsoMesh = addM(body, new THREE.LatheGeometry(bodyPts, 16), bodyMat, 0, 0, 0);
+        torsoMesh.rotation.x = Math.PI / 2;
+        torsoMesh.scale.set(0.95, 1.0, 0.84);
+
+        const chestCore = addM(body, new THREE.SphereGeometry(0.35, 12, 10), eyeGlow, 0, -0.18, 0.52, false);
+        chestCore.scale.set(0.85, 0.45, 1.15);
+        const dragonLight = new THREE.PointLight(isWaterBoss ? 0x22d3ee : 0xa855f7, 5.5, 12, 1.8);
         dragonLight.position.set(0, 0.1, 1.0);
         body.add(dragonLight);
 
-        // 整排背脊黑曜石骨刺
         for (let i = 0; i < 8; i++) {
-            const z = 0.85 - i * 0.26;
+            const z = 0.88 - i * 0.26;
             const sc = 1.0 - Math.abs(i - 2.5) * 0.08;
-            const sp = addM(body, new THREE.ConeGeometry(0.085 * sc, 0.44 * sc, 5), M.dragonHorn, 0, 0.56 - Math.abs(i - 2) * 0.03, z);
-            sp.rotation.x = -0.4;
+            const sp = addM(body, new THREE.ConeGeometry(0.068 * sc, 0.4 * sc, 5), hornMat, 0, 0.52 - Math.abs(i - 2) * 0.03, z);
+            sp.rotation.x = -0.42;
         }
 
-        // S 型多段長頸 + 雙角猙獰龍首 + 可張開噴火下顎
+        // 優雅 S 型長頸 + 銳利龍頭
         const neck = new THREE.Group();
-        neck.position.set(0, 0.28, 0.98);
+        neck.position.set(0, 0.22, 1.05);
         body.add(neck);
-        addM(neck, new THREE.CylinderGeometry(0.24, 0.34, 0.68, 12), M.dragonBody, 0, 0.24, 0.22).rotation.x = 0.75;
-        addM(neck, new THREE.CylinderGeometry(0.19, 0.24, 0.62, 12), M.dragonBody, 0, 0.65, 0.56).rotation.x = 0.45;
-        for (let i = 0; i < 4; i++) addM(neck, new THREE.ConeGeometry(0.055, 0.26, 5), M.dragonHorn, 0, 0.22 + i * 0.2, 0.06 + i * 0.14).rotation.x = -0.5;
+        addM(neck, new THREE.CylinderGeometry(0.2, 0.3, 0.72, 12), bodyMat, 0, 0.22, 0.26).rotation.x = 0.82;
+        addM(neck, new THREE.CylinderGeometry(0.16, 0.2, 0.66, 12), bodyMat, 0, 0.58, 0.66).rotation.x = 0.48;
+        for (let i = 0; i < 4; i++) addM(neck, new THREE.ConeGeometry(0.048, 0.24, 5), hornMat, 0, 0.22 + i * 0.18, 0.12 + i * 0.16).rotation.x = -0.5;
 
         const head = new THREE.Group();
-        head.position.set(0, 0.96, 0.76);
+        head.position.set(0, 0.86, 0.9);
         neck.add(head);
-        // 頭骨與吻部
-        addM(head, new THREE.BoxGeometry(0.42, 0.3, 0.52), M.dragonBody, 0, 0.04, 0.08);
-        const snout = addM(head, new THREE.CylinderGeometry(0.12, 0.22, 0.58, 8), M.dragonBody, 0, -0.02, 0.48);
-        snout.rotation.x = Math.PI / 2; snout.scale.set(1.15, 1.0, 0.65);
-        // 下顎 + 喉部紫光
+        addM(head, new THREE.BoxGeometry(0.36, 0.26, 0.5), bodyMat, 0, 0.04, 0.08);
+        const snout = addM(head, new THREE.CylinderGeometry(0.1, 0.2, 0.62, 8), bodyMat, 0, -0.02, 0.48);
+        snout.rotation.x = Math.PI / 2; snout.scale.set(1.1, 1.0, 0.62);
         const jaw = new THREE.Group();
-        jaw.position.set(0, -0.1, 0.14);
+        jaw.position.set(0, -0.09, 0.14);
         head.add(jaw);
-        addM(jaw, new THREE.BoxGeometry(0.28, 0.11, 0.56), M.dragonBody, 0, -0.03, 0.28);
-        addM(jaw, new THREE.SphereGeometry(0.12, 8, 8), M.purpleGlow, 0, 0.04, 0.24, false);
-        // 雙彎角 + 側角 + 紫色發光龍眸
+        addM(jaw, new THREE.BoxGeometry(0.24, 0.1, 0.56), bodyMat, 0, -0.03, 0.28);
+        addM(jaw, new THREE.SphereGeometry(0.11, 8, 8), eyeGlow, 0, 0.04, 0.26, false);
         for (const s of [-1, 1]) {
-            const horn1 = addM(head, new THREE.ConeGeometry(0.075, 0.78, 7), M.dragonHorn, s * 0.17, 0.34, -0.22);
-            horn1.rotation.x = -0.88; horn1.rotation.z = -s * 0.32;
-            const horn2 = addM(head, new THREE.ConeGeometry(0.048, 0.42, 6), M.dragonHorn, s * 0.24, 0.08, -0.12);
+            const horn1 = addM(head, new THREE.ConeGeometry(0.068, 0.84, 7), hornMat, s * 0.16, 0.34, -0.24);
+            horn1.rotation.x = -0.92; horn1.rotation.z = -s * 0.3;
+            const horn2 = addM(head, new THREE.ConeGeometry(0.042, 0.42, 6), hornMat, s * 0.22, 0.06, -0.14);
             horn2.rotation.x = -1.1; horn2.rotation.z = -s * 0.65;
-            addM(head, new THREE.SphereGeometry(0.055, 8, 8), M.purpleGlow, s * 0.18, 0.08, 0.32, false);
-            addM(head, new THREE.ConeGeometry(0.026, 0.11, 5), M.bone, s * 0.1, -0.11, 0.6).rotation.x = Math.PI;
+            addM(head, new THREE.SphereGeometry(0.052, 8, 8), eyeGlow, s * 0.16, 0.07, 0.32, false);
+            addM(head, new THREE.ConeGeometry(0.024, 0.1, 5), M.bone, s * 0.09, -0.1, 0.62).rotation.x = Math.PI;
         }
 
-        // 巨型多關節蝙蝠翼 (上臂 + 前臂翼指骨 + 撕裂紫脈翼膜)
+        // 自然彎曲三關節蝙蝠巨翼 (肩部 -> 翼肘 -> 翼尖，拍動有相位延遲波浪感！)
         const makeWing = (s) => {
             const shoulder = new THREE.Group();
-            shoulder.position.set(s * 0.56, 0.36, 0.26);
+            shoulder.position.set(s * 0.5, 0.3, 0.28);
             body.add(shoulder);
-            // 上臂骨
-            addM(shoulder, new THREE.CylinderGeometry(0.08, 0.1, 1.1, 8), M.dragonHorn, s * 0.5, 0.26, 0.08).rotation.z = -s * 1.15;
-            // 外翼關節 (隨拍翅二次彎曲)
+            // 內翼臂骨
+            const armCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(s * 0.55, 0.28, 0.16), new THREE.Vector3(s * 1.15, 0.36, 0.08)]);
+            addM(shoulder, new THREE.TubeGeometry(armCurve, 8, 0.068, 7, false), hornMat, 0, 0, 0);
+            // 內翼膜 (微弧形)
+            const memIn = new THREE.Shape();
+            memIn.moveTo(0, 0); memIn.quadraticCurveTo(s * 0.6, 0.32, s * 1.15, 0.36);
+            memIn.quadraticCurveTo(s * 0.95, -0.28, s * 0.58, -0.58);
+            memIn.quadraticCurveTo(s * 0.25, -0.45, 0, -0.78); memIn.closePath();
+            const inMesh = new THREE.Mesh(new THREE.ShapeGeometry(memIn, 6), wingMat);
+            inMesh.rotation.x = 0.62;
+            shoulder.add(inMesh);
+
+            // 外翼關節 (翼肘)
             const outer = new THREE.Group();
-            outer.position.set(s * 0.98, 0.48, 0.14);
+            outer.position.set(s * 1.15, 0.36, 0.08);
             shoulder.add(outer);
-            addM(outer, new THREE.ConeGeometry(0.05, 0.24, 5), M.bone, 0, 0.14, 0.06); // 翼爪
-            // 4 根翼指骨
+            addM(outer, new THREE.ConeGeometry(0.045, 0.24, 5), M.bone, 0, 0.14, 0.08);
             const fingers = [
-                [s * 1.75, 0.35, 0.12],
-                [s * 1.55, -0.25, -0.45],
-                [s * 1.0, -0.58, -0.85],
-                [s * 0.3, -0.68, -1.05]
+                [s * 1.95, 0.22, 0.05],
+                [s * 1.75, -0.26, -0.58],
+                [s * 1.15, -0.52, -0.96],
+                [s * 0.36, -0.58, -1.12]
             ];
             for (const [fx, fy, fz] of fingers) {
-                const curve = new THREE.LineCurve3(new THREE.Vector3(0, 0, 0), new THREE.Vector3(fx, fy, fz));
-                addM(outer, new THREE.TubeGeometry(curve, 4, 0.036, 6, false), M.dragonHorn, 0, 0, 0);
+                const fc = new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(fx * 0.55, fy * 0.45 + 0.08, fz * 0.5), new THREE.Vector3(fx, fy, fz)]);
+                addM(outer, new THREE.TubeGeometry(fc, 6, 0.032, 5, false), hornMat, 0, 0, 0);
             }
-            // 外翼翼膜
             const memOut = new THREE.Shape();
             memOut.moveTo(0, 0);
-            memOut.lineTo(s * 1.75, 0.35);
-            memOut.quadraticCurveTo(s * 1.5, 0.0, s * 1.55, -0.25);
-            memOut.quadraticCurveTo(s * 1.2, -0.35, s * 1.0, -0.58);
-            memOut.quadraticCurveTo(s * 0.6, -0.5, s * 0.3, -0.68);
-            memOut.quadraticCurveTo(s * 0.05, -0.45, -s * 0.42, -0.68);
+            memOut.lineTo(s * 1.95, 0.22);
+            memOut.quadraticCurveTo(s * 1.68, -0.06, s * 1.75, -0.26);
+            memOut.quadraticCurveTo(s * 1.35, -0.34, s * 1.15, -0.52);
+            memOut.quadraticCurveTo(s * 0.72, -0.44, s * 0.36, -0.58);
+            memOut.quadraticCurveTo(s * 0.04, -0.36, -s * 0.52, -0.78);
             memOut.closePath();
-            const outMesh = new THREE.Mesh(new THREE.ShapeGeometry(memOut), M.dragonWing);
-            outMesh.rotation.x = 0.48;
+            const outMesh = new THREE.Mesh(new THREE.ShapeGeometry(memOut, 6), wingMat);
+            outMesh.rotation.x = 0.72;
             outer.add(outMesh);
-            // 內翼翼膜
-            const memIn = new THREE.Shape();
-            memIn.moveTo(0, 0); memIn.lineTo(s * 0.98, 0.48);
-            memIn.lineTo(s * 0.56, -0.25); memIn.lineTo(0, -0.45);
-            memIn.closePath();
-            const inMesh = new THREE.Mesh(new THREE.ShapeGeometry(memIn), M.dragonWing);
-            inMesh.rotation.x = 0.35;
-            shoulder.add(inMesh);
 
             return { shoulder, outer };
         };
         const wingL = makeWing(-1), wingR = makeWing(1);
 
-        // 5 節可動尖刺龍尾
+        // 5 節流線長龍尾
         const tailSegs = [];
         let prevTail = body;
         for (let i = 0; i < 5; i++) {
             const seg = new THREE.Group();
-            seg.position.set(0, i === 0 ? -0.08 : -0.03, i === 0 ? -1.02 : -0.44);
+            seg.position.set(0, i === 0 ? -0.06 : -0.02, i === 0 ? -1.1 : -0.48);
             prevTail.add(seg);
-            const rTop = 0.24 - i * 0.038, rBot = Math.max(0.03, rTop - 0.04);
-            addM(seg, new THREE.CylinderGeometry(rBot, rTop, 0.48, 8), M.dragonBody, 0, 0, -0.22).rotation.x = Math.PI / 2;
-            addM(seg, new THREE.ConeGeometry(0.045, 0.22, 4), M.dragonHorn, 0, rTop + 0.06, -0.22).rotation.x = -0.3;
-            if (i === 4) addM(seg, new THREE.ConeGeometry(0.16, 0.46, 4), M.purpleGlow, 0, 0, -0.58, false).rotation.x = -Math.PI / 2;
+            const rTop = 0.21 - i * 0.034, rBot = Math.max(0.025, rTop - 0.035);
+            addM(seg, new THREE.CylinderGeometry(rBot, rTop, 0.52, 8), bodyMat, 0, 0, -0.24).rotation.x = Math.PI / 2;
+            addM(seg, new THREE.ConeGeometry(0.04, 0.2, 4), hornMat, 0, rTop + 0.05, -0.24).rotation.x = -0.32;
+            if (i === 4) addM(seg, new THREE.ConeGeometry(0.15, 0.48, 4), eyeGlow, 0, 0, -0.62, false).rotation.x = -Math.PI / 2;
             tailSegs.push(seg);
             prevTail = seg;
         }
 
-        // 強壯龍爪四肢
         for (const s of [-1, 1]) {
-            addM(body, new THREE.CapsuleGeometry(0.13, 0.48, 8, 10), M.dragonBody, s * 0.5, -0.56, 0.42).rotation.x = 0.35;
-            addM(body, new THREE.CapsuleGeometry(0.14, 0.54, 8, 10), M.dragonBody, s * 0.52, -0.6, -0.38).rotation.x = -0.3;
-            for (let c = -1; c <= 1; c++) {
-                addM(body, new THREE.ConeGeometry(0.025, 0.18, 5), M.bone, s * 0.5 + c * 0.05, -0.9, 0.56).rotation.x = 2.6;
-            }
+            addM(body, new THREE.CapsuleGeometry(0.11, 0.44, 8, 10), bodyMat, s * 0.44, -0.5, 0.42).rotation.x = 0.42;
+            addM(body, new THREE.CapsuleGeometry(0.12, 0.48, 8, 10), bodyMat, s * 0.46, -0.52, -0.38).rotation.x = -0.35;
         }
 
         setShadows(body, true);
-        return { root, body, neck, head, jaw, wingL, wingR, tailSegs, yaw: 0 };
+        return { root, body, neck, head, jaw, wingL, wingR, tailSegs, baseY: body.position.y, yaw: 0 };
     }
 
     /* =====================================================================
@@ -1109,12 +1191,85 @@ export function createModelFactory(sharedTEX) {
         return { root, body, yaw: 0 };
     }
 
+    // 7. 泥斯水怪 (淺水區專屬水系海妖蛇怪)
+    function createNissRig() {
+        const root = new THREE.Group();
+        const body = new THREE.Group();
+        root.add(body);
+        const aquaMat = new THREE.MeshStandardMaterial({ map: sharedTEX.scales.map, color: 0x0d9488, roughness: 0.3, metalness: 0.22 });
+        const finMat = new THREE.MeshStandardMaterial({ color: 0x2dd4bf, emissive: 0x0f766e, emissiveIntensity: 0.6, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
+        const aquaGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.4, 3.2, 3.6), toneMapped: false });
+
+        addM(body, new THREE.CylinderGeometry(0.19, 0.25, 0.72, 12), aquaMat, 0, 0.66, 0);
+        addM(body, new THREE.SphereGeometry(0.17, 12, 10), aquaMat, 0, 1.15, 0.04);
+        addM(body, new THREE.ConeGeometry(0.06, 0.42, 4), finMat, 0, 1.32, -0.06).rotation.x = -0.5;
+        for (const s of [-1, 1]) {
+            addM(body, new THREE.SphereGeometry(0.032, 6, 6), aquaGlow, s * 0.075, 1.18, 0.16, false);
+            addM(body, new THREE.CapsuleGeometry(0.055, 0.34, 6, 8), aquaMat, s * 0.28, 0.78, 0.1).rotation.x = -0.6;
+        }
+        const tail = new THREE.Group();
+        tail.position.set(0, 0.3, -0.05);
+        body.add(tail);
+        addM(tail, new THREE.ConeGeometry(0.24, 1.1, 10), aquaMat, 0, -0.1, -0.5).rotation.x = -1.35;
+        addM(tail, new THREE.PlaneGeometry(0.55, 0.42), finMat, 0, -0.18, -1.08, false).rotation.x = Math.PI / 2;
+        setShadows(body, true);
+        return { root, body, tail, yaw: 0 };
+    }
+
+    // 8. 暗黑精靈弓箭手 (遠距離弓箭怪)
+    function createDarkElfArcherRig() {
+        const root = new THREE.Group();
+        const body = new THREE.Group();
+        root.add(body);
+        const deArmor = new THREE.MeshStandardMaterial({ color: 0x1e1b4b, metalness: 0.72, roughness: 0.36 });
+        const silverHair = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.48 });
+
+        addM(body, new THREE.CylinderGeometry(0.2, 0.16, 0.56, 10), deArmor, 0, 1.05, 0);
+        const legL = new THREE.Group(); legL.position.set(-0.1, 0.75, 0); body.add(legL);
+        addM(legL, new THREE.CapsuleGeometry(0.068, 0.52, 6, 8), deArmor, 0, -0.35, 0);
+        const legR = new THREE.Group(); legR.position.set(0.1, 0.75, 0); body.add(legR);
+        addM(legR, new THREE.CapsuleGeometry(0.068, 0.52, 6, 8), deArmor, 0, -0.35, 0);
+        // 銀髮紫眼精靈首
+        addM(body, new THREE.SphereGeometry(0.13, 12, 10), M.skin, 0, 1.48, 0);
+        addM(body, new THREE.SphereGeometry(0.14, 12, 10, 0, TAU, 0, Math.PI * 0.62), silverHair, 0, 1.51, -0.01);
+        for (const s of [-1, 1]) addM(body, new THREE.SphereGeometry(0.022, 6, 6), M.purpleGlow, s * 0.045, 1.49, 0.115, false);
+        // 雙手與暗影反曲長弓
+        const bowArm = new THREE.Group(); bowArm.position.set(-0.24, 1.24, 0.08); body.add(bowArm);
+        addM(bowArm, new THREE.CapsuleGeometry(0.052, 0.42, 6, 8), deArmor, 0, -0.05, 0.22).rotation.x = Math.PI / 2;
+        addM(bowArm, new THREE.TorusGeometry(0.45, 0.028, 6, 16, Math.PI * 1.15), M.darkSteel, 0, 0, 0.42).rotation.y = Math.PI / 2;
+        addM(bowArm, new THREE.CylinderGeometry(0.008, 0.008, 0.85, 4), M.purpleGlow, 0, 0, 0.34, false);
+        setShadows(body, true);
+        return { root, body, legL, legR, bowArm, yaw: 0 };
+    }
+
+    // 9. 暗黑法師 (黑元素火球遠距怪)
+    function createDarkMageRig() {
+        const root = new THREE.Group();
+        const body = new THREE.Group();
+        root.add(body);
+        const robeMat = new THREE.MeshStandardMaterial({ color: 0x170f26, map: sharedTEX.cloth, roughness: 0.86 });
+        addM(body, new THREE.ConeGeometry(0.38, 1.38, 12), robeMat, 0, 0.69, 0);
+        addM(body, new THREE.ConeGeometry(0.24, 0.46, 10), robeMat, 0, 1.56, -0.02); // 兜帽
+        addM(body, new THREE.SphereGeometry(0.12, 10, 8), M.darkSteel, 0, 1.46, 0.04);
+        for (const s of [-1, 1]) addM(body, new THREE.SphereGeometry(0.026, 6, 6), M.purpleGlow, s * 0.048, 1.48, 0.14, false);
+        // 黑元素魔杖
+        const staffArm = new THREE.Group(); staffArm.position.set(0.28, 1.15, 0.12); body.add(staffArm);
+        addM(staffArm, new THREE.CylinderGeometry(0.025, 0.03, 1.55, 8), M.darkSteel, 0, -0.1, 0.15);
+        addM(staffArm, new THREE.OctahedronGeometry(0.14, 1), M.purpleGlow, 0, 0.72, 0.15, false);
+        setShadows(body, true);
+        return { root, body, staffArm, yaw: 0 };
+    }
+
     function createMonsterRig(m) {
         let rig;
         if (m.type === 'werewolf') rig = createWerewolfRig();
-        else if (m.type === 'drake') rig = createDragonRig();
+        else if (m.type === 'drake') rig = createDragonRig(false);
+        else if (m.type === 'water_dragon') rig = createDragonRig(true);
         else if (m.type === 'shelob') rig = createSpiderRig();
         else if (m.type === 'croc') rig = createCrocRig();
+        else if (m.type === 'niss') rig = createNissRig();
+        else if (m.type === 'de_archer') rig = createDarkElfArcherRig();
+        else if (m.type === 'dark_mage') rig = createDarkMageRig();
         else rig = createSlimeRig();
 
         const ringMat = new THREE.MeshBasicMaterial({ map: sharedTEX.ring, color: 0xef4444, transparent: true, opacity: 0.92, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -1123,8 +1278,8 @@ export function createModelFactory(sharedTEX) {
         rig.root.add(ring);
         rig.ring = ring; rig.ringMat = ringMat;
         rig.type = m.type;
-        // 黑暗之龍 Boss 呈現壓迫感十足的巨型體型！
-        rig.root.scale.setScalar(m.scale * (m.type === 'drake' ? 1.48 : 0.96));
+        const bossScale = (m.type === 'drake' || m.type === 'water_dragon') ? 1.52 : 0.96;
+        rig.root.scale.setScalar(m.scale * bossScale);
         rig.root.userData.monsterId = m.id;
         return rig;
     }
@@ -1146,17 +1301,22 @@ export function createModelFactory(sharedTEX) {
             rig.jaw.rotation.x = 0.14 + Math.abs(Math.sin(t * 3 + m.id)) * 0.12 + lunge * 0.48;
             rig.body.position.z = lunge * 0.5;
             rig.tail.rotation.y = Math.sin(t * 6.5 + m.id) * 0.38;
-        } else if (m.type === 'drake') {
-            const flap = Math.sin(m.wingPhase * 0.8);
-            rig.body.position.y = 1.95 + Math.cos(m.wingPhase * 0.8) * 0.28;
-            rig.wingL.shoulder.rotation.z = flap * 0.52;
-            rig.wingL.outer.rotation.z = flap * 0.42;
-            rig.wingR.shoulder.rotation.z = -flap * 0.52;
-            rig.wingR.outer.rotation.z = -flap * 0.42;
-            rig.neck.rotation.x = lunge * 0.38 + Math.sin(t * 2 + m.id) * 0.06;
+        } else if (m.type === 'drake' || m.type === 'water_dragon') {
+            // 相位差自然拍翅 (內翼先揮、外翼稍慢波浪折疊，更像真實飛龍！)
+            const ph = m.wingPhase * 0.65;
+            const flapIn = Math.sin(ph);
+            const flapOut = Math.sin(ph - 0.85);
+            rig.body.position.y = (rig.baseY || 3.2) + Math.cos(ph) * 0.34;
+            rig.body.rotation.x = Math.sin(ph) * 0.06;
+            rig.wingL.shoulder.rotation.z = flapIn * 0.48;
+            rig.wingL.outer.rotation.z = flapOut * 0.55;
+            rig.wingR.shoulder.rotation.z = -flapIn * 0.48;
+            rig.wingR.outer.rotation.z = -flapOut * 0.55;
+            rig.neck.rotation.x = lunge * 0.38 + Math.sin(t * 1.8 + m.id) * 0.07;
             rig.jaw.rotation.x = 0.12 + lunge * 0.68;
             rig.tailSegs.forEach((seg, i) => {
-                seg.rotation.y = Math.sin(t * 3.8 + m.id - i * 0.65) * 0.24;
+                seg.rotation.y = Math.sin(t * 3.4 + m.id - i * 0.68) * 0.26;
+                seg.rotation.x = Math.cos(t * 2.2 + m.id - i * 0.5) * 0.08;
             });
         } else if (m.type === 'shelob') {
             rig.legs.forEach(({ g, s, i }) => {
@@ -1167,6 +1327,18 @@ export function createModelFactory(sharedTEX) {
             rig.tail.rotation.y = Math.sin(m.walkPhase * 0.72) * 0.42;
             rig.jaw.rotation.x = -lunge * 0.62;
             rig.legs.forEach((l, i) => { l.rotation.x = Math.sin(m.walkPhase + i * Math.PI * 0.5) * 0.42; });
+        } else if (m.type === 'niss') {
+            rig.body.position.y = 0.1 + Math.sin(t * 3.5 + m.id) * 0.12;
+            rig.tail.rotation.y = Math.sin(t * 6.5 + m.id) * 0.48;
+            rig.body.position.z = lunge * 0.35;
+        } else if (m.type === 'de_archer') {
+            const w = Math.sin(m.walkPhase);
+            rig.legL.rotation.x = w * 0.55;
+            rig.legR.rotation.x = -w * 0.55;
+            rig.bowArm.rotation.x = -lunge * 0.35;
+        } else if (m.type === 'dark_mage') {
+            rig.body.position.y = 0.18 + Math.sin(t * 2.8 + m.id) * 0.12;
+            rig.staffArm.rotation.x = -lunge * 0.65;
         } else {
             const bounce = Math.abs(Math.sin(m.walkPhase * 0.6));
             rig.body.position.y = bounce * 0.24;
