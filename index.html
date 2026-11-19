@@ -444,8 +444,13 @@
 
             <div class="h-6 w-[1px] bg-amber-800/60 mx-0.5 shrink-0"></div>
 
-            <!-- 揮刀、內掛、自動魔攻、背包/裝備開關 -->
-            <button onclick="triggerManualSwing()" class="equip-slot w-8 h-8 sm:w-9 sm:h-9 rounded flex flex-col items-center justify-center relative cursor-pointer shrink-0" title="揮刀 (Space)">
+            <!-- 跳躍、揮刀、內掛、自動魔攻、背包/裝備開關 -->
+            <button onclick="triggerJump()" class="equip-slot w-8 h-8 sm:w-9 sm:h-9 rounded flex flex-col items-center justify-center relative cursor-pointer shrink-0 border-cyan-700/70" title="跳躍障礙 (Space)">
+                <span class="text-xs sm:text-sm leading-none">🦘</span>
+                <span class="text-[8px] text-cyan-200 mt-0.5">跳躍</span>
+            </button>
+
+            <button onclick="triggerManualSwing()" class="equip-slot w-8 h-8 sm:w-9 sm:h-9 rounded flex flex-col items-center justify-center relative cursor-pointer shrink-0" title="揮刀攻擊 (A)">
                 <span class="text-xs sm:text-sm leading-none">⚔️</span>
                 <span class="text-[8px] text-amber-200 mt-0.5">攻擊</span>
             </button>
@@ -851,7 +856,17 @@
             return baseH;
         }
 
+        function createSeededRng(seed) {
+            return function () {
+                seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+                let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+                t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+                return ((t ^ t >>> 14) >>> 0) / 4294967296;
+            };
+        }
+
         function initMap() {
+            const mapRnd = createSeededRng(20261120);
             mapBuildings.length = 0;
 
             mapBuildings.push(
@@ -969,25 +984,25 @@
                         continue;
                     }
 
-                    const r = Math.random();
+                    const r = mapRnd();
                     const distFromTownCenter = Math.hypot(x - 36, y - 36);
                     const isElvenForest = (x < 22 && y > 14 && y < 52);
                     const treeChance = isElvenForest ? 0.11 : 0.065;
 
                     if (r < treeChance && distFromTownCenter > 8.5) {
                         mapGrid[y][x] = 3;
-                        const sizeRoll = Math.random();
-                        if (sizeRoll < 0.22) mapTreeScale[y][x] = 0.80 + Math.random() * 0.25;
-                        else if (sizeRoll < 0.62) mapTreeScale[y][x] = 1.25 + Math.random() * 0.35;
-                        else mapTreeScale[y][x] = 1.75 + Math.random() * 0.70;
+                        const sizeRoll = mapRnd();
+                        if (sizeRoll < 0.22) mapTreeScale[y][x] = 0.80 + mapRnd() * 0.25;
+                        else if (sizeRoll < 0.62) mapTreeScale[y][x] = 1.25 + mapRnd() * 0.35;
+                        else mapTreeScale[y][x] = 1.75 + mapRnd() * 0.70;
                     } else if (r < 0.32) {
                         mapGrid[y][x] = 4;
-                        if (Math.random() < 0.14) {
+                        if (mapRnd() < 0.14) {
                             mapFoliage[y][x] = [{
-                                ox: (Math.random() - 0.5) * 18,
-                                oy: (Math.random() - 0.5) * 9,
-                                h: 3 + Math.random() * 2.5,
-                                isPebble: Math.random() < 0.45
+                                ox: (mapRnd() - 0.5) * 18,
+                                oy: (mapRnd() - 0.5) * 9,
+                                h: 3 + mapRnd() * 2.5,
+                                isPebble: mapRnd() < 0.45
                             }];
                         }
                     } else {
@@ -997,23 +1012,34 @@
             }
         }
 
-        function isWalkable(wx, wy, isFlying = false, fromX = null, fromY = null) {
+        function isInSafeZone(wx, wy) {
+            // 說話之島城鎮廣場 或 奇岩王城內部 = 安全區 (不可 PVP)
+            const inTown = (wx >= 25 && wx <= 46 && wy >= 28 && wy <= 43);
+            const inCastle = (wx >= 22 && wx <= 49 && wy >= 4 && wy <= 17);
+            return inTown || inCastle;
+        }
+
+        function isWalkable(wx, wy, isFlying = false, fromX = null, fromY = null, isJumping = false) {
             const tx = Math.floor(wx);
             const ty = Math.floor(wy);
             if (tx < 1 || ty < 1 || tx >= MAP_SIZE - 1 || ty >= MAP_SIZE - 1) return false;
             if (isFlying) return true;
             const tile = mapGrid[ty]?.[tx];
-            if (tile === 2 || tile === 3 || tile === 6) return false;
+            // 樹木(3)、城牆(6)、建築物無論走路或跳躍都不可穿透
+            if (tile === 3 || tile === 6) return false;
             if (isInsideBuildingFootprint(tx, ty)) return false;
+            // 水域(2)：走路不可直接踩進深水，但跳躍時可以飛越！
+            if (tile === 2 && !isJumping) return false;
 
-            if (fromX !== null && fromY !== null) {
+            // 符合人體力學：1 階高低差都能自然上下走動不卡牆；超過 1 階陡峭斷崖需跳躍或走階梯
+            if (!isJumping && fromX !== null && fromY !== null) {
                 const ftx = Math.max(0, Math.min(MAP_SIZE - 1, Math.floor(fromX)));
                 const fty = Math.max(0, Math.min(MAP_SIZE - 1, Math.floor(fromY)));
                 if (ftx !== tx || fty !== ty) {
                     const h1 = heightMap[fty]?.[ftx] ?? 0;
                     const h2 = heightMap[ty]?.[tx] ?? 0;
                     const onRamp = mapRamp[fty]?.[ftx] || mapRamp[ty]?.[tx];
-                    if (Math.abs(h1 - h2) > 0.65 && !onRamp) {
+                    if (Math.abs(h1 - h2) > 1.15 && !onRamp) {
                         return false;
                     }
                 }
@@ -1097,8 +1123,11 @@
                     { id: 'pot_green', name: '自我加速藥水',       type: 'consumable', subType: 'green', count: 3,  icon: '🧪', desc: '一段加速 60 秒' },
                     { id: 'pot_brave', name: '勇敢藥水',           type: 'consumable', subType: 'brave', count: 3,  icon: '🍷', desc: '騎士二段加速 45 秒' },
                     { id: 'pot_blue',  name: '藍色魔力藥水',       type: 'consumable', subType: 'blue',  count: 8,  icon: '💧', desc: '恢復 45 MP 並加速回魔' },
-                    { id: 'zel_scroll',name: '對武器施法的卷軸',   type: 'scroll',     subType: 'dai',   count: 5,  icon: '📜', desc: '強化目前已裝備的主手武器 (+1)' },
-                    { id: 'w_tsurugi', name: '+8 瑟魯基之劍',      type: 'weapon',     atk: 16, def: 0, sp: 10, enchant: 8, bladeColor: '#fde047', icon: '⚔️', desc: '額外攻擊 +16、魔法增傷 +10%' },
+                    { id: 'zel_scroll',name: '對武器施法的卷軸',   type: 'scroll',     subType: 'dai',   count: 15, icon: '📜', desc: '強化目前主手武器 (+1，每 +10 升級光芒色階)' },
+                    { id: 'arm_scroll',name: '對防具施法的卷軸',   type: 'scroll',     subType: 'zel',   count: 15, icon: '🛡️', desc: '強化目前身體防具 (+1，每 +10 升級盔甲光芒色階)' },
+                    { id: 'w_greatsw', name: '+10 亞丁雙手巨劍',   type: 'weapon',     weaponClass: '2h_sword', atk: 22, def: 0, sp: 12, enchant: 10, bladeColor: '#f8fafc', icon: '🗡️', desc: '雙手巨劍 (自動卸下盾牌)，+10 散發純白聖光！' },
+                    { id: 'w_dagger',  name: '+6 暗影雙刃短刀',    type: 'weapon',     weaponClass: 'dagger',   atk: 13, def: 0, sp: 8,  enchant: 6,  bladeColor: '#38bdf8', icon: '🔪', desc: '雙刀流敏捷短刀 (無盾牌)，高攻速連斬！' },
+                    { id: 'w_tsurugi', name: '+8 瑟魯基之劍',      type: 'weapon',     weaponClass: '1h_sword', atk: 16, def: 0, sp: 10, enchant: 8, bladeColor: '#fde047', icon: '⚔️', desc: '額外攻擊 +16、魔法增傷 +10% (單手劍配盾)' },
                     { id: 'h_bapho',   name: '+6 巴風特頭盔',      type: 'helmet',     def: 7,  atk: 2, sp: 15, icon: '👑', desc: '防禦 -7、攻擊 +2、魔傷 +15%' },
                     { id: 'a_muko',    name: '+7 武官護鎧',        type: 'armor',      def: 12, atk: 1, sp: 5,  armorTint: '#fbbf24', icon: '🥋', desc: '防禦 -12、攻擊 +1 的黃金聖鎧' },
                     { id: 'c_mr',      name: '+6 抗魔法斗篷',      type: 'cloak',      def: 6,  atk: 0, sp: 15, capeColor: '#2563eb', icon: '🧥', desc: '防禦 -6、魔法增傷 +15%' }
@@ -1139,6 +1168,9 @@
             attackCooldown: 0,
             swingAnimTimer: 0,
             swingCombo: 0,
+            jumpZ: 0,
+            jumpVel: 0,
+            springHealAccum: 0,
             levelUpBeamTimer: 0,
             chatBubbleText: '',
             chatBubbleTimer: 0,
@@ -1413,6 +1445,8 @@
 
         let monsterIdSeq = 1;
 
+        const worldMonsterRng = createSeededRng(88817813);
+
         function spawnInitialMonsters() {
             const initialPool = [
                 'slime', 'slime', 'slime', 'slime', 'slime', 'slime', 'slime',
@@ -1421,11 +1455,12 @@
                 'croc', 'croc', 'croc', 'croc', 'croc', 'croc',
                 'drake', 'drake', 'drake', 'drake'
             ];
-            initialPool.forEach(t => createMonster(t));
+            initialPool.forEach(t => createMonster(t, null, null, null, worldMonsterRng));
         }
 
-        function createMonster(typeKey, customX = null, customY = null) {
+        function createMonster(typeKey, customX = null, customY = null, forcedId = null, customRnd = null) {
             const cfg = MONSTER_TYPES[typeKey] || MONSTER_TYPES.slime;
+            const rfn = customRnd || Math.random;
             let gx = 18, gy = 42;
 
             if (customX !== null && customY !== null) {
@@ -1433,11 +1468,11 @@
                 gy = customY;
             } else {
                 for (let tries = 0; tries < 100; tries++) {
-                    const rx = 3 + Math.floor(Math.random() * (MAP_SIZE - 6));
-                    const ry = 3 + Math.floor(Math.random() * (MAP_SIZE - 6));
-                    const distToPlayer = Math.hypot(rx - player.x, ry - player.y);
+                    const rx = 3 + Math.floor(rfn() * (MAP_SIZE - 6));
+                    const ry = 3 + Math.floor(rfn() * (MAP_SIZE - 6));
+                    const distToTown = Math.hypot(rx - 36, ry - 36);
                     const inCastle = (rx >= 21 && rx <= 50 && ry >= 3 && ry <= 18);
-                    if (!inCastle && isWalkable(rx, ry, cfg.isFlying) && distToPlayer > 5.5) {
+                    if (!inCastle && isWalkable(rx, ry, cfg.isFlying) && distToTown > 8.5) {
                         gx = rx + 0.5;
                         gy = ry + 0.5;
                         break;
@@ -1445,8 +1480,10 @@
                 }
             }
 
-            monsters.push({
-                id: monsterIdSeq++,
+            const newId = forcedId !== null ? forcedId : monsterIdSeq++;
+            if (forcedId !== null && forcedId >= monsterIdSeq) monsterIdSeq = forcedId + 1;
+            const mObj = {
+                id: newId,
                 type: cfg.type,
                 name: cfg.name,
                 level: cfg.level,
@@ -1475,7 +1512,9 @@
                 attackCooldown: 0,
                 attackAnimTimer: 0,
                 hurtFlashTimer: 0
-            });
+            };
+            monsters.push(mObj);
+            return mObj;
         }
 
         function spawnSpecificMonster(typeKey) {
@@ -1483,9 +1522,10 @@
             const dist = 2.6 + Math.random() * 1.4;
             let tx = Math.max(2, Math.min(MAP_SIZE - 3, player.x + Math.cos(angle) * dist));
             let ty = Math.max(2, Math.min(MAP_SIZE - 3, player.y + Math.sin(angle) * dist));
-            createMonster(typeKey, tx, ty);
+            const spawned = createMonster(typeKey, tx, ty);
+            broadcastPlayerState('monster_spawn', JSON.stringify({ id: spawned.id, type: typeKey, x: Number(tx.toFixed(2)), y: Number(ty.toFixed(2)) }));
             const cfg = MONSTER_TYPES[typeKey];
-            addChatLog(`📢 召喚出 ${cfg.name} Lv.${cfg.level}！`, 'text-amber-300');
+            addChatLog(`📢 召喚出 ${cfg.name} Lv.${cfg.level}！(全房同步)`, 'text-amber-300');
             spawnHitSparks(tx, ty, '#fbbf24', 12);
         }
         window.spawnSpecificMonster = spawnSpecificMonster;
@@ -1624,13 +1664,16 @@
             return bolts;
         }
 
-        function applyDamageToMonster(m, dmg, tagText, colorHex) {
+        function applyDamageToMonster(m, dmg, tagText, colorHex, fromNetwork = false) {
             m.hp -= dmg;
             m.hurtFlashTimer = 0.16;
             spawnHitSparks(m.x, m.y, colorHex, 12, m.isFlying ? 32 : 12);
             addFloatingText(m.x, m.y, `${tagText} -${dmg}`, colorHex, 14);
+            if (!fromNetwork) {
+                broadcastPlayerState('monster_hit', JSON.stringify({ id: m.id, dmg, hp: Math.max(0, m.hp), x: Number(m.x.toFixed(2)), y: Number(m.y.toFixed(2)), tag: tagText }));
+            }
             if (m.hp <= 0) {
-                handleMonsterDeath(m);
+                handleMonsterDeath(m, fromNetwork);
             }
         }
 
@@ -1716,13 +1759,39 @@
             }
         }
 
+        function inferWeaponClass(weap) {
+            if (!weap) return '1h_sword';
+            if (weap.weaponClass) return weap.weaponClass;
+            const n = weap.name || '';
+            if (/雙手|巨劍|大劍|死神/.test(n)) return '2h_sword';
+            if (/日本|武士|太刀/.test(n)) return 'katana';
+            if (/短刀|匕首/.test(n)) return 'dagger';
+            return '1h_sword';
+        }
+        function getItemEnchantNum(item) {
+            if (!item) return 0;
+            if (typeof item.enchant === 'number') return item.enchant;
+            const m = (item.name || '').match(/^\+(\d+)/);
+            return m ? parseInt(m[1], 10) : 0;
+        }
+        function getEnchantTierLabel(lv) {
+            if (lv >= 60) return '金色傳說光芒';
+            if (lv >= 50) return '熾紅炎光';
+            if (lv >= 40) return '紫晶魔光';
+            if (lv >= 30) return '湛藍星光';
+            if (lv >= 20) return '翠綠靈光';
+            if (lv >= 10) return '純白聖光';
+            return '';
+        }
+
         const LOOT_POOL_9SLOTS = [
             { id: 'h_wind',   name: '+6 風之頭盔',       type: 'helmet',   def: 6,  atk: 1, sp: 5,  icon: '🪖', desc: '防禦 -6、近戰 +1、魔傷 +5%' },
             { id: 'h_bapho',  name: '+7 巴風特頭盔',     type: 'helmet',   def: 8,  atk: 3, sp: 15, icon: '👑', desc: '防禦 -8、近戰 +3、魔法增傷 +15%' },
             { id: 'e_ice',    name: '冰之女王耳環',      type: 'earring',  def: 3,  atk: 2, sp: 12, icon: '💎', desc: '防禦 -3、近戰 +2、魔法增傷 +12%' },
             { id: 'n_atul',   name: '阿吐巴妖魔項鍊',    type: 'necklace', def: 2,  atk: 4, sp: 8,  icon: '📿', desc: '防禦 -2、近戰傷害 +4、魔傷 +8%' },
-            { id: 'w_nihon',  name: '+8 日本劍',         type: 'weapon',   atk: 14, def: 0, sp: 5,  enchant: 8, bladeColor: '#fde047', icon: '⚔️', desc: '額外攻擊 +14，攻速流暢的東方名刀' },
-            { id: 'w_death',  name: '+9 死神之劍',       type: 'weapon',   atk: 24, def: 0, sp: 20, enchant: 9, bladeColor: '#f43f5e', icon: '🗡️', desc: '額外攻擊 +24、魔法增傷 +20% 的傳說神兵！' },
+            { id: 'w_nihon',  name: '+8 日本劍',         type: 'weapon',   weaponClass: 'katana',   atk: 14, def: 0, sp: 5,  enchant: 8, bladeColor: '#fde047', icon: '⚔️', desc: '東方武士太刀 (雙手持握無盾)，額外攻擊 +14' },
+            { id: 'w_death',  name: '+10 死神巨劍',      type: 'weapon',   weaponClass: '2h_sword', atk: 26, def: 0, sp: 20, enchant: 10, bladeColor: '#f8fafc', icon: '🗡️', desc: '雙手巨劍 (無盾)，額外攻擊 +26、+10 純白光芒！' },
+            { id: 'w_shadow', name: '+8 暗殺者短刀',     type: 'weapon',   weaponClass: 'dagger',   atk: 18, def: 0, sp: 10, enchant: 8, bladeColor: '#38bdf8', icon: '🔪', desc: '雙刀流短刀 (無盾)，額外攻擊 +18' },
             { id: 'a_dragon', name: '+8 古老的龍鱗盔甲', type: 'armor',    def: 16, atk: 2, sp: 10, armorTint: '#34d399', icon: '🐉', desc: '防禦 -16、攻擊 +2、魔傷 +10% 的頂級龍甲！' },
             { id: 'c_silver', name: '+7 銀光斗篷',       type: 'cloak',    def: 8,  atk: 1, sp: 12, capeColor: '#9333ea', icon: '🧣', desc: '防禦 -8、攻擊 +1、魔傷 +12%' },
             { id: 'g_crystal',name: '+6 水晶手套',       type: 'gloves',   def: 5,  atk: 3, sp: 5,  icon: '🧤', desc: '防禦 -5、近戰傷害 +3' },
@@ -1749,8 +1818,10 @@
 
             if (isBoss || roll < 0.36) {
                 const subRoll = Math.random();
-                if (subRoll < 0.35) {
-                    itemData = { id: 'zel_scroll', name: '對武器施法的卷軸', type: 'scroll', subType: 'dai', count: 1, icon: '📜', desc: '點擊強化目前裝備的主手武器 (+1)' };
+                if (subRoll < 0.22) {
+                    itemData = { id: 'zel_scroll', name: '對武器施法的卷軸', type: 'scroll', subType: 'dai', count: 1, icon: '📜', desc: '強化主手武器 (+1，每 +10 換色階光芒)' };
+                } else if (subRoll < 0.42) {
+                    itemData = { id: 'arm_scroll', name: '對防具施法的卷軸', type: 'scroll', subType: 'zel', count: 1, icon: '🛡️', desc: '強化身體防具 (+1，每 +10 換盔甲光芒)' };
                 } else {
                     const eqTemplate = LOOT_POOL_9SLOTS[Math.floor(Math.random() * LOOT_POOL_9SLOTS.length)];
                     itemData = { ...eqTemplate, id: eqTemplate.id + '_' + Date.now() + '_' + Math.floor(Math.random() * 999) };
@@ -2017,6 +2088,8 @@
                 consumePotionItem(item, index);
             } else if (item.type === 'scroll' && item.subType === 'dai') {
                 useWeaponScroll(index);
+            } else if (item.type === 'scroll' && item.subType === 'zel') {
+                useArmorScroll(index);
             } else if (VALID_EQUIP_TYPES.has(item.type)) {
                 const slotKey = item.type;
                 const prevEquipped = player.equipped[slotKey];
@@ -2047,24 +2120,46 @@
                 addChatLog('請先裝備主手武器！', 'text-red-400');
                 return;
             }
-
-            weapon.enchant = (weapon.enchant || 0) + 1;
+            const cur = getItemEnchantNum(weapon);
+            weapon.enchant = cur + 1;
             weapon.atk += 2;
             weapon.sp = (weapon.sp || 0) + 2;
             const baseName = weapon.name.replace(/^\+\d+\s*/, '');
             weapon.name = `+${weapon.enchant} ${baseName}`;
 
-            if (weapon.enchant >= 9) weapon.bladeColor = '#f43f5e';
-            else if (weapon.enchant >= 7) weapon.bladeColor = '#fde047';
+            scrollItem.count -= 1;
+            if (scrollItem.count <= 0) player.inventory.splice(invIndex, 1);
+
+            sound.playScroll();
+            spawnHitSparks(player.x, player.y, '#fde047', 16, 20);
+            const tierTag = (weapon.enchant % 10 === 0) ? ` 【${getEnchantTierLabel(weapon.enchant)}覺醒!】` : '';
+            addFloatingText(player.x, player.y, `✨ ${weapon.name}${tierTag}`, '#fde047', 14);
+            addChatLog(`📜 ${weapon.name} 強化成功！${tierTag}`, 'text-amber-300');
+            saveCharacterProgress();
+            updateUI();
+        }
+
+        function useArmorScroll(invIndex) {
+            const scrollItem = player.inventory[invIndex];
+            const armor = player.equipped.armor;
+            if (!armor) {
+                addChatLog('請先裝備身體防具！', 'text-red-400');
+                return;
+            }
+            const cur = getItemEnchantNum(armor);
+            armor.enchant = cur + 1;
+            armor.def += 2;
+            const baseName = armor.name.replace(/^\+\d+\s*/, '');
+            armor.name = `+${armor.enchant} ${baseName}`;
 
             scrollItem.count -= 1;
             if (scrollItem.count <= 0) player.inventory.splice(invIndex, 1);
 
             sound.playScroll();
-            player.levelUpBeamTimer = 0.8;
-            spawnHitSparks(player.x, player.y, '#38bdf8', 20, 24);
-            addFloatingText(player.x, player.y, `✨ ${weapon.name} 強化成功`, '#38bdf8', 15);
-            addChatLog(`📜 ${weapon.name} 強化成功！`, 'text-amber-300');
+            spawnHitSparks(player.x, player.y, '#38bdf8', 16, 18);
+            const tierTag = (armor.enchant % 10 === 0) ? ` 【盔甲${getEnchantTierLabel(armor.enchant)}覺醒!】` : '';
+            addFloatingText(player.x, player.y, `🛡️ ${armor.name}${tierTag}`, '#7dd3fc', 14);
+            addChatLog(`🛡️ ${armor.name} 強化成功！${tierTag}`, 'text-sky-300');
             saveCharacterProgress();
             updateUI();
         }
@@ -2311,10 +2406,31 @@
             canvas.style.cursor = mouseState.hoveredMonster ? 'pointer' : 'crosshair';
         });
 
+        // 手機單指滑動走路狀態 & 觸控雙指縮放相容
+        const touchMoveState = { active: false, pointerId: null, startX: 0, startY: 0, dragging: false };
+
         canvas.addEventListener('pointerdown', (e) => {
             if (e.button !== 0 && e.pointerType === 'mouse') return;
             sound.init();
 
+            // 1. 優先檢查是否點擊其他玩家 (城鎮外強制 PVP 攻擊！)
+            const clickedPlayer = (window.R3D && window.R3D.ready && window.R3D.pickRemotePlayer) ? window.R3D.pickRemotePlayer(e.clientX, e.clientY) : null;
+            if (clickedPlayer) {
+                if (isInSafeZone(player.x, player.y) || isInSafeZone(clickedPlayer.x, clickedPlayer.y)) {
+                    addFloatingText(clickedPlayer.x, clickedPlayer.y, '🛡️ 安全區禁止 PVP', '#38bdf8', 13);
+                    addChatLog(`🛡️ 【${escapeHtml(clickedPlayer.name)}】目前在城鎮安全區內，無法強制攻擊。`, 'text-sky-300');
+                } else {
+                    clickedPlayer.isRemotePlayer = true;
+                    player.attackTarget = clickedPlayer;
+                    player.manualMoveOverrideTimer = 0;
+                    addFloatingText(clickedPlayer.x, clickedPlayer.y, '⚔️ 強制攻擊!', '#ef4444', 14);
+                    addChatLog(`⚔️ 你鎖定了玩家【${escapeHtml(clickedPlayer.name)}】發動強制攻擊！`, 'text-rose-400 font-bold');
+                    clickIndicators.push({ wx: clickedPlayer.x, wy: clickedPlayer.y, radius: 4, maxRadius: 24, color: '#ef4444', alpha: 1 });
+                }
+                return;
+            }
+
+            // 2. 檢查是否點擊怪物
             const clickedMonster = findMonsterAtScreenPos(e.clientX, e.clientY);
             if (clickedMonster) {
                 player.attackTarget = clickedMonster;
@@ -2323,11 +2439,18 @@
                 return;
             }
 
+            // 3. 記錄按住滑動狀態 (手機/滑鼠按住拖曳即可連續走路，不需一直點地板！)
+            touchMoveState.active = true;
+            touchMoveState.pointerId = e.pointerId;
+            touchMoveState.startX = e.clientX;
+            touchMoveState.startY = e.clientY;
+            touchMoveState.dragging = false;
+
             const w = screenToWorld(e.clientX, e.clientY, camera.x, camera.y);
             const clampedX = Math.max(1.2, Math.min(MAP_SIZE - 1.2, w.x));
             const clampedY = Math.max(1.2, Math.min(MAP_SIZE - 1.2, w.y));
 
-            if (isWalkable(clampedX, clampedY)) {
+            if (isWalkable(clampedX, clampedY, false, player.x, player.y, player.jumpZ > 0.12)) {
                 player.attackTarget = null;
                 player.targetX = clampedX;
                 player.targetY = clampedY;
@@ -2337,6 +2460,41 @@
                 clickIndicators.push({ wx: clampedX, wy: clampedY, radius: 4, maxRadius: 14, color: '#ef4444', alpha: 0.9 });
             }
         });
+
+        canvas.addEventListener('pointermove', (e) => {
+            if (!touchMoveState.active || e.pointerId !== touchMoveState.pointerId) return;
+            if (window._pinchingZoom) return;
+            const dpx = Math.hypot(e.clientX - touchMoveState.startX, e.clientY - touchMoveState.startY);
+            if (dpx > 12) touchMoveState.dragging = true;
+            if (touchMoveState.dragging) {
+                const w = screenToWorld(e.clientX, e.clientY, camera.x, camera.y);
+                const cx = Math.max(1.2, Math.min(MAP_SIZE - 1.2, w.x));
+                const cy = Math.max(1.2, Math.min(MAP_SIZE - 1.2, w.y));
+                player.attackTarget = null;
+                player.targetX = cx;
+                player.targetY = cy;
+                if (player.autoBattle) player.manualMoveOverrideTimer = 1.6;
+            }
+        });
+
+        window.addEventListener('pointerup', (e) => {
+            if (e.pointerId === touchMoveState.pointerId) {
+                touchMoveState.active = false;
+                touchMoveState.dragging = false;
+                touchMoveState.pointerId = null;
+            }
+        });
+
+        // 跳躍函式 (空白鍵或手機跳躍鈕)
+        function triggerJump() {
+            if (player.jumpZ > 0.02) return;
+            sound.init();
+            player.jumpVel = 6.2;
+            player.jumpZ = 0.05;
+            sound.playSwing(false);
+            spawnHitSparks(player.x, player.y, '#bae6fd', 6, 4);
+        }
+        window.triggerJump = triggerJump;
 
         function triggerManualSwing() {
             let nearest = null;
@@ -2385,6 +2543,19 @@
             sound.playSwing(player.braveTimer > 0);
             sound.playHit(isCrit);
 
+            if (target.isRemotePlayer) {
+                if (isInSafeZone(player.x, player.y) || isInSafeZone(target.x, target.y)) {
+                    player.attackTarget = null;
+                    addFloatingText(target.x, target.y, '🛡️ 進入安全區', '#38bdf8', 12);
+                    return;
+                }
+                const weaponColor = player.equipped.weapon ? player.equipped.weapon.bladeColor : '#fbbf24';
+                spawnHitSparks(target.x, target.y, isCrit ? '#f43f5e' : weaponColor, isCrit ? 14 : 8, 16);
+                addFloatingText(target.x, target.y, isCrit ? `PVP暴擊 -${dmg}!` : `PVP -${dmg}`, '#fb7185', isCrit ? 15 : 13);
+                broadcastPlayerState('pvp_hit', JSON.stringify({ targetUid: target.uid, dmg, isCrit, attacker: player.name }));
+                return;
+            }
+
             target.hp -= dmg;
             target.hurtFlashTimer = 0.16;
 
@@ -2396,21 +2567,25 @@
             const weaponColor = player.equipped.weapon ? player.equipped.weapon.bladeColor : '#fbbf24';
             spawnHitSparks(target.x, target.y, isCrit ? '#f43f5e' : weaponColor, isCrit ? 14 : 8, target.isFlying ? 32 : 12);
             addFloatingText(target.x, target.y, isCrit ? `暴擊 -${dmg}!` : `-${dmg}`, isCrit ? '#fde047' : '#ffffff', isCrit ? 15 : 13);
+            broadcastPlayerState('monster_hit', JSON.stringify({ id: target.id, dmg, hp: Math.max(0, target.hp), x: Number(target.x.toFixed(2)), y: Number(target.y.toFixed(2)), tag: isCrit ? '暴擊' : '' }));
 
             if (target.hp <= 0) {
-                handleMonsterDeath(target);
+                handleMonsterDeath(target, false);
             }
         }
 
-        function handleMonsterDeath(target) {
+        function handleMonsterDeath(target, fromNetwork = false) {
             const idx = monsters.indexOf(target);
             if (idx === -1) return;
 
             spawnHitSparks(target.x, target.y, '#ef4444', 18, target.isFlying ? 30 : 12);
-            dropMonsterLoot(target);
-
-            const expGain = target.exp;
-            player.exp += expGain;
+            const distToMe = Math.hypot(target.x - player.x, target.y - player.y);
+            if (!fromNetwork || distToMe <= 10.0) {
+                if (!fromNetwork) dropMonsterLoot(target);
+                const expGain = fromNetwork ? Math.round(target.exp * 0.75) : target.exp;
+                player.exp += expGain;
+                if (fromNetwork) addFloatingText(player.x, player.y, `🤝 協同擊殺 +${expGain} EXP`, '#6ee7b7', 12);
+            }
 
             const respawnType = target.type;
             monsters.splice(idx, 1);
@@ -2436,9 +2611,14 @@
             saveCharacterProgress();
             updateStatusNumbersUI();
 
-            setTimeout(() => {
-                if (monsters.length < 22) createMonster(respawnType);
-            }, 3500);
+            if (!fromNetwork) {
+                setTimeout(() => {
+                    if (monsters.length < 24) {
+                        const nm = createMonster(respawnType);
+                        broadcastPlayerState('monster_spawn', JSON.stringify({ id: nm.id, type: nm.type, x: Number(nm.x.toFixed(2)), y: Number(nm.y.toFixed(2)) }));
+                    }
+                }, 3500);
+            }
         }
 
         window.addEventListener('keydown', (e) => {
@@ -2472,6 +2652,8 @@
 
             if (e.code === 'Space') {
                 e.preventDefault();
+                triggerJump();
+            } else if (e.key === 'a' || e.key === 'A') {
                 triggerManualSwing();
             } else if (e.key === 'z' || e.key === 'Z') {
                 toggleAutoBattle();
@@ -2585,9 +2767,12 @@
                 maxHp: player.maxHp,
                 swingAnimTimer: player.swingAnimTimer,
                 armorTint: player.equipped.armor ? (player.equipped.armor.armorTint || '#cbd5e1') : '#64748b',
+                armorEnchant: getItemEnchantNum(player.equipped.armor),
                 capeColor: player.equipped.cloak ? (player.equipped.cloak.capeColor || '#dc2626') : '#991b1b',
                 bladeColor: player.equipped.weapon ? (player.equipped.weapon.bladeColor || '#bae6fd') : '#bae6fd',
-                weaponEnchant: player.equipped.weapon ? (player.equipped.weapon.enchant || 0) : 0,
+                weaponEnchant: getItemEnchantNum(player.equipped.weapon),
+                weaponClass: inferWeaponClass(player.equipped.weapon),
+                jumpZ: Number((player.jumpZ || 0).toFixed(2)),
                 chatBubbleText: player.chatBubbleTimer > 0 ? player.chatBubbleText : '',
                 extraText,
                 ts: Date.now()
@@ -2643,9 +2828,12 @@
             rp.maxHp = pkt.maxHp || rp.maxHp;
             if (pkt.swingAnimTimer > 0.05) rp.swingAnimTimer = 0.26;
             rp.armorTint = pkt.armorTint || rp.armorTint;
+            rp.armorEnchant = pkt.armorEnchant ?? (rp.armorEnchant || 0);
             rp.capeColor = pkt.capeColor || rp.capeColor;
             rp.bladeColor = pkt.bladeColor || rp.bladeColor;
             rp.weaponEnchant = pkt.weaponEnchant ?? rp.weaponEnchant;
+            rp.weaponClass = pkt.weaponClass || rp.weaponClass || '1h_sword';
+            rp.jumpZ = pkt.jumpZ || 0;
             rp.lastSeen = Date.now();
 
             if (pkt.chatBubbleText && pkt.chatBubbleText !== rp.chatBubbleText) {
@@ -2657,6 +2845,47 @@
                 rp.chatBubbleText = pkt.extraText;
                 rp.chatBubbleTimer = 5.5;
                 addChatLog(`<span class="text-sky-300 font-bold">${escapeHtml(rp.name)}:</span> <span class="text-white">${escapeHtml(pkt.extraText)}</span>`);
+            } else if (pkt.eventType === 'monster_hit' && pkt.extraText) {
+                try {
+                    const info = JSON.parse(pkt.extraText);
+                    const m = monsters.find(x => x.id === info.id);
+                    if (m && m.hp > 0) {
+                        m.x = info.x ?? m.x; m.y = info.y ?? m.y;
+                        m.hp = Math.min(m.hp, info.hp);
+                        m.hurtFlashTimer = 0.16;
+                        spawnHitSparks(m.x, m.y, '#38bdf8', 8, m.isFlying ? 30 : 12);
+                        addFloatingText(m.x, m.y, `${info.tag || ''} -${info.dmg}`, '#bae6fd', 12);
+                        if (m.hp <= 0) handleMonsterDeath(m, true);
+                    }
+                } catch (e) {}
+            } else if (pkt.eventType === 'monster_spawn' && pkt.extraText) {
+                try {
+                    const info = JSON.parse(pkt.extraText);
+                    if (!monsters.some(x => x.id === info.id)) {
+                        createMonster(info.type, info.x, info.y, info.id);
+                    }
+                } catch (e) {}
+            } else if (pkt.eventType === 'pvp_hit' && pkt.extraText) {
+                try {
+                    const info = JSON.parse(pkt.extraText);
+                    if (info.targetUid === player.uid && !isInSafeZone(player.x, player.y)) {
+                        const stats = getPlayerStats();
+                        const finalDmg = Math.max(2, info.dmg - Math.floor(stats.totalDef * 0.45));
+                        player.hp = Math.max(0, player.hp - finalDmg);
+                        sound.playHit(info.isCrit);
+                        spawnHitSparks(player.x, player.y, '#ef4444', 12, 16);
+                        addFloatingText(player.x, player.y, `⚔️ -${finalDmg}`, '#f87171', 14);
+                        if (player.hp <= 0) {
+                            player.hp = player.maxHp;
+                            player.x = 36.0; player.y = 37.5;
+                            player.targetX = 36.0; player.targetY = 37.5;
+                            player.attackTarget = null;
+                            if (window.R3D && window.R3D.snapCamera) window.R3D.snapCamera();
+                            addChatLog(`💀 你被玩家【${escapeHtml(info.attacker || '神秘騎士')}】擊敗，已傳送回說話之島安全區！`, 'text-rose-400 font-bold');
+                        }
+                        updateStatusNumbersUI();
+                    }
+                } catch (e) {}
             } else if (isNew || pkt.eventType === 'join') {
                 addChatLog(`🟢 玩家【${escapeHtml(rp.name)} Lv.${rp.level}】進入了亞丁大陸！`, 'text-emerald-400');
             }
@@ -2676,6 +2905,33 @@
         function updateGame(dt) {
             if (player.attackCooldown > 0) player.attackCooldown = Math.max(0, player.attackCooldown - dt);
             if (player.swingAnimTimer > 0) player.swingAnimTimer = Math.max(0, player.swingAnimTimer - dt);
+
+            // 跳躍拋物線物理
+            if (player.jumpZ > 0 || player.jumpVel > 0) {
+                player.jumpZ += player.jumpVel * dt;
+                player.jumpVel -= 19.5 * dt;
+                if (player.jumpZ <= 0) {
+                    player.jumpZ = 0;
+                    player.jumpVel = 0;
+                }
+            }
+
+            // 城鎮中央療癒溫泉 (座標 36, 36 周圍 3.4 格自動回血回魔！)
+            if (Math.hypot(player.x - 36.0, player.y - 36.0) <= 3.4) {
+                player.springHealAccum = (player.springHealAccum || 0) + dt;
+                if (player.springHealAccum >= 0.85) {
+                    player.springHealAccum = 0;
+                    if (player.hp < player.maxHp || player.mp < player.maxMp) {
+                        const hAmt = Math.min(player.maxHp - player.hp, 18);
+                        const mAmt = Math.min(player.maxMp - player.mp, 12);
+                        player.hp += hAmt;
+                        player.mp += mAmt;
+                        addFloatingText(player.x, player.y, `♨️ 溫泉 +${hAmt}HP +${mAmt}MP`, '#5eead4', 12);
+                        spawnHitSparks(player.x, player.y, '#2dd4bf', 5, 10);
+                        updateStatusNumbersUI();
+                    }
+                }
+            }
             if (player.levelUpBeamTimer > 0) player.levelUpBeamTimer = Math.max(0, player.levelUpBeamTimer - dt);
             if (player.chatBubbleTimer > 0) player.chatBubbleTimer = Math.max(0, player.chatBubbleTimer - dt);
             if (camera.shakeTimer > 0) camera.shakeTimer = Math.max(0, camera.shakeTimer - dt);
@@ -2790,12 +3046,13 @@
                 const nextX = player.x + player.dirX * step;
                 const nextY = player.y + player.dirY * step;
 
-                if (isWalkable(nextX, nextY, false, player.x, player.y)) {
+                const midAir = player.jumpZ > 0.12;
+                if (isWalkable(nextX, nextY, false, player.x, player.y, midAir)) {
                     player.x = nextX;
                     player.y = nextY;
-                } else if (isWalkable(nextX, player.y, false, player.x, player.y)) {
+                } else if (isWalkable(nextX, player.y, false, player.x, player.y, midAir)) {
                     player.x = nextX;
-                } else if (isWalkable(player.x, nextY, false, player.x, player.y)) {
+                } else if (isWalkable(player.x, nextY, false, player.x, player.y, midAir)) {
                     player.y = nextY;
                 } else {
                     const baseAngle = Math.atan2(player.dirY, player.dirX);
@@ -2804,7 +3061,7 @@
                     for (const offset of detourAngles) {
                         const testX = player.x + Math.cos(baseAngle + offset) * step;
                         const testY = player.y + Math.sin(baseAngle + offset) * step;
-                        if (isWalkable(testX, testY, false, player.x, player.y)) {
+                        if (isWalkable(testX, testY, false, player.x, player.y, midAir)) {
                             player.x = testX;
                             player.y = testY;
                             moved = true;
@@ -4222,7 +4479,7 @@
         let sun, hemi, fill;
         const TEX = {};
         const glCanvas = document.getElementById('glCanvas');
-        const camState = { dist: 14, yaw: Math.PI / 4, pitch: 0.9, target: new THREE.Vector3(36, 1, 37) };
+        const camState = { dist: 18.2, yaw: Math.PI / 4, pitch: 0.86, target: new THREE.Vector3(36, 1, 37) };
         const tmpV = new THREE.Vector3();
         const raycaster = new THREE.Raycaster();
         const pickables = [];
@@ -4503,34 +4760,22 @@
         }
 
 
-        /* ---------------- 看穿遮擋 (角色被樹/建築擋住時挖洞) ---------------- */
-        const seeThrough = { uPlayerPx: { value: new THREE.Vector2(-9999, -9999) }, uPlayerDepth: { value: 0 }, uRadius: { value: 120 } };
-        function addSeeThrough(mat) {
-            mat.onBeforeCompile = (shader) => {
-                shader.uniforms.uPlayerPx = seeThrough.uPlayerPx;
-                shader.uniforms.uPlayerDepth = seeThrough.uPlayerDepth;
-                shader.uniforms.uRadius = seeThrough.uRadius;
-                shader.fragmentShader = 'uniform vec2 uPlayerPx; uniform float uPlayerDepth; uniform float uRadius;\n' +
-                    shader.fragmentShader.replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
-                    {
-                        float dd = distance(gl_FragCoord.xy, uPlayerPx);
-                        if (gl_FragCoord.z < uPlayerDepth - 0.0004 && dd < uRadius) {
-                            float edge = smoothstep(uRadius * 0.45, uRadius, dd);
-                            float dither = fract(sin(dot(floor(gl_FragCoord.xy), vec2(12.9898, 78.233))) * 43758.5453);
-                            if (dither > edge * 0.9) discard;
-                        }
-                    }`);
-            };
-            mat.customProgramCacheKey = () => 'seeThrough_v1';
-            return mat;
-        }
+        /* ---------------- 自然真實 3D 遮擋 (移除不自然的去背半透明膜) ---------------- */
+        const seeThrough = { uPlayerPx: { value: new THREE.Vector2(-9999, -9999) }, uPlayerDepth: { value: 0 }, uRadius: { value: 0 } };
+        function addSeeThrough(mat) { return mat; }
 
-        /* ---------------- 地形 ---------------- */
+        /* ---------------- 擬真有機起伏地形 (減少方格子生硬感) ---------------- */
         function cornerY(x, y, cx, cy) {
             if (x < 0 || y < 0 || x >= MAP_SIZE || y >= MAP_SIZE) return 0;
             if (mapRamp[y][x]) return getTerrainElevation(x + (cx ? 0.999 : 0.001), y + (cy ? 0.999 : 0.001)) * EH;
             let h = heightMap[y][x] * EH;
-            if (mapGrid[y][x] === 2) h -= 0.45;
+            const t = mapGrid[y][x];
+            if (t === 2) h -= 0.45;
+            // 野外草地與樹林加上連續柔和地形起伏，告別死板方格地磚
+            if (t === 0 || t === 3 || t === 4) {
+                const vx = x + cx, vy = y + cy;
+                h += (vnoise(vx * 0.22, vy * 0.22) - 0.5) * 0.34;
+            }
             return h;
         }
 
@@ -4582,8 +4827,8 @@
                     const key = t === 2 ? 'bed' : (t === 1 || t === 6) ? 'cobble' : t === 5 ? 'road' : 'grass';
                     const s = UVS[key];
                     let c = 1;
-                    if (key === 'grass') c = 0.72 + vnoise(x * 0.18, y * 0.18) * 0.45 - (t === 3 ? 0.12 : 0);
-                    else c = 0.85 + hash2(x, y) * 0.2;
+                    if (key === 'grass') c = 0.75 + vnoise(x * 0.16, y * 0.16) * 0.38 - (t === 3 ? 0.1 : 0);
+                    else c = 0.9 + vnoise(x * 0.35, y * 0.35) * 0.14;
                     tops[key].quad([x, h00, y], [x, h01, y + 1], [x + 1, h11, y + 1], [x + 1, h10, y],
                         [x * s, y * s], [x * s, (y + 1) * s], [(x + 1) * s, (y + 1) * s], [(x + 1) * s, y * s], c, c, c, c);
                     if (t === 2) {
@@ -5319,9 +5564,12 @@
                 isMoving: player.isMoving, walkCycle: player.walkCycle,
                 swingAnimTimer: player.swingAnimTimer, swingCombo: player.swingCombo,
                 armorTint: player.equipped.armor ? (player.equipped.armor.armorTint || '#cbd5e1') : '#64748b',
+                armorEnchant: getItemEnchantNum(player.equipped.armor),
                 capeColor: player.equipped.cloak ? (player.equipped.cloak.capeColor || '#991b1b') : '#7f1d1d',
                 bladeColor: player.equipped.weapon ? (player.equipped.weapon.bladeColor || '#38bdf8') : '#38bdf8',
-                weaponEnchant: player.equipped.weapon ? (player.equipped.weapon.enchant || 0) : 0,
+                weaponEnchant: getItemEnchantNum(player.equipped.weapon),
+                weaponClass: inferWeaponClass(player.equipped.weapon),
+                jumpZ: player.jumpZ || 0,
                 hasteTimer: player.hasteTimer, braveTimer: player.braveTimer, levelUpBeamTimer: player.levelUpBeamTimer
             }, t, dt);
 
@@ -5341,8 +5589,9 @@
                 animateKnight(rig, {
                     dirX: rp.dirX, dirY: rp.dirY, isMoving: rp.isMoving, walkCycle: rp.walkCycle,
                     swingAnimTimer: rp.swingAnimTimer, swingCombo: 0,
-                    armorTint: rp.armorTint, capeColor: rp.capeColor, bladeColor: rp.bladeColor,
-                    weaponEnchant: rp.weaponEnchant, hasteTimer: 0, braveTimer: 0, levelUpBeamTimer: 0
+                    armorTint: rp.armorTint, armorEnchant: rp.armorEnchant || 0, capeColor: rp.capeColor, bladeColor: rp.bladeColor,
+                    weaponEnchant: rp.weaponEnchant, weaponClass: rp.weaponClass || '1h_sword', jumpZ: rp.jumpZ || 0,
+                    hasteTimer: 0, braveTimer: 0, levelUpBeamTimer: 0
                 }, t, dt);
             }
             for (const [uid, rig] of remoteRigs) {
@@ -5420,6 +5669,18 @@
             const pt = new THREE.Vector3();
             if (raycaster.ray.intersectPlane(plane, pt)) return { x: pt.x, y: pt.z };
             return { x: player.x, y: player.y };
+        };
+
+        R3D.pickRemotePlayer = function (sx, sy) {
+            let best = null, bestD = 38;
+            for (const uid in remotePlayers) {
+                const rp = remotePlayers[uid];
+                const sp = R3D.project(rp.x, rp.y, 1.35);
+                if (!sp.visible) continue;
+                const d = Math.hypot(sx - sp.x, sy - sp.y);
+                if (d < bestD) { bestD = d; best = rp; }
+            }
+            return best;
         };
 
         R3D.pickMonster = function (sx, sy) {
@@ -5595,10 +5856,31 @@
                 window.cycleTimeOfDay = () => dayNight.cycleMode();
                 window.cycleWeather = () => dayNight.cycleWeather();
 
-                // 滾輪縮放 & 右鍵旋轉視角
+                // 滾輪縮放 + 手機雙指縮放 + 右鍵旋轉視角
                 window.addEventListener('wheel', (e) => {
                     if (e.target.closest('#inventoryModal, #chatContainer, #loginModal')) return;
-                    camState.dist = clamp(camState.dist + e.deltaY * 0.01, 8, 24);
+                    camState.dist = clamp(camState.dist + e.deltaY * 0.012, 9, 30);
+                }, { passive: true });
+
+                let lastPinchDist = 0;
+                window.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 2) {
+                        window._pinchingZoom = true;
+                        lastPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    }
+                }, { passive: true });
+                window.addEventListener('touchmove', (e) => {
+                    if (e.touches.length === 2) {
+                        window._pinchingZoom = true;
+                        const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                        if (lastPinchDist > 0) {
+                            camState.dist = clamp(camState.dist - (d - lastPinchDist) * 0.045, 9, 30);
+                        }
+                        lastPinchDist = d;
+                    }
+                }, { passive: true });
+                window.addEventListener('touchend', (e) => {
+                    if (e.touches.length < 2) { lastPinchDist = 0; setTimeout(() => { window._pinchingZoom = false; }, 120); }
                 }, { passive: true });
 
                 let draggingCam = false, lastDragX = 0;

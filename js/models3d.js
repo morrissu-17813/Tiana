@@ -397,8 +397,21 @@ export function createModelFactory(sharedTEX) {
             new THREE.Vector2(0.18, 0.0), new THREE.Vector2(0.21, 0.14),
             new THREE.Vector2(0.27, 0.32), new THREE.Vector2(0.29, 0.48), new THREE.Vector2(0.22, 0.58)
         ];
-        const chest = addM(torso, new THREE.LatheGeometry(chestPts, 14), armorMat, 0, 0, 0);
+        const chestGeo = new THREE.LatheGeometry(chestPts, 14);
+        const chest = addM(torso, chestGeo, armorMat, 0, 0, 0);
         chest.scale.set(1.08, 1.0, 0.82);
+
+        // 防具 +10/+20/+30/+40/+50/+60 緊貼盔甲輪廓的發光外殼 (完全符合防具形狀！)
+        const armorAuraMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff, transparent: true, opacity: 0,
+            blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false
+        });
+        const chestAura = new THREE.Mesh(chestGeo, armorAuraMat);
+        chestAura.scale.set(1.13, 1.03, 0.87);
+        chestAura.visible = false;
+        torso.add(chestAura);
+        const armorAuraMeshes = [chestAura];
+
         // 胸前金飾浮雕與皇家紋章
         addM(torso, new THREE.TorusGeometry(0.21, 0.022, 8, 16), M.gold, 0, 0.56, 0).rotation.x = Math.PI / 2;
         const crest = addM(torso, new THREE.OctahedronGeometry(0.095, 1), M.gold, 0, 0.36, 0.22);
@@ -409,13 +422,21 @@ export function createModelFactory(sharedTEX) {
             trim.rotation.z = -s * 0.22;
         }
 
-        // 多層獅紋重型肩甲 (Ornate Layered Pauldrons)
+        // 多層獅紋重型肩甲 (Ornate Layered Pauldrons) + 貼合肩甲發光外殼
+        const pauldronGeo = new THREE.SphereGeometry(0.19, 14, 10, 0, TAU, 0, Math.PI * 0.62);
         for (const s of [-1, 1]) {
             const p = new THREE.Group();
             p.position.set(s * 0.34, 0.5, 0);
             torso.add(p);
-            const mainDome = addM(p, new THREE.SphereGeometry(0.19, 14, 10, 0, TAU, 0, Math.PI * 0.62), armorMat, 0, 0.02, 0);
+            const mainDome = addM(p, pauldronGeo, armorMat, 0, 0.02, 0);
             mainDome.rotation.z = -s * 0.42;
+            const pAura = new THREE.Mesh(pauldronGeo, armorAuraMat);
+            pAura.position.set(0, 0.02, 0);
+            pAura.rotation.z = -s * 0.42;
+            pAura.scale.setScalar(1.07);
+            pAura.visible = false;
+            p.add(pAura);
+            armorAuraMeshes.push(pAura);
             const rim = addM(p, new THREE.TorusGeometry(0.175, 0.024, 8, 16), M.gold, s * 0.02, -0.02, 0);
             rim.rotation.x = Math.PI / 2; rim.rotation.y = s * 0.42;
             // 第二層護肩片
@@ -463,58 +484,97 @@ export function createModelFactory(sharedTEX) {
         addM(foreR, new THREE.CylinderGeometry(0.068, 0.056, 0.28, 10), armorMat, 0, -0.14, 0);
         addM(foreR, new THREE.SphereGeometry(0.055, 8, 8), M.darkSteel, 0, -0.29, 0);
 
-        // 史詩附魔符文聖劍 (精雕翼狀護手 + 鑲嵌魔晶 + 雙刃血槽 + 發光符文刃 + 環繞魔能粒子)
+        // 多武器外型系統：單手劍 (1h_sword)、雙手巨劍 (2h_sword)、東方武士刀 (katana)、雙刃短刀 (dagger)
         const swordGroup = new THREE.Group();
         swordGroup.position.set(0, -0.3, 0.04);
         swordGroup.rotation.x = Math.PI * 0.42;
         foreR.add(swordGroup);
-        // 皮革纏柄 + 螺旋金環 + 翼狀劍首寶石
-        addM(swordGroup, new THREE.CylinderGeometry(0.024, 0.027, 0.3, 10), M.leather, 0, -0.13, 0);
-        for (let r = 0; r < 4; r++) addM(swordGroup, new THREE.TorusGeometry(0.027, 0.005, 6, 10), M.gold, 0, -0.04 - r * 0.06, 0).rotation.x = Math.PI / 2;
-        addM(swordGroup, new THREE.OctahedronGeometry(0.056, 0), M.gold, 0, -0.29, 0);
-        addM(swordGroup, new THREE.OctahedronGeometry(0.032, 0), bladeCoreMat, 0, -0.29, 0.03, false);
 
-        // 雕花翼狀雙層金護手 + 中央魔力核心晶石
-        const guardShape = new THREE.Shape();
-        guardShape.moveTo(-0.28, -0.04); guardShape.quadraticCurveTo(-0.1, 0.09, 0, 0.07);
-        guardShape.quadraticCurveTo(0.1, 0.09, 0.28, -0.04);
-        guardShape.lineTo(0.24, 0.05); guardShape.quadraticCurveTo(0.1, 0.14, 0, 0.12);
-        guardShape.quadraticCurveTo(-0.1, 0.14, -0.24, 0.05);
-        guardShape.closePath();
-        const guardGeo = new THREE.ExtrudeGeometry(guardShape, { depth: 0.05, bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012 });
-        guardGeo.center();
-        addM(swordGroup, guardGeo, M.gold, 0, 0.05, 0);
-        addM(swordGroup, new THREE.OctahedronGeometry(0.058, 0), bladeCoreMat, 0, 0.05, 0, false).scale.set(0.8, 1.15, 0.8);
-
-        // 菱形雙刃寬劍身 (含倒鉤劍鍔 + 銳利劍尖)
-        const bladeShape = new THREE.Shape();
-        bladeShape.moveTo(-0.072, 0.02); bladeShape.lineTo(0.072, 0.02);
-        bladeShape.lineTo(0.088, 0.16); bladeShape.lineTo(0.054, 0.24);
-        bladeShape.lineTo(0.046, 1.06); bladeShape.lineTo(0, 1.36);
-        bladeShape.lineTo(-0.046, 1.06); bladeShape.lineTo(-0.054, 0.24);
-        bladeShape.lineTo(-0.088, 0.16);
-        bladeShape.closePath();
-        const bladeGeo = new THREE.ExtrudeGeometry(bladeShape, { depth: 0.018, bevelEnabled: true, bevelThickness: 0.016, bevelSize: 0.014, bevelSegments: 2 });
-        bladeGeo.translate(0, 0.05, -0.009);
-        // 正規化 UV 讓符文貼圖沿劍身完整映射
-        const buv = bladeGeo.attributes.uv, bpos = bladeGeo.attributes.position;
-        for (let i = 0; i < bpos.count; i++) {
-            buv.setXY(i, clamp((bpos.getX(i) + 0.09) / 0.18, 0, 1), clamp(bpos.getY(i) / 1.4, 0, 1));
-        }
-        addM(swordGroup, bladeGeo, bladeMat, 0, 0, 0, false);
-
-        // 符合劍身形狀的緊貼附魔能量外殼 (取代原本難看的橢圓大光球！)
         const bladeAuraMat = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0.55, 2.0, 3.6), transparent: true, opacity: 0.32,
             blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false
         });
-        const bladeAura = new THREE.Mesh(bladeGeo, bladeAuraMat);
-        bladeAura.scale.set(1.22, 1.025, 2.1);
-        bladeAura.position.set(0, -0.012, 0);
-        swordGroup.add(bladeAura);
 
-        // 劍身內核流光能量條
-        const coreStrip = addM(swordGroup, new THREE.BoxGeometry(0.022, 1.12, 0.042), bladeCoreMat, 0, 0.68, 0, false);
+        function normBladeUV(geo, maxX, maxY) {
+            const uv = geo.attributes.uv, pos = geo.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                uv.setXY(i, clamp((pos.getX(i) + maxX) / (maxX * 2), 0, 1), clamp(pos.getY(i) / maxY, 0, 1));
+            }
+        }
+        function addBladeWithAura(parent, geo, sx = 1.22, sy = 1.025, sz = 2.1) {
+            addM(parent, geo, bladeMat, 0, 0, 0, false);
+            const aura = new THREE.Mesh(geo, bladeAuraMat);
+            aura.scale.set(sx, sy, sz);
+            parent.add(aura);
+        }
+
+        // (A) 單手長劍 (1h_sword)
+        const w1h = new THREE.Group();
+        addM(w1h, new THREE.CylinderGeometry(0.024, 0.027, 0.28, 10), M.leather, 0, -0.12, 0);
+        addM(w1h, new THREE.OctahedronGeometry(0.052, 0), M.gold, 0, -0.27, 0);
+        const g1Shape = new THREE.Shape();
+        g1Shape.moveTo(-0.24, -0.03); g1Shape.quadraticCurveTo(0, 0.08, 0.24, -0.03);
+        g1Shape.lineTo(0.2, 0.04); g1Shape.quadraticCurveTo(0, 0.12, -0.2, 0.04); g1Shape.closePath();
+        const g1Geo = new THREE.ExtrudeGeometry(g1Shape, { depth: 0.045, bevelEnabled: true, bevelThickness: 0.01, bevelSize: 0.01 });
+        g1Geo.center(); addM(w1h, g1Geo, M.gold, 0, 0.04, 0);
+        const b1Shape = new THREE.Shape();
+        b1Shape.moveTo(-0.06, 0.02); b1Shape.lineTo(0.06, 0.02); b1Shape.lineTo(0.044, 0.96); b1Shape.lineTo(0, 1.24); b1Shape.lineTo(-0.044, 0.96); b1Shape.closePath();
+        const b1Geo = new THREE.ExtrudeGeometry(b1Shape, { depth: 0.016, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.012, bevelSegments: 2 });
+        b1Geo.translate(0, 0.05, -0.008); normBladeUV(b1Geo, 0.07, 1.3);
+        addBladeWithAura(w1h, b1Geo);
+        swordGroup.add(w1h);
+
+        // (B) 雙手巨劍 (2h_sword) — 更長更寬的霸氣雙手大劍，拿雙手劍時自動隱藏盾牌！
+        const w2h = new THREE.Group();
+        addM(w2h, new THREE.CylinderGeometry(0.028, 0.032, 0.48, 10), M.leather, 0, -0.22, 0);
+        for (let r = 0; r < 5; r++) addM(w2h, new THREE.TorusGeometry(0.031, 0.006, 6, 10), M.gold, 0, -0.04 - r * 0.08, 0).rotation.x = Math.PI / 2;
+        addM(w2h, new THREE.OctahedronGeometry(0.068, 0), M.gold, 0, -0.47, 0);
+        const g2Shape = new THREE.Shape();
+        g2Shape.moveTo(-0.36, -0.05); g2Shape.quadraticCurveTo(0, 0.12, 0.36, -0.05);
+        g2Shape.lineTo(0.32, 0.07); g2Shape.quadraticCurveTo(0, 0.18, -0.32, 0.07); g2Shape.closePath();
+        const g2Geo = new THREE.ExtrudeGeometry(g2Shape, { depth: 0.06, bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.014 });
+        g2Geo.center(); addM(w2h, g2Geo, M.gold, 0, 0.06, 0);
+        addM(w2h, new THREE.OctahedronGeometry(0.068, 0), bladeCoreMat, 0, 0.06, 0, false);
+        const b2Shape = new THREE.Shape();
+        b2Shape.moveTo(-0.095, 0.02); b2Shape.lineTo(0.095, 0.02); b2Shape.lineTo(0.125, 0.22);
+        b2Shape.lineTo(0.082, 0.34); b2Shape.lineTo(0.072, 1.48); b2Shape.lineTo(0, 1.84);
+        b2Shape.lineTo(-0.072, 1.48); b2Shape.lineTo(-0.082, 0.34); b2Shape.lineTo(-0.125, 0.22); b2Shape.closePath();
+        const b2Geo = new THREE.ExtrudeGeometry(b2Shape, { depth: 0.022, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.014, bevelSegments: 2 });
+        b2Geo.translate(0, 0.06, -0.011); normBladeUV(b2Geo, 0.13, 1.9);
+        addBladeWithAura(w2h, b2Geo, 1.18, 1.02, 2.0);
+        w2h.visible = false;
+        swordGroup.add(w2h);
+
+        // (C) 東方武士刀 / 日本劍 (katana) — 修長微彎單刃 + 圓形刀鐔
+        const wKat = new THREE.Group();
+        addM(wKat, new THREE.CylinderGeometry(0.022, 0.024, 0.38, 10), M.leather, 0, -0.17, 0);
+        addM(wKat, new THREE.CylinderGeometry(0.095, 0.095, 0.022, 16), M.gold, 0, 0.03, 0);
+        const kShape = new THREE.Shape();
+        kShape.moveTo(-0.022, 0); kShape.lineTo(0.028, 0);
+        kShape.quadraticCurveTo(0.065, 0.72, 0.11, 1.38);
+        kShape.lineTo(0.055, 1.54);
+        kShape.quadraticCurveTo(0.015, 0.76, -0.022, 0); kShape.closePath();
+        const kGeo = new THREE.ExtrudeGeometry(kShape, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.006 });
+        kGeo.translate(0, 0.04, -0.006); normBladeUV(kGeo, 0.12, 1.58);
+        addBladeWithAura(wKat, kGeo, 1.25, 1.02, 2.2);
+        wKat.visible = false;
+        swordGroup.add(wKat);
+
+        // (D) 刺客短刀 / 匕首 (dagger) — 精悍微彎短刃
+        const wDag = new THREE.Group();
+        addM(wDag, new THREE.CylinderGeometry(0.02, 0.022, 0.2, 8), M.leather, 0, -0.08, 0);
+        addM(wDag, new THREE.BoxGeometry(0.14, 0.03, 0.04), M.gold, 0, 0.03, 0);
+        const dShape = new THREE.Shape();
+        dShape.moveTo(-0.038, 0); dShape.lineTo(0.038, 0);
+        dShape.quadraticCurveTo(0.06, 0.28, 0.015, 0.62);
+        dShape.quadraticCurveTo(-0.045, 0.3, -0.038, 0); dShape.closePath();
+        const dGeo = new THREE.ExtrudeGeometry(dShape, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.006 });
+        dGeo.translate(0, 0.04, -0.006); normBladeUV(dGeo, 0.06, 0.66);
+        addBladeWithAura(wDag, dGeo, 1.25, 1.04, 2.2);
+        wDag.visible = false;
+        swordGroup.add(wDag);
+
+        const weaponModels = { '1h_sword': w1h, '2h_sword': w2h, 'katana': wKat, 'dagger': wDag };
 
         // 緊貼劍刃邊緣的細小符文火星 (4 顆精簡高效)
         const bladeSparks = [];
@@ -523,7 +583,7 @@ export function createModelFactory(sharedTEX) {
                 map: sharedTEX.glow, color: new THREE.Color(0.8, 2.4, 4.0),
                 blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.78, toneMapped: false
             }));
-            sp.scale.set(0.08, 0.08, 1);
+            sp.scale.set(0.075, 0.075, 1);
             swordGroup.add(sp);
             bladeSparks.push({ sp, phase: i * (TAU / 4), yBase: 0.25 + i * 0.24 });
         }
@@ -570,6 +630,13 @@ export function createModelFactory(sharedTEX) {
         foreL.add(shield);
         addM(shield, new THREE.OctahedronGeometry(0.085, 0), M.gold, 0, 0.05, 0.065);
 
+        // 左手副手短刀 (裝備短刀時顯示雙刀流，隱藏盾牌)
+        const offDagger = wDag.clone();
+        offDagger.visible = false;
+        offDagger.position.set(0, -0.28, 0.06);
+        offDagger.rotation.x = Math.PI * 0.45;
+        foreL.add(offDagger);
+
         // 腳底加速光環與升級光柱
         const hasteRing = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: sharedTEX.ringDash, color: 0x34d399, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
         hasteRing.rotation.x = -Math.PI / 2; hasteRing.position.y = 0.04; hasteRing.visible = false;
@@ -590,12 +657,24 @@ export function createModelFactory(sharedTEX) {
         setShadows(body, true);
 
         return {
-            root, body, torso, head, legL, legR, armL, armR, foreR,
-            capeMesh, capeBasePos, armorMat, capeMat, bladeMat, bladeCoreMat, bladeAuraMat, coreStrip,
+            root, body, torso, head, legL, legR, armL, armR, foreR, foreL,
+            shield, offDagger, weaponModels,
+            capeMesh, capeBasePos, armorMat, armorAuraMat, armorAuraMeshes, capeMat, bladeMat, bladeCoreMat, bladeAuraMat,
             swordLight, bladeSparks,
             slashGroup, slashArc, slashMat, slashInnerMat, hasteRing, braveRing, levelBeam,
             yaw: 0
         };
+    }
+
+    // 武器／防具每 +10 換一個色階光芒：+10白 -> +20綠 -> +30藍 -> +40紫 -> +50紅 -> +60金
+    function getEnchantTierHex(lv) {
+        if (lv >= 60) return 0xfacc15; // 金色
+        if (lv >= 50) return 0xef4444; // 紅色
+        if (lv >= 40) return 0xa855f7; // 紫色
+        if (lv >= 30) return 0x38bdf8; // 藍色
+        if (lv >= 20) return 0x22c55e; // 綠色
+        if (lv >= 10) return 0xf8fafc; // 白色
+        return null;
     }
 
     function animateKnight(rig, state, t, dt) {
@@ -603,11 +682,25 @@ export function createModelFactory(sharedTEX) {
         rig.yaw = lerpAngle(rig.yaw, targetYaw, clamp(dt * 14, 0, 1));
         rig.root.rotation.y = rig.yaw;
 
-        const stride = state.isMoving ? Math.sin(state.walkCycle) : 0;
-        const bob = state.isMoving ? Math.abs(Math.cos(state.walkCycle)) * 0.075 : Math.sin(t * 2.4) * 0.02;
+        // 武器外型切換 + 依武器種類自動隱藏/顯示盾牌 (雙手劍/武士刀/短刀絕不拿盾牌！)
+        const wClass = state.weaponClass || '1h_sword';
+        if (rig.weaponModels) {
+            for (const k in rig.weaponModels) rig.weaponModels[k].visible = (k === wClass);
+        }
+        if (rig.shield) rig.shield.visible = (wClass === '1h_sword');
+        if (rig.offDagger) rig.offDagger.visible = (wClass === 'dagger');
+
+        const jumpZ = state.jumpZ || 0;
+        const stride = (state.isMoving && jumpZ < 0.05) ? Math.sin(state.walkCycle) : 0;
+        const bob = jumpZ > 0.05 ? jumpZ : (state.isMoving ? Math.abs(Math.cos(state.walkCycle)) * 0.075 : Math.sin(t * 2.4) * 0.02);
         rig.body.position.y = bob;
-        rig.legL.rotation.x = stride * 0.75;
-        rig.legR.rotation.x = -stride * 0.75;
+        if (jumpZ > 0.05) {
+            rig.legL.rotation.x = -0.45;
+            rig.legR.rotation.x = 0.55;
+        } else {
+            rig.legL.rotation.x = stride * 0.75;
+            rig.legR.rotation.x = -stride * 0.75;
+        }
 
         // 動態披風飄揚物理
         const pos = rig.capeMesh.geometry.attributes.position;
@@ -662,17 +755,36 @@ export function createModelFactory(sharedTEX) {
 
         if (state.armorTint) rig.armorMat.color.set(state.armorTint);
         if (state.capeColor) rig.capeMat.color.set(state.capeColor);
-        if (state.bladeColor) {
-            const bc = new THREE.Color(state.bladeColor);
-            const boost = 1.65 + Math.min(10, state.weaponEnchant || 0) * 0.2;
-            rig.bladeMat.emissive.copy(bc);
-            rig.bladeMat.emissiveIntensity = boost;
-            rig.bladeCoreMat.color.copy(bc).multiplyScalar(boost * 1.1);
-            if (rig.bladeAuraMat) rig.bladeAuraMat.color.copy(bc).multiplyScalar(boost * 0.95);
-            rig.swordLight.color.copy(bc);
-            rig.slashMat.color.copy(bc).multiplyScalar(2.4);
-            if (rig.bladeSparks) {
-                for (const b of rig.bladeSparks) b.sp.material.color.copy(bc).multiplyScalar(2.2);
+
+        // 武器每 +10 階色階光芒 (+10白 / +20綠 / +30藍 / +40紫 / +50紅 / +60金)
+        const wEnch = state.weaponEnchant || 0;
+        const wTierHex = getEnchantTierHex(wEnch);
+        const bc = new THREE.Color(wTierHex !== null ? wTierHex : (state.bladeColor || '#38bdf8'));
+        const wBoost = wTierHex !== null ? (2.0 + Math.min(6, Math.floor(wEnch / 10)) * 0.35) : (1.35 + wEnch * 0.1);
+        rig.bladeMat.emissive.copy(bc);
+        rig.bladeMat.emissiveIntensity = wBoost;
+        rig.bladeCoreMat.color.copy(bc).multiplyScalar(wBoost * 1.05);
+        if (rig.bladeAuraMat) {
+            rig.bladeAuraMat.color.copy(bc).multiplyScalar(wBoost * 0.9);
+            rig.bladeAuraMat.opacity = wEnch >= 10 ? 0.38 : 0.24;
+        }
+        rig.swordLight.color.copy(bc);
+        rig.slashMat.color.copy(bc).multiplyScalar(2.3);
+        if (rig.bladeSparks) {
+            for (const b of rig.bladeSparks) b.sp.material.color.copy(bc).multiplyScalar(2.1);
+        }
+
+        // 防具每 +10 階緊貼輪廓光芒 (+10白 / +20綠 / +30藍 / +40紫 / +50紅 / +60金)
+        const aEnch = state.armorEnchant || 0;
+        const aTierHex = getEnchantTierHex(aEnch);
+        if (rig.armorAuraMat && rig.armorAuraMeshes) {
+            const showArmorGlow = aTierHex !== null;
+            for (const m of rig.armorAuraMeshes) m.visible = showArmorGlow;
+            if (showArmorGlow) {
+                const ac = new THREE.Color(aTierHex);
+                const pulse = 0.22 + Math.sin(t * 4) * 0.06;
+                rig.armorAuraMat.color.copy(ac).multiplyScalar(1.8 + Math.min(6, Math.floor(aEnch / 10)) * 0.25);
+                rig.armorAuraMat.opacity = pulse;
             }
         }
 
