@@ -503,27 +503,29 @@ export function createModelFactory(sharedTEX) {
         }
         addM(swordGroup, bladeGeo, bladeMat, 0, 0, 0, false);
 
+        // 符合劍身形狀的緊貼附魔能量外殼 (取代原本難看的橢圓大光球！)
+        const bladeAuraMat = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0.55, 2.0, 3.6), transparent: true, opacity: 0.32,
+            blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false
+        });
+        const bladeAura = new THREE.Mesh(bladeGeo, bladeAuraMat);
+        bladeAura.scale.set(1.22, 1.025, 2.1);
+        bladeAura.position.set(0, -0.012, 0);
+        swordGroup.add(bladeAura);
+
         // 劍身內核流光能量條
-        const coreStrip = addM(swordGroup, new THREE.BoxGeometry(0.024, 1.12, 0.046), bladeCoreMat, 0, 0.68, 0, false);
+        const coreStrip = addM(swordGroup, new THREE.BoxGeometry(0.022, 1.12, 0.042), bladeCoreMat, 0, 0.68, 0, false);
 
-        // 劍身環繞魔能光暈與漂浮符文火星 (6 顆動態光點)
-        const swordGlow = new THREE.Sprite(new THREE.SpriteMaterial({
-            map: sharedTEX.glow, color: new THREE.Color(0.5, 2.2, 4.0),
-            blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.82, toneMapped: false
-        }));
-        swordGlow.scale.set(0.82, 1.85, 1);
-        swordGlow.position.set(0, 0.72, 0);
-        swordGroup.add(swordGlow);
-
+        // 緊貼劍刃邊緣的細小符文火星 (4 顆精簡高效)
         const bladeSparks = [];
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 4; i++) {
             const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-                map: sharedTEX.glow, color: new THREE.Color(0.8, 2.6, 4.2),
-                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.9, toneMapped: false
+                map: sharedTEX.glow, color: new THREE.Color(0.8, 2.4, 4.0),
+                blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0.78, toneMapped: false
             }));
-            sp.scale.set(0.16, 0.16, 1);
+            sp.scale.set(0.08, 0.08, 1);
             swordGroup.add(sp);
-            bladeSparks.push({ sp, phase: i * (TAU / 6), yBase: 0.25 + i * 0.17 });
+            bladeSparks.push({ sp, phase: i * (TAU / 4), yBase: 0.25 + i * 0.24 });
         }
 
         // 雙層 3D 揮刀月牙劍氣弧 (內核白熱 + 外緣附魔色光刃)
@@ -581,16 +583,16 @@ export function createModelFactory(sharedTEX) {
         levelBeam.position.y = 3.25; levelBeam.visible = false;
         root.add(levelBeam);
 
-        const swordLight = new THREE.PointLight(0x38bdf8, 2.8, 6.5, 2);
-        swordLight.position.set(0.45, 1.4, 0.65);
+        const swordLight = new THREE.PointLight(0x38bdf8, 1.6, 4.8, 2);
+        swordLight.position.set(0.45, 1.35, 0.6);
         root.add(swordLight);
 
         setShadows(body, true);
 
         return {
             root, body, torso, head, legL, legR, armL, armR, foreR,
-            capeMesh, capeBasePos, armorMat, capeMat, bladeMat, bladeCoreMat, coreStrip,
-            swordGlow, swordLight, bladeSparks,
+            capeMesh, capeBasePos, armorMat, capeMat, bladeMat, bladeCoreMat, bladeAuraMat, coreStrip,
+            swordLight, bladeSparks,
             slashGroup, slashArc, slashMat, slashInnerMat, hasteRing, braveRing, levelBeam,
             yaw: 0
         };
@@ -621,14 +623,14 @@ export function createModelFactory(sharedTEX) {
         }
         pos.needsUpdate = true;
 
-        // 劍身環繞魔能火星動畫
+        // 緊貼劍刃的細緻符文火星動畫
         if (rig.bladeSparks) {
             for (const b of rig.bladeSparks) {
-                const a = t * 4.5 + b.phase;
-                const y = 0.18 + ((b.yBase + t * 0.45) % 1.12);
-                const r = 0.08 + Math.sin(a * 1.7) * 0.045;
-                b.sp.position.set(Math.cos(a) * r, y, Math.sin(a) * r);
-                const sc = 0.1 + Math.sin(t * 7 + b.phase) * 0.05;
+                const a = t * 3.8 + b.phase;
+                const y = 0.2 + ((b.yBase + t * 0.35) % 1.05);
+                const r = 0.052 + Math.sin(a * 1.5) * 0.018;
+                b.sp.position.set(Math.cos(a) * r, y, Math.sin(a) * r * 0.6);
+                const sc = 0.065 + Math.sin(t * 7 + b.phase) * 0.025;
                 b.sp.scale.set(sc, sc, 1);
             }
         }
@@ -662,15 +664,15 @@ export function createModelFactory(sharedTEX) {
         if (state.capeColor) rig.capeMat.color.set(state.capeColor);
         if (state.bladeColor) {
             const bc = new THREE.Color(state.bladeColor);
-            const boost = 2.0 + Math.min(10, state.weaponEnchant || 0) * 0.28;
+            const boost = 1.65 + Math.min(10, state.weaponEnchant || 0) * 0.2;
             rig.bladeMat.emissive.copy(bc);
             rig.bladeMat.emissiveIntensity = boost;
-            rig.bladeCoreMat.color.copy(bc).multiplyScalar(boost * 1.15);
-            rig.swordGlow.material.color.copy(bc).multiplyScalar(boost * 0.95);
+            rig.bladeCoreMat.color.copy(bc).multiplyScalar(boost * 1.1);
+            if (rig.bladeAuraMat) rig.bladeAuraMat.color.copy(bc).multiplyScalar(boost * 0.95);
             rig.swordLight.color.copy(bc);
-            rig.slashMat.color.copy(bc).multiplyScalar(2.8);
+            rig.slashMat.color.copy(bc).multiplyScalar(2.4);
             if (rig.bladeSparks) {
-                for (const b of rig.bladeSparks) b.sp.material.color.copy(bc).multiplyScalar(2.6);
+                for (const b of rig.bladeSparks) b.sp.material.color.copy(bc).multiplyScalar(2.2);
             }
         }
 

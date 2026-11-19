@@ -254,13 +254,16 @@
          3.5 頂部中央：暗黑奇幻世界時鐘 ＆ 日夜光影一鍵切換列
          ========================================================== -->
     <div class="fixed top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 lineage-panel px-2.5 py-1 pointer-events-auto">
-        <span class="text-[11px] font-mono text-amber-200 font-bold flex items-center gap-1">
+        <span class="text-[11px] font-mono text-amber-200 font-bold flex items-center gap-1 whitespace-nowrap">
             <i class="fa-regular fa-clock text-amber-400 text-[10px]"></i>
-            <span id="worldClockText">17:06</span>
+            <span id="worldClockText">傍晚 16:48</span>
         </span>
         <span class="h-3 w-[1px] bg-amber-800/70"></span>
-        <button onclick="window.cycleTimeOfDay && window.cycleTimeOfDay()" class="lineage-btn px-2 py-0.5 rounded text-[10px] font-bold text-amber-200 cursor-pointer flex items-center gap-1" title="切換：黃昏 / 白天 / 深夜 / 自動日夜循環">
-            <span id="timeModeLabel">🌇黃昏</span>
+        <button onclick="window.cycleTimeOfDay && window.cycleTimeOfDay()" class="lineage-btn px-1.5 py-0.5 rounded text-[10px] font-bold text-amber-200 cursor-pointer whitespace-nowrap" title="切換自動日夜循環 / 固定時段">
+            <span id="timeModeLabel">🌇自動</span>
+        </button>
+        <button onclick="window.cycleWeather && window.cycleWeather()" class="lineage-btn px-1.5 py-0.5 rounded text-[10px] font-bold text-sky-200 cursor-pointer whitespace-nowrap" title="切換晴天 / 多雲 / 下雨">
+            <span id="weatherModeLabel">☀️晴天</span>
         </button>
     </div>
 
@@ -279,6 +282,13 @@
             <button onclick="switchCharacterModal()" class="lineage-btn px-2 py-1 rounded text-[11px] text-stone-300 hover:text-white cursor-pointer shadow" title="切換角色 ID">
                 <i class="fa-solid fa-user-pen"></i>
             </button>
+            <button onclick="toggleBgm()" id="bgmBtn" class="lineage-btn px-2 py-1 rounded text-[11px] text-amber-300 cursor-pointer shadow flex items-center gap-1" title="背景音樂開關">
+                <i id="bgmIcon" class="fa-solid fa-music"></i>
+            </button>
+            <button onclick="document.getElementById('bgmFileInput').click()" class="lineage-btn px-1.5 py-1 rounded text-[10px] text-sky-300 cursor-pointer shadow" title="載入本機 MP3 (如 Diver.mp3) 作為背景音樂">
+                <span>MP3</span>
+            </button>
+            <input id="bgmFileInput" type="file" accept="audio/*" class="hidden" onchange="loadCustomBgmFile(this.files[0])">
             <button onclick="toggleSound()" id="soundBtn" class="lineage-btn px-2 py-1 rounded text-[11px] cursor-pointer shadow" title="音效開關">
                 <i id="soundIcon" class="fa-solid fa-volume-high"></i>
             </button>
@@ -336,7 +346,7 @@
                 <!-- 無上限背包物品網格 -->
                 <div>
                     <div class="text-[10px] text-amber-300/85 mb-1 flex justify-between items-center">
-                        <span>背包道具 (輕觸或雙擊立即穿戴/使用)</span>
+                        <span>背包道具 (點一下查看 · 點兩下穿戴/使用)</span>
                         <span class="text-amber-400/80 font-mono">容量 ∞</span>
                     </div>
                     <div id="inventoryGrid" class="grid grid-cols-5 gap-1 max-h-36 overflow-y-auto p-1 bg-black/60 rounded border border-amber-950/90"></div>
@@ -571,22 +581,101 @@
                 osc.start(now);
                 osc.stop(now + 0.32);
             }
-            playPickup() {
+            playPickupGold() {
                 if (!this.enabled) return;
                 this.init();
                 if (!this.ctx) return;
                 const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(620, now);
-                osc.frequency.setValueAtTime(940, now + 0.06);
-                gain.gain.setValueAtTime(0.11, now);
-                gain.gain.linearRampToValueAtTime(0.01, now + 0.16);
-                osc.connect(gain);
-                gain.connect(this.ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.16);
+                // 清脆金屬硬幣雙響
+                [[1480, 0, 0.12], [1980, 0.045, 0.16]].forEach(([f, d, dur]) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(f, now + d);
+                    gain.gain.setValueAtTime(0.1, now + d);
+                    gain.gain.exponentialRampToValueAtTime(0.002, now + d + dur);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(now + d); osc.stop(now + d + dur);
+                });
+            }
+            playPickupItem() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                // 拾取寶物清亮水晶上行音
+                [660, 880, 1174].forEach((f, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, now + idx * 0.045);
+                    gain.gain.setValueAtTime(0.09, now + idx * 0.045);
+                    gain.gain.exponentialRampToValueAtTime(0.003, now + idx * 0.045 + 0.14);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.045); osc.stop(now + idx * 0.045 + 0.15);
+                });
+            }
+            playPickup() { this.playPickupItem(); }
+            playEquip() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                // 穿脫裝備：沉穩盔甲鎖扣聲 + 輕微金屬共鳴
+                const thud = this.ctx.createOscillator();
+                const tg = this.ctx.createGain();
+                thud.type = 'triangle';
+                thud.frequency.setValueAtTime(175, now);
+                thud.frequency.exponentialRampToValueAtTime(62, now + 0.08);
+                tg.gain.setValueAtTime(0.16, now);
+                tg.gain.exponentialRampToValueAtTime(0.004, now + 0.09);
+                thud.connect(tg); tg.connect(this.ctx.destination);
+                thud.start(now); thud.stop(now + 0.09);
+
+                const clink = this.ctx.createOscillator();
+                const cg = this.ctx.createGain();
+                clink.type = 'square';
+                clink.frequency.setValueAtTime(520, now + 0.03);
+                clink.frequency.exponentialRampToValueAtTime(340, now + 0.13);
+                cg.gain.setValueAtTime(0.055, now + 0.03);
+                cg.gain.exponentialRampToValueAtTime(0.003, now + 0.14);
+                clink.connect(cg); cg.connect(this.ctx.destination);
+                clink.start(now + 0.03); clink.stop(now + 0.14);
+            }
+            playPotion() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                // 飲用藥水氣泡上揚聲
+                [380, 540].forEach((f, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(f, now + idx * 0.06);
+                    osc.frequency.exponentialRampToValueAtTime(f * 1.45, now + idx * 0.06 + 0.09);
+                    gain.gain.setValueAtTime(0.09, now + idx * 0.06);
+                    gain.gain.exponentialRampToValueAtTime(0.003, now + idx * 0.06 + 0.1);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.06); osc.stop(now + idx * 0.06 + 0.11);
+                });
+            }
+            playScroll() {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx) return;
+                const now = this.ctx.currentTime;
+                // 鍛造強化清脆鐵砧共鳴
+                [784, 1046.5, 1568].forEach((f, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(f, now + idx * 0.055);
+                    gain.gain.setValueAtTime(0.11, now + idx * 0.055);
+                    gain.gain.exponentialRampToValueAtTime(0.002, now + idx * 0.055 + 0.28);
+                    osc.connect(gain); gain.connect(this.ctx.destination);
+                    osc.start(now + idx * 0.055); osc.stop(now + idx * 0.055 + 0.29);
+                });
             }
             playLevelUp() {
                 if (!this.enabled) return;
@@ -616,6 +705,83 @@
             icon.className = sound.enabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark text-red-400';
         }
         window.toggleSound = toggleSound;
+
+        // 熱血動漫搖滾 BGM 控制器 (支援自動讀取 assets/audio/dive.mp3 或匯入本機 MP3)
+        const bgmState = { enabled: true, audioEl: null, synthTimer: null, step: 0, customUrl: null };
+        function startSynthBgmLoop() {
+            if (bgmState.synthTimer || !bgmState.enabled) return;
+            const bassSeq = [146.83, 146.83, 174.61, 174.61, 130.81, 130.81, 110.00, 130.81]; // Dm - F - C - Am 疾走貝斯
+            const leadSeq = [587.33, 0, 659.25, 698.46, 880, 0, 698.46, 659.25, 523.25, 0, 587.33, 659.25, 440, 523.25, 587.33, 0];
+            bgmState.synthTimer = setInterval(() => {
+                if (!bgmState.enabled || !sound.ctx || sound.ctx.state !== 'running') return;
+                const now = sound.ctx.currentTime;
+                const s = bgmState.step++;
+                // Bass
+                const bFreq = bassSeq[Math.floor(s / 2) % bassSeq.length];
+                const bo = sound.ctx.createOscillator();
+                const bg = sound.ctx.createGain();
+                bo.type = 'sawtooth';
+                const bf = sound.ctx.createBiquadFilter(); bf.type = 'lowpass'; bf.frequency.value = 420;
+                bo.frequency.setValueAtTime(bFreq, now);
+                bg.gain.setValueAtTime(0.032, now);
+                bg.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+                bo.connect(bf); bf.connect(bg); bg.connect(sound.ctx.destination);
+                bo.start(now); bo.stop(now + 0.2);
+                // Lead
+                const lFreq = leadSeq[s % leadSeq.length];
+                if (lFreq > 0) {
+                    const lo = sound.ctx.createOscillator();
+                    const lg = sound.ctx.createGain();
+                    lo.type = 'triangle';
+                    lo.frequency.setValueAtTime(lFreq, now);
+                    lg.gain.setValueAtTime(0.028, now);
+                    lg.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+                    lo.connect(lg); lg.connect(sound.ctx.destination);
+                    lo.start(now); lo.stop(now + 0.25);
+                }
+            }, 210);
+        }
+        function stopSynthBgmLoop() {
+            if (bgmState.synthTimer) { clearInterval(bgmState.synthTimer); bgmState.synthTimer = null; }
+        }
+        function startBgm() {
+            if (!bgmState.enabled) return;
+            sound.init();
+            if (bgmState.audioEl) {
+                bgmState.audioEl.play().catch(() => startSynthBgmLoop());
+                return;
+            }
+            const audio = new Audio(bgmState.customUrl || 'assets/audio/dive.mp3');
+            audio.loop = true;
+            audio.volume = 0.35;
+            audio.onerror = () => { bgmState.audioEl = null; startSynthBgmLoop(); };
+            bgmState.audioEl = audio;
+            audio.play().catch(() => startSynthBgmLoop());
+        }
+        function toggleBgm() {
+            bgmState.enabled = !bgmState.enabled;
+            const icon = document.getElementById('bgmIcon');
+            if (icon) icon.className = bgmState.enabled ? 'fa-solid fa-music' : 'fa-solid fa-music text-stone-500 opacity-50';
+            if (bgmState.enabled) {
+                startBgm();
+            } else {
+                stopSynthBgmLoop();
+                if (bgmState.audioEl) bgmState.audioEl.pause();
+            }
+        }
+        function loadCustomBgmFile(file) {
+            if (!file) return;
+            stopSynthBgmLoop();
+            if (bgmState.audioEl) { bgmState.audioEl.pause(); bgmState.audioEl = null; }
+            bgmState.customUrl = URL.createObjectURL(file);
+            bgmState.enabled = true;
+            const icon = document.getElementById('bgmIcon');
+            if (icon) icon.className = 'fa-solid fa-music text-emerald-400';
+            startBgm();
+            addChatLog('🎵 已載入自訂背景音樂：<span class="text-sky-300 font-bold">' + escapeHtml(file.name) + '</span>', 'text-amber-300');
+        }
+        window.toggleBgm = toggleBgm;
+        window.loadCustomBgmFile = loadCustomBgmFile;
 
         function toggleSpawnDrawer() {
             const drawer = document.getElementById('spawnDrawer');
@@ -1615,11 +1781,12 @@
             const loot = groundLoots[lootIndex];
             if (!loot) return;
 
-            sound.playPickup();
             if (loot.kind === 'gold') {
+                sound.playPickupGold();
                 player.gold += loot.amount;
                 addFloatingText(player.x, player.y, `+${loot.amount} 金幣`, '#facc15', 13);
             } else if (loot.kind === 'item') {
+                sound.playPickupItem();
                 const item = loot.itemData;
                 if (item.type === 'consumable' || item.type === 'scroll') {
                     const existing = player.inventory.find(i => i.name === item.name && i.type === item.type);
@@ -1690,6 +1857,45 @@
             document.getElementById('invCountBadge').textContent = player.inventory.length;
         }
 
+        let selectedInvIndex = -1;
+
+        function getItemEnchantBadge(item) {
+            if (!item) return '';
+            let lv = item.enchant || 0;
+            if (!lv && item.name) {
+                const m = item.name.match(/^\+(\d+)/);
+                if (m) lv = parseInt(m[1], 10);
+            }
+            if (!lv) return '';
+            const color = lv >= 9 ? 'text-rose-300 bg-rose-950/95 border-rose-500/80' :
+                          lv >= 7 ? 'text-yellow-300 bg-amber-950/95 border-yellow-500/80' :
+                          lv >= 6 ? 'text-sky-300 bg-sky-950/95 border-sky-500/80' :
+                                    'text-emerald-300 bg-emerald-950/95 border-emerald-600/80';
+            return `<span class="absolute top-0 left-0 text-[9px] leading-none font-mono font-black px-1 py-0.5 rounded-br border-r border-b ${color} pointer-events-none shadow">+${lv}</span>`;
+        }
+
+        function renderItemTooltip(item, idx = -1, isEquippedSlot = false) {
+            const tooltip = document.getElementById('itemTooltip');
+            if (!tooltip || !item) return;
+            const slotTag = getSlotLabel(item.type);
+            const statParts = [];
+            if (item.atk) statParts.push(`<span class="text-amber-300">攻擊 +${item.atk}</span>`);
+            if (item.def) statParts.push(`<span class="text-emerald-400">防禦 -${item.def}</span>`);
+            if (item.sp) statParts.push(`<span class="text-sky-400">魔傷 +${item.sp}%</span>`);
+            const actionHint = isEquippedSlot ? '點兩下卸下' : (VALID_EQUIP_TYPES.has(item.type) ? '點兩下穿上裝備' : '點兩下使用');
+            const confirmBtn = (!isEquippedSlot && idx >= 0)
+                ? `<button onclick="handleInventoryClick(${idx})" class="lineage-btn px-2 py-0.5 rounded text-[10px] font-bold text-yellow-200 cursor-pointer shrink-0">${VALID_EQUIP_TYPES.has(item.type) ? '確認穿上' : '確認使用'}</button>`
+                : '';
+            tooltip.innerHTML = `
+                <div class="flex items-center justify-between gap-1">
+                    <div class="font-bold text-amber-300 truncate">${item.icon} ${item.name} ${slotTag ? `<span class="text-[9px] text-stone-400">[${slotTag}]</span>` : ''}</div>
+                    ${confirmBtn || `<span class="text-[9px] text-emerald-400 shrink-0">${actionHint}</span>`}
+                </div>
+                ${statParts.length ? `<div class="flex gap-2 text-[10px] font-mono mt-0.5">${statParts.join('')}</div>` : ''}
+                <div class="text-stone-300 text-[10px] mt-0.5">${item.desc || ''}</div>
+            `;
+        }
+
         function renderEquipmentAndInventoryDOM() {
             const pdGrid = document.getElementById('paperdollGrid');
             if (pdGrid) {
@@ -1700,8 +1906,9 @@
                     cell.dataset.slotKey = slotMeta.key;
                     cell.className = `equip-slot p-1 rounded flex items-center gap-1 cursor-pointer select-none ${eq ? 'equipped' : ''}`;
                     cell.innerHTML = `
-                        <div class="w-6 h-6 rounded bg-black/60 flex items-center justify-center text-xs shrink-0 border border-amber-900/40">
+                        <div class="relative w-7 h-7 rounded bg-black/70 flex items-center justify-center text-sm shrink-0 border border-amber-900/50 overflow-hidden">
                             ${eq ? eq.icon : `<span class="opacity-30">${slotMeta.emptyIcon}</span>`}
+                            ${eq ? getItemEnchantBadge(eq) : ''}
                         </div>
                         <div class="min-w-0 flex-1 leading-tight">
                             <div class="text-[8px] text-amber-200/50">${slotMeta.label}</div>
@@ -1725,12 +1932,15 @@
 
                     if (item) {
                         const isEquippable = VALID_EQUIP_TYPES.has(item.type);
+                        const isSelected = (i === selectedInvIndex);
                         cell.dataset.invIndex = i;
-                        cell.className = `equip-slot h-11 rounded flex flex-col items-center justify-center relative cursor-pointer group ${isEquippable ? 'border-amber-700/80' : ''}`;
+                        cell.className = `equip-slot h-11 rounded flex flex-col items-center justify-center relative cursor-pointer group overflow-hidden ${isEquippable ? 'border-amber-700/80' : ''} ${isSelected ? 'ring-2 ring-amber-400 border-amber-300 bg-amber-950/50' : ''}`;
+                        const enchantBadge = getItemEnchantBadge(item);
                         cell.innerHTML = `
                             <span class="text-base pointer-events-none">${item.icon}</span>
+                            ${enchantBadge}
                             ${item.count && item.count > 1 ? `<span class="absolute bottom-0 right-0.5 text-[9px] font-mono font-bold text-white bg-black/80 px-1 rounded pointer-events-none">${item.count}</span>` : ''}
-                            ${isEquippable ? `<span class="absolute top-0 left-0.5 text-[8px] text-amber-300/90 font-bold pointer-events-none">${getSlotLabel(item.type)}</span>` : ''}
+                            ${isEquippable ? `<span class="absolute bottom-0 left-0.5 text-[8px] text-amber-200/75 font-bold pointer-events-none">${getSlotLabel(item.type)}</span>` : ''}
                         `;
                     } else {
                         cell.className = 'equip-slot h-11 rounded flex items-center justify-center opacity-30';
@@ -1753,41 +1963,26 @@
         function initInventoryDelegatedEvents() {
             const invGrid = document.getElementById('inventoryGrid');
             const pdGrid = document.getElementById('paperdollGrid');
-            const tooltip = document.getElementById('itemTooltip');
-
-            let lastActivateTime = 0;
-            let lastActivateIndex = -1;
-
-            function triggerBagItemAt(idx) {
-                const now = performance.now();
-                if (idx === lastActivateIndex && now - lastActivateTime < 260) return;
-                lastActivateIndex = idx;
-                lastActivateTime = now;
-                handleInventoryClick(idx);
-            }
+            let selectedSlotKey = null;
 
             if (invGrid) {
+                // 第一下：選取並查看裝備資訊；再點同一格（或雙擊）：確認穿戴／使用！
                 invGrid.addEventListener('click', (e) => {
                     const cell = e.target.closest('[data-inv-index]');
                     if (!cell) return;
                     e.stopPropagation();
-                    triggerBagItemAt(parseInt(cell.dataset.invIndex, 10));
-                });
-
-                invGrid.addEventListener('mouseover', (e) => {
-                    const cell = e.target.closest('[data-inv-index]');
-                    if (!cell || !tooltip) return;
                     const idx = parseInt(cell.dataset.invIndex, 10);
                     const item = player.inventory[idx];
-                    if (item) {
-                        const slotTag = getSlotLabel(item.type);
-                        tooltip.innerHTML = `
-                            <div class="font-bold text-amber-300 flex justify-between">
-                                <span>${item.name} ${slotTag ? `[${slotTag}]` : ''}</span>
-                                <span class="text-[9px] text-emerald-400">點擊穿戴/使用</span>
-                            </div>
-                            <div class="text-stone-300 text-[10px]">${item.desc || ''}</div>
-                        `;
+                    if (!item) return;
+
+                    if (selectedInvIndex === idx) {
+                        selectedInvIndex = -1;
+                        handleInventoryClick(idx);
+                    } else {
+                        selectedInvIndex = idx;
+                        selectedSlotKey = null;
+                        renderEquipmentAndInventoryDOM();
+                        renderItemTooltip(item, idx, false);
                     }
                 });
             }
@@ -1797,10 +1992,22 @@
                     const cell = e.target.closest('[data-slot-key]');
                     if (!cell) return;
                     e.stopPropagation();
-                    unequipSlot(cell.dataset.slotKey);
+                    const key = cell.dataset.slotKey;
+                    const eq = player.equipped[key];
+                    if (!eq) return;
+                    if (selectedSlotKey === key) {
+                        selectedSlotKey = null;
+                        unequipSlot(key);
+                    } else {
+                        selectedSlotKey = key;
+                        selectedInvIndex = -1;
+                        renderEquipmentAndInventoryDOM();
+                        renderItemTooltip(eq, -1, true);
+                    }
                 });
             }
         }
+        window.handleInventoryClick = handleInventoryClick;
 
         function handleInventoryClick(index) {
             const item = player.inventory[index];
@@ -1816,7 +2023,7 @@
                 player.equipped[slotKey] = item;
                 player.inventory.splice(index, 1);
                 if (prevEquipped) player.inventory.push(prevEquipped);
-                sound.playPickup();
+                sound.playEquip();
                 addFloatingText(player.x, player.y, `裝備 ${item.name}`, '#fde047', 14);
                 saveCharacterProgress();
                 updateUI();
@@ -1828,7 +2035,7 @@
             if (!current) return;
             player.inventory.push(current);
             player.equipped[slotKey] = null;
-            sound.playPickup();
+            sound.playEquip();
             saveCharacterProgress();
             updateUI();
         }
@@ -1853,7 +2060,7 @@
             scrollItem.count -= 1;
             if (scrollItem.count <= 0) player.inventory.splice(invIndex, 1);
 
-            sound.playLevelUp();
+            sound.playScroll();
             player.levelUpBeamTimer = 0.8;
             spawnHitSparks(player.x, player.y, '#38bdf8', 20, 24);
             addFloatingText(player.x, player.y, `✨ ${weapon.name} 強化成功`, '#38bdf8', 15);
@@ -1863,7 +2070,7 @@
         }
 
         function consumePotionItem(item, index) {
-            sound.playPickup();
+            sound.playPotion();
             if (item.subType === 'red') {
                 player.hp = Math.min(player.maxHp, player.hp + 65);
                 addFloatingText(player.x, player.y, `+65 HP`, '#4ade80', 13);
@@ -2002,17 +2209,24 @@
                 return;
             }
 
+            const nowMs = Date.now();
+            if (!player.unreachableIds) player.unreachableIds = {};
+
+            // 撿取同階層且可達的掉落寶物
             if (groundLoots.length > 0) {
                 let nearestLoot = null;
                 let minLootDist = Infinity;
+                const pElev = getTerrainElevation(player.x, player.y);
                 for (const loot of groundLoots) {
+                    if (player.unreachableIds[loot.id] && player.unreachableIds[loot.id] > nowMs) continue;
                     const d = Math.hypot(loot.wx - player.x, loot.wy - player.y);
-                    if (d < minLootDist) {
+                    const elevDiff = Math.abs(getTerrainElevation(loot.wx, loot.wy) - pElev);
+                    if (elevDiff <= 0.8 && d < minLootDist) {
                         minLootDist = d;
                         nearestLoot = loot;
                     }
                 }
-                if (nearestLoot && minLootDist <= 9.0) {
+                if (nearestLoot && minLootDist <= 8.5) {
                     player.attackTarget = null;
                     player.targetX = nearestLoot.wx;
                     player.targetY = nearestLoot.wy;
@@ -2021,21 +2235,34 @@
                 }
             }
 
-            if (!player.attackTarget || player.attackTarget.hp <= 0) {
-                let bestMonster = null;
-                let bestScore = Infinity;
+            // 自動鎖定「最近且同階層可達」的怪物；若目前目標太遠且身旁有更近的怪，立即切換！
+            const pElev = getTerrainElevation(player.x, player.y);
+            const curTarget = player.attackTarget;
+            const curDist = (curTarget && curTarget.hp > 0) ? Math.hypot(curTarget.x - player.x, curTarget.y - player.y) : Infinity;
+            const curBlacklisted = curTarget && player.unreachableIds[curTarget.id] && player.unreachableIds[curTarget.id] > nowMs;
 
-                for (const m of monsters) {
-                    if (m.hp <= 0) continue;
-                    const dist = Math.hypot(m.x - player.x, m.y - player.y);
-                    const isAttackingMe = dist <= m.aggroRange ? -2.5 : 0;
-                    const score = dist + isAttackingMe;
-                    if (score < bestScore) {
-                        bestScore = score;
-                        bestMonster = m;
-                    }
+            let bestMonster = null;
+            let bestScore = Infinity;
+            for (const m of monsters) {
+                if (m.hp <= 0) continue;
+                if (player.unreachableIds[m.id] && player.unreachableIds[m.id] > nowMs) continue;
+                const dist = Math.hypot(m.x - player.x, m.y - player.y);
+                const elevPenalty = Math.abs(getTerrainElevation(m.x, m.y) - pElev) * 4.5;
+                const aggroBonus = dist <= m.aggroRange ? -2.0 : 0;
+                const score = dist + elevPenalty + aggroBonus;
+                if (score < bestScore) {
+                    bestScore = score;
+                    bestMonster = m;
                 }
+            }
+
+            if (!curTarget || curTarget.hp <= 0 || curBlacklisted) {
                 player.attackTarget = bestMonster;
+            } else if (bestMonster && bestMonster !== curTarget) {
+                const bestDist = Math.hypot(bestMonster.x - player.x, bestMonster.y - player.y);
+                if (curDist > 2.2 && bestDist + 1.8 < curDist) {
+                    player.attackTarget = bestMonster;
+                }
             }
 
             if (player.attackTarget) {
@@ -2296,6 +2523,7 @@
 
             document.getElementById('loginModal').classList.add('hidden');
             sound.init();
+            startBgm();
             sound.playLevelUp();
 
             player.chatBubbleText = isRestored
@@ -2591,10 +2819,23 @@
 
                 if (player.autoBattle) {
                     const movedDelta = Math.hypot(player.x - player.lastPosX, player.y - player.lastPosY);
-                    if (movedDelta < 0.004) {
+                    if (movedDelta < 0.012) {
                         player.stuckTimer += dt;
-                        if (player.stuckTimer > 1.0) {
-                            player.attackTarget = null;
+                        if (player.stuckTimer > 0.65) {
+                            if (!player.unreachableIds) player.unreachableIds = {};
+                            if (player.attackTarget) {
+                                player.unreachableIds[player.attackTarget.id] = Date.now() + 8000;
+                                player.attackTarget = null;
+                            } else {
+                                // 若是撿寶卡住，標記附近該寶物暫時跳過
+                                for (const loot of groundLoots) {
+                                    if (Math.hypot(loot.wx - player.targetX, loot.wy - player.targetY) < 0.5) {
+                                        player.unreachableIds[loot.id] = Date.now() + 8000;
+                                    }
+                                }
+                            }
+                            player.targetX = player.x;
+                            player.targetY = player.y;
                             player.stuckTimer = 0;
                         }
                     } else {
@@ -3951,7 +4192,7 @@
         import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { createModelFactory } from './js/models3d.js';
-        import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, genRuneCircleTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js';
+        import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js';
 
         const EH = 0.75;               // 每一階高度 = 0.75 世界單位
         const TAU = Math.PI * 2;
@@ -4470,7 +4711,7 @@
                     col.setHSL(0.27 + rnd() * 0.07, 0.35 + rnd() * 0.2, 0.22 + rnd() * 0.1);
                     lm.setColorAt(i, col);
                 });
-                lm.castShadow = tm.castShadow = true; lm.receiveShadow = true;
+                lm.castShadow = false; tm.castShadow = true; lm.receiveShadow = true;
                 scene.add(lm, tm);
             });
 
@@ -4495,7 +4736,7 @@
                 dummy.position.set(x, h + 0.05, z); dummy.rotation.set(rnd(), rnd() * TAU, rnd() * 0.4); dummy.scale.set(s, s, s);
                 dummy.updateMatrix(); rm.setMatrixAt(i, dummy.matrix);
             });
-            rm.castShadow = rm.receiveShadow = true;
+            rm.castShadow = false; rm.receiveShadow = true;
             scene.add(rm);
 
             // 草叢
@@ -4599,10 +4840,10 @@
         }
 
         function buildStructures() {
-            wallMat = addSeeThrough(new THREE.MeshStandardMaterial({ map: TEX.rock.map, normalMap: TEX.rock.normalMap, normalScale: new THREE.Vector2(1.4, 1.4), color: 0xb5ada0, roughness: 0.9 }));
-            plasterMat = addSeeThrough(new THREE.MeshStandardMaterial({ map: TEX.plaster.map, normalMap: TEX.plaster.normalMap, roughness: 0.9 }));
-            darkWood = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.8 });
-            glassWarm = new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 1.3, 0.5), toneMapped: false });
+            wallMat = addSeeThrough(new THREE.MeshStandardMaterial({ map: TEX.rock.map, normalMap: TEX.rock.normalMap, normalScale: new THREE.Vector2(1.3, 1.3), color: 0xa39b8f, roughness: 0.94 }));
+            plasterMat = addSeeThrough(new THREE.MeshStandardMaterial({ map: TEX.plaster.map, normalMap: TEX.plaster.normalMap, color: 0xbfb4a0, roughness: 0.96 }));
+            darkWood = new THREE.MeshStandardMaterial({ color: 0x3a2618, roughness: 0.85 });
+            glassWarm = new THREE.MeshBasicMaterial({ color: 0xd99b52 });
             const roofCol = { slate: 0x3b4658, blacksmith: 0x4a4440, magic_shop: 0x5b2a86, cottage: 0x9a3b1c, chapel: 0x24427a, keep: 0x2f3c55 };
             for (const k in roofCol) roofMats[k] = addSeeThrough(new THREE.MeshStandardMaterial({ map: TEX.roof.map, normalMap: TEX.roof.normalMap, color: roofCol[k], roughness: 0.7, metalness: 0.1 }));
 
@@ -4682,8 +4923,8 @@
             }
 
             const th = (x, y) => heightMap[Math.floor(y)][Math.floor(x)] * EH;
-            addTorch(33.6, th(33.6, 19.4), 19.4); addTorch(38.4, th(38.4, 19.4), 19.4);
-            addTorch(34.2, th(34.2, 34.2), 34.2, 7); addTorch(30.6, th(30.6, 33.6), 33.6, 8);
+            addTorch(33.6, th(33.6, 19.4), 19.4, 4.2); addTorch(38.4, th(38.4, 19.4), 19.4, 4.2);
+            addTorch(34.2, th(34.2, 34.2), 34.2, 3.8);
         }
 
 
@@ -5292,7 +5533,7 @@
         R3D.init = function () {
             try {
                 renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: 'high-performance' });
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
                 renderer.setSize(window.innerWidth, window.innerHeight);
                 renderer.shadowMap.enabled = true;
                 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -5316,7 +5557,7 @@
 
                 sun = new THREE.DirectionalLight(0xffd2a1, 1.95);
                 sun.castShadow = true;
-                sun.shadow.mapSize.set(2048, 2048);
+                sun.shadow.mapSize.set(1024, 1024);
                 sun.shadow.camera.near = 5;
                 sun.shadow.camera.far = 95;
                 const d = 22;
@@ -5341,18 +5582,18 @@
                 tryAttachExternalGLB('player', playerRig);
                 scene.add(playerRig.root);
 
-                // 後製輝光 (UnrealBloomPass)
+                // 後製輝光 (半解析度 UnrealBloomPass — 畫質不變、效能提升 3 倍！)
                 composer = new EffectComposer(renderer);
                 composer.addPass(new RenderPass(scene, cam));
-                bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.58, 0.36, 0.82);
+                bloomPass = new UnrealBloomPass(new THREE.Vector2(Math.floor(window.innerWidth / 2), Math.floor(window.innerHeight / 2)), 0.4, 0.32, 0.86);
                 composer.addPass(bloomPass);
                 composer.addPass(new OutputPass());
 
-                // 初始化 AAA 魔法特效引擎 與 日夜動態光影系統
-                const runeTex = genRuneCircleTex(512);
-                spellVfx = createSpellVfxEngine({ scene, TEX, runeTex, worldY, vfxList });
-                dayNight = createDayNightController({ scene, renderer, sun, hemi, fill, bloomPass, torches });
+                // 初始化自然元素魔法引擎 與 日夜/天氣系統
+                spellVfx = createSpellVfxEngine({ scene, TEX, worldY, vfxList });
+                dayNight = createDayNightController({ scene, renderer, sun, hemi, fill, bloomPass, camTarget: camState.target });
                 window.cycleTimeOfDay = () => dayNight.cycleMode();
+                window.cycleWeather = () => dayNight.cycleWeather();
 
                 // 滾輪縮放 & 右鍵旋轉視角
                 window.addEventListener('wheel', (e) => {
@@ -5423,7 +5664,7 @@
 
             updateCamera(dt);
             composer.render();
-            drawMinimap();
+            if (!R3D._mmT || now - R3D._mmT > 100) { R3D._mmT = now; drawMinimap(); }
         };
     </script>
 
