@@ -359,10 +359,18 @@
         </div>
     </div>
 
-    <!-- 世界王降臨全服廣播橫幅 -->
-    <div id="worldBossBanner" class="hidden fixed top-12 left-1/2 -translate-x-1/2 z-40 px-5 py-2 rounded-sm border border-rose-500/90 bg-gradient-to-r from-black/95 via-[#2c0910]/95 to-black/95 shadow-[0_8px_32px_rgba(225,29,72,0.55)] pointer-events-none text-center max-w-[92vw]">
-        <div class="serif-font text-xs sm:text-sm font-black tracking-[0.18em] text-amber-300" id="worldBossBannerTitle">【世界王降臨】</div>
-        <div class="text-[11px] text-rose-200 mt-0.5" id="worldBossBannerSub"></div>
+    <!-- 世界王降臨全服廣播橫幅 (附一鍵瞬移討伐按鈕) -->
+    <div id="worldBossBanner" class="hidden fixed top-12 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-sm border border-rose-500/90 bg-gradient-to-r from-black/95 via-[#2c0910]/95 to-black/95 shadow-[0_8px_32px_rgba(225,29,72,0.55)] pointer-events-auto text-center max-w-[94vw]">
+        <div class="flex items-center justify-center gap-2.5">
+            <div>
+                <div class="serif-font text-xs sm:text-sm font-black tracking-[0.14em] text-amber-300" id="worldBossBannerTitle">【世界王降臨】</div>
+                <div class="text-[11px] text-rose-200 mt-0.5" id="worldBossBannerSub"></div>
+            </div>
+            <button onclick="teleportToWorldBoss()" class="lineage-btn px-2.5 py-1.5 rounded text-[11px] font-bold text-amber-200 border-rose-400 hover:border-yellow-300 shrink-0 cursor-pointer shadow-lg">
+                ⚡ 瞬移討伐
+            </button>
+            <button onclick="document.getElementById('worldBossBanner').classList.add('hidden')" class="text-stone-400 hover:text-white text-xs px-1 cursor-pointer" title="關閉">✕</button>
+        </div>
     </div>
 
     <!-- ==========================================================
@@ -898,6 +906,7 @@
                 });
             }
             playPickup() { this.playPickupItem(); }
+            playLoot() { this.playPickupGold(); }
             playEquip() {
                 if (!this.enabled) return;
                 this.init();
@@ -1937,9 +1946,11 @@
             { id: 'lair_19', name: '象牙雪原冰霜巨龍', type: 'drake',         x: 34,  y: 122, radius: 7.0, maxCount: 2 }
         ];
 
-        // 定時世界王降臨系統 (每 180 秒全服廣播一隻世界王甦醒！)
+        // 定時世界王降臨系統 (每 180 秒全服廣播一隻世界王甦醒！附一鍵瞬移討伐！)
         let worldBossTimer = 150;
-        function showWorldBossBanner(title, sub) {
+        let activeWorldBossRef = null;
+        function showWorldBossBanner(title, sub, bossRef = null) {
+            if (bossRef) activeWorldBossRef = bossRef;
             const b = document.getElementById('worldBossBanner');
             const t = document.getElementById('worldBossBannerTitle');
             const s = document.getElementById('worldBossBannerSub');
@@ -1947,8 +1958,40 @@
             t.textContent = title; s.textContent = sub;
             b.classList.remove('hidden');
             clearTimeout(window._wbBannerTid);
-            window._wbBannerTid = setTimeout(() => b.classList.add('hidden'), 6500);
+            window._wbBannerTid = setTimeout(() => b.classList.add('hidden'), 16000);
         }
+        function teleportToWorldBoss() {
+            let boss = (activeWorldBossRef && activeWorldBossRef.hp > 0 && monsters.includes(activeWorldBossRef))
+                ? activeWorldBossRef
+                : monsters.find(m => m.hp > 0 && (m.type === 'baphomet_boss' || m.type === 'water_dragon' || m.type === 'drake'));
+            if (!boss) {
+                addChatLog('⚠️ 目前場上沒有存活的世界王，請等待下次降臨！', 'text-stone-400');
+                document.getElementById('worldBossBanner')?.classList.add('hidden');
+                return;
+            }
+            // 在世界王身旁 3.2~5.5 格內尋找安全可行走的落腳點
+            let tx = boss.x, ty = boss.y + 3.5;
+            outer: for (let r = 3.2; r <= 6.5; r += 0.8) {
+                for (let k = 0; k < 16; k++) {
+                    const ang = (k / 16) * Math.PI * 2;
+                    const cx = Math.max(2, Math.min(MAP_SIZE - 2, boss.x + Math.cos(ang) * r));
+                    const cy = Math.max(2, Math.min(MAP_SIZE - 2, boss.y + Math.sin(ang) * r));
+                    if (isWalkable(cx, cy, false)) { tx = cx; ty = cy; break outer; }
+                }
+            }
+            player.x = tx; player.y = ty;
+            player.targetX = tx; player.targetY = ty;
+            player.attackTarget = boss;
+            player.manualMoveOverrideTimer = 0;
+            if (window.R3D && window.R3D.snapCamera) window.R3D.snapCamera();
+            sound.playScroll();
+            spawnHitSparks(player.x, player.y, '#fde047', 22, 18);
+            addFloatingText(player.x, player.y, `⚡ 瞬移討伐 ${boss.name}`, '#fde047', 14);
+            addChatLog(`⚡ 已瞬間移動至【${boss.name}】身旁並鎖定目標！`, 'text-amber-300 font-bold');
+            document.getElementById('worldBossBanner')?.classList.add('hidden');
+        }
+        window.teleportToWorldBoss = teleportToWorldBoss;
+
         function triggerWorldBossEvent() {
             const pool = [
                 { type: 'baphomet_boss', area: '深淵祭壇', x: 88, y: 66 },
@@ -1960,8 +2003,8 @@
             const boss = createMonster(pick.type, pick.x, pick.y);
             broadcastPlayerState('monster_spawn', JSON.stringify({ id: boss.id, type: boss.type, x: pick.x, y: pick.y }));
             sound.playLevelUp();
-            showWorldBossBanner(`【世界王降臨】${cfg.name}`, `已於 ${pick.area} (${pick.x}, ${pick.y}) 甦醒！全服英雄速往討伐！`);
-            addChatLog(`🔥 <span class="text-rose-400 font-bold">【世界王廣播】${cfg.name} 已降臨於 ${pick.area} (${pick.x}, ${pick.y})！擊殺必掉祝福強化卷軸！</span>`, 'text-amber-300');
+            showWorldBossBanner(`【世界王降臨】${cfg.name}`, `已於 ${pick.area} (${pick.x}, ${pick.y}) 甦醒！`, boss);
+            addChatLog(`🔥 <span class="text-rose-400 font-bold">【世界王廣播】${cfg.name} 已降臨於 ${pick.area} (${pick.x}, ${pick.y})！點擊上方【⚡ 瞬移討伐】即可直達戰場！</span>`, 'text-amber-300');
         }
 
         let monsterIdSeq = 1;
@@ -3255,9 +3298,12 @@
                                         <div class="text-[10px] text-stone-400">單價回收：${unitPrice} 金幣</div>
                                     </div>
                                 </div>
-                                <button onclick="sellInvItem(${idx})" class="lineage-btn px-2 py-1 rounded text-[10px] font-bold text-emerald-300 shrink-0 cursor-pointer">
-                                    出售 +${unitPrice}G
-                                </button>
+                                <div class="flex items-center gap-1 shrink-0">
+                                    <button onclick="sellInvItem(${idx}, false)" class="lineage-btn px-2 py-1 rounded text-[10px] font-bold text-emerald-300 cursor-pointer">
+                                        賣1個 +${unitPrice}G
+                                    </button>
+                                    ${it.count && it.count > 1 ? `<button onclick="sellInvItem(${idx}, true)" class="lineage-btn px-1.5 py-1 rounded text-[10px] font-bold text-yellow-300 cursor-pointer">全賣</button>` : ''}
+                                </div>
                             </div>
                         `;
                     }).join('');
@@ -3288,16 +3334,17 @@
             updateUI();
             renderNpcShopModal();
         }
-        function sellInvItem(invIdx) {
+        function sellInvItem(invIdx, sellAll = false) {
             const npc = CASTLE_NPCS.find(n => n.id === activeShopNpcId);
             const it = player.inventory[invIdx];
             if (!npc || !it) return;
-            const gain = calcSellPrice(it);
+            const qty = (sellAll && it.count && it.count > 1) ? it.count : 1;
+            const gain = calcSellPrice(it) * qty;
             player.gold = (player.gold || 0) + gain;
-            if (it.count && it.count > 1) it.count -= 1;
+            if (!sellAll && it.count && it.count > 1) it.count -= 1;
             else player.inventory.splice(invIdx, 1);
             sound.playLoot();
-            addChatLog(`💰 出售【${it.name}】給 ${npc.name}，獲得 +${gain} 金幣！`, 'text-emerald-300');
+            addChatLog(`💰 出售【${it.name}】${qty > 1 ? 'x' + qty + ' ' : ''}給 ${npc.name}，獲得 +${gain.toLocaleString()} 金幣！`, 'text-emerald-300');
             saveCharacterProgress();
             updateUI();
             renderNpcShopModal();
@@ -6079,7 +6126,7 @@
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-        import { createModelFactory } from './js/models3d.js?v=20261123d';
+        import { createModelFactory } from './js/models3d.js?v=20261124a';
         import { buildAllBuildings } from './js/buildings3d.js?v=20261123b';
         import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js?v=20261123b';
 
@@ -6816,32 +6863,16 @@
             addTorch(51.4, th(51.4, 22.8), 22.8, 4.2); addTorch(56.6, th(56.6, 22.8), 22.8, 4.2);
             addTorch(51.2, th(51.2, 51.8), 51.8, 3.8);
 
-            // 奇岩王城雙 NPC 3D 實體模型 (雜貨商人・潘朵拉 & 裝備商人・赫菲斯托斯)
-            if (window.CASTLE_NPCS) {
-                const skinM = new THREE.MeshStandardMaterial({ color: 0xe2b18d, roughness: 0.65 });
-                const goldM = new THREE.MeshStandardMaterial({ color: 0xe6b94c, metalness: 0.85, roughness: 0.25 });
+            // 奇岩王城雙高精細雕塑 NPC (雜貨女商人・潘朵拉＋藥水貨箱 / 魁梧大鬍子鍛造鐵匠・赫菲斯托斯＋鍛造鐵砧)
+            R3D._npcRigs = [];
+            if (window.CASTLE_NPCS && MODEL_FACTORY && MODEL_FACTORY.createNpcRig) {
                 for (const npc of window.CASTLE_NPCS) {
-                    const g = new THREE.Group();
+                    const rig = MODEL_FACTORY.createNpcRig(npc.role);
                     const ny = th(npc.x, npc.y);
-                    g.position.set(npc.x, ny, npc.y);
-                    const robeM = new THREE.MeshStandardMaterial({ color: npc.robeColor, roughness: 0.72, metalness: 0.15 });
-                    // 長袍軀幹與肩披
-                    const robe = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.34, 1.32, 12), robeM);
-                    robe.position.y = 0.68; robe.castShadow = true; g.add(robe);
-                    const trim = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.025, 6, 12), goldM);
-                    trim.rotation.x = Math.PI / 2; trim.position.y = 1.28; g.add(trim);
-                    // 頭部與商人帽／鐵匠頭箍
-                    const hd = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 10), skinM);
-                    hd.position.y = 1.5; hd.castShadow = true; g.add(hd);
-                    const hat = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.26, 10), robeM);
-                    hat.position.y = 1.72; g.add(hat);
-                    // 腳底淡綠光圈提示可互動
-                    const ring = new THREE.Mesh(
-                        new THREE.PlaneGeometry(1.35, 1.35),
-                        new THREE.MeshBasicMaterial({ map: TEX.ring, color: 0x34d399, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false })
-                    );
-                    ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; g.add(ring);
-                    scene.add(g);
+                    rig.root.position.set(npc.x, ny, npc.y);
+                    rig.root.rotation.y = npc.role === 'general' ? 0.35 : -0.35;
+                    scene.add(rig.root);
+                    R3D._npcRigs.push(rig);
                 }
             }
         }
@@ -7721,6 +7752,9 @@
             }
 
             syncEntities(simTime, dt);
+            if (R3D._npcRigs && MODEL_FACTORY && MODEL_FACTORY.animateNpc) {
+                for (const nr of R3D._npcRigs) MODEL_FACTORY.animateNpc(nr, simTime);
+            }
             for (const mx of activeMixers) mx.update(dt);
             if (R3D._buildings) R3D._buildings.update(simTime);
             syncActiveSpells3D(simTime);

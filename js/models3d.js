@@ -692,11 +692,11 @@ export function createModelFactory(sharedTEX) {
         foreL.add(shield);
         addM(shield, new THREE.OctahedronGeometry(0.085, 0), M.gold, 0, 0.05, 0.065);
 
-        // 左手副手反手雙刀 (裝備雙刀時採網遊刺客反手握刀帥氣戰鬥姿勢，隱藏盾牌)
+        // 左手副手刺客雙刃 (參考天堂黑妖／暗黑刺客：雙刃向外側自然張開，不穿模)
         const offDagger = wDag.clone();
         offDagger.visible = false;
-        offDagger.position.set(-0.02, -0.28, 0.06);
-        offDagger.rotation.set(-Math.PI * 0.56, 0.18, 0.28); // 經典反手握刀角度
+        offDagger.position.set(-0.04, -0.28, 0.08);
+        offDagger.rotation.set(Math.PI * 0.54, -0.25, -0.32);
         foreL.add(offDagger);
 
         // 輕量化腳底接觸假陰影 (手機 60FPS 模式關閉即時陰影時依然立體接地不懸浮！)
@@ -955,25 +955,39 @@ export function createModelFactory(sharedTEX) {
             // AAA 三段式揮擊曲線：蓄力回拉 (0~0.22) -> 爆發斬擊 (0.22~0.68) -> 收勢緩衝 (0.68~1)
             const strikeCurve = p < 0.22 ? -0.18 * (p / 0.22) : (p < 0.68 ? lerp(-0.18, 1.08, smooth((p - 0.22) / 0.46)) : lerp(1.08, 0.96, (p - 0.68) / 0.32));
             if (isDualBlade) {
-                rig.body.position.y = bob - 0.09;
-                rig.torso.rotation.x = 0.26;
-                rig.torso.rotation.y = lerp(-0.72 * comboDir, 0.78 * comboDir, clamp(strikeCurve, 0, 1));
-                rig.armR.rotation.x = lerp(-2.15, 0.85, clamp(strikeCurve, 0, 1));
-                rig.armR.rotation.z = lerp(-0.68 * comboDir, 0.72 * comboDir, clamp(strikeCurve, 0, 1));
-                rig.foreR.rotation.x = lerp(-0.18, -0.68, smooth(p));
-                rig.armL.rotation.x = lerp(0.55, -1.95, clamp(strikeCurve, 0, 1));
-                rig.armL.rotation.z = lerp(0.65 * comboDir, -0.58 * comboDir, clamp(strikeCurve, 0, 1));
-                rig.foreL.rotation.x = lerp(-0.85, -0.25, smooth(p));
+                // 天堂黑妖／暗黑刺客雙刀連斬：疾速左右交替交叉斜劈！
+                rig.body.position.y = bob - 0.1;
+                rig.torso.rotation.x = 0.28;
+                rig.torso.rotation.y = lerp(-0.68 * comboDir, 0.75 * comboDir, clamp(strikeCurve, 0, 1));
+                if (comboDir > 0) {
+                    // 右手主力疾速由外往內斜劈，左手收力蓄勢
+                    rig.armR.rotation.x = lerp(-1.55, 0.65, clamp(strikeCurve, 0, 1));
+                    rig.armR.rotation.z = lerp(-0.85, 0.62, clamp(strikeCurve, 0, 1));
+                    rig.foreR.rotation.x = lerp(-0.45, -0.25, smooth(p));
+                    rig.armL.rotation.x = lerp(-0.35, -1.15, smooth(p));
+                    rig.armL.rotation.z = lerp(0.55, 0.82, smooth(p));
+                    rig.foreL.rotation.x = -0.68;
+                } else {
+                    // 左手主力疾速由外往內反斬，右手蓄勢回拉
+                    rig.armL.rotation.x = lerp(-1.55, 0.65, clamp(strikeCurve, 0, 1));
+                    rig.armL.rotation.z = lerp(0.85, -0.62, clamp(strikeCurve, 0, 1));
+                    rig.foreL.rotation.x = lerp(-0.45, -0.25, smooth(p));
+                    rig.armR.rotation.x = lerp(-0.35, -1.15, smooth(p));
+                    rig.armR.rotation.z = lerp(-0.55, -0.82, smooth(p));
+                    rig.foreR.rotation.x = -0.68;
+                }
             } else if (is2H) {
-                // 雙手巨劍：沉重蓄力後仰 -> 全身腰胯帶動大弧度劈斬
-                rig.torso.rotation.x = lerp(-0.2, 0.28, clamp(strikeCurve, 0, 1));
-                rig.torso.rotation.y = lerp(-0.78 * comboDir, 0.82 * comboDir, clamp(strikeCurve, 0, 1));
-                rig.armR.rotation.x = lerp(-2.55, 0.92, clamp(strikeCurve, 0, 1));
-                rig.armR.rotation.z = lerp(-0.48 * comboDir, 0.62 * comboDir, clamp(strikeCurve, 0, 1));
-                rig.foreR.rotation.x = lerp(-0.35, -0.42, smooth(p));
-                rig.armL.rotation.x = lerp(-2.15, 0.55, clamp(strikeCurve, 0, 1));
-                rig.armL.rotation.z = lerp(-0.55, -0.25, smooth(p));
-                rig.foreL.rotation.x = -0.65;
+                // 雙手巨劍：由後方拖地蓄力 -> 由後往前爆發大弧度重劈！
+                const dragWind = p < 0.28 ? (p / 0.28) : 0;
+                const sweepFwd = p >= 0.28 ? smooth(clamp((p - 0.28) / 0.5, 0, 1)) : 0;
+                rig.torso.rotation.x = p < 0.28 ? lerp(0.12, -0.14, dragWind) : lerp(-0.14, 0.28, sweepFwd);
+                rig.torso.rotation.y = p < 0.28 ? lerp(-0.32, -0.88, dragWind) : lerp(-0.88, 0.86, sweepFwd);
+                rig.armR.rotation.x = p < 0.28 ? lerp(0.76, 1.32, dragWind) : lerp(1.32, -1.62, sweepFwd);
+                rig.armR.rotation.z = p < 0.28 ? lerp(-0.36, -0.58, dragWind) : lerp(-0.58, 0.68, sweepFwd);
+                rig.foreR.rotation.x = p < 0.28 ? -0.12 : lerp(-0.12, -0.45, sweepFwd);
+                rig.armL.rotation.x = p < 0.28 ? lerp(-0.28, 0.35, dragWind) : lerp(0.35, -1.25, sweepFwd);
+                rig.armL.rotation.z = lerp(0.24, -0.35, sweepFwd);
+                rig.foreL.rotation.x = -0.52;
             } else if (isKatana) {
                 // 武士太刀：俐落居合拔斬，手腕精準收刀
                 rig.torso.rotation.x = lerp(0.06, 0.22, Math.sin(p * Math.PI));
@@ -1002,26 +1016,27 @@ export function createModelFactory(sharedTEX) {
             rig.slashGroup.rotation.z = comboDir * (isDualBlade ? 0.36 : (isKatana ? 0.12 : 0.24));
             rig.slashGroup.scale.setScalar((is2H ? 1.12 : 0.9) + p * 0.34);
         } else if (isDualBlade) {
-            rig.body.position.y = bob - (state.isMoving ? 0.08 : 0.06);
-            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.28 : 0.18 + breath * 0.02, clamp(dt * 10, 0, 1));
-            rig.torso.rotation.y = lerp(rig.torso.rotation.y, -0.34 + breath * 0.04, clamp(dt * 10, 0, 1));
-            rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.52 - stride * 0.32, clamp(dt * 12, 0, 1));
-            rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.44, clamp(dt * 12, 0, 1));
-            rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.58, clamp(dt * 12, 0, 1));
-            rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.82 + stride * 0.26, clamp(dt * 12, 0, 1));
+            // 天堂黑妖／暗黑刺客雙刀待機與疾跑姿勢：低重心微屈膝、雙手微張側持雙刃蓄勢待發
+            rig.body.position.y = bob - (state.isMoving ? 0.1 : 0.08);
+            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.32 : 0.22 + breath * 0.02, clamp(dt * 10, 0, 1));
+            rig.torso.rotation.y = lerp(rig.torso.rotation.y, -0.18 + breath * 0.035 + stride * 0.12, clamp(dt * 10, 0, 1));
+            rig.armR.rotation.x = lerp(rig.armR.rotation.x, (state.isMoving ? 0.22 : -0.36) - stride * 0.28, clamp(dt * 12, 0, 1));
+            rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.52, clamp(dt * 12, 0, 1));
+            rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, state.isMoving ? -0.35 : -0.62, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.x = lerp(rig.armL.rotation.x, (state.isMoving ? 0.22 : -0.36) + stride * 0.28, clamp(dt * 12, 0, 1));
             rig.armL.rotation.z = lerp(rig.armL.rotation.z, 0.52, clamp(dt * 12, 0, 1));
-            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.82, clamp(dt * 12, 0, 1));
+            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, state.isMoving ? -0.35 : -0.62, clamp(dt * 12, 0, 1));
             rig.slashMat.opacity = 0; rig.slashInnerMat.opacity = 0;
         } else if (is2H) {
-            // 雙手巨劍待機／奔跑：厚重沉穩、雙手斜握劍柄
-            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.16 : 0.05 + breath * 0.02, clamp(dt * 10, 0, 1));
-            rig.torso.rotation.y = lerp(rig.torso.rotation.y, -0.18 + stride * 0.08, clamp(dt * 10, 0, 1));
-            rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.96 - stride * 0.18 + breath * 0.03, clamp(dt * 12, 0, 1));
-            rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.32, clamp(dt * 12, 0, 1));
-            rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.62, clamp(dt * 12, 0, 1));
-            rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.78 + stride * 0.14, clamp(dt * 12, 0, 1));
-            rig.armL.rotation.z = lerp(rig.armL.rotation.z, -0.34, clamp(dt * 12, 0, 1));
-            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.82, clamp(dt * 12, 0, 1));
+            // 雙手巨劍邊走邊拖地霸氣姿勢：右手將巨劍低垂向後方拖行，隨時由後往前爆發重劈！
+            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.2 : 0.08 + breath * 0.02, clamp(dt * 10, 0, 1));
+            rig.torso.rotation.y = lerp(rig.torso.rotation.y, -0.28 + stride * 0.1, clamp(dt * 10, 0, 1));
+            rig.armR.rotation.x = lerp(rig.armR.rotation.x, (state.isMoving ? 0.86 : 0.68) + stride * 0.14 + breath * 0.02, clamp(dt * 12, 0, 1));
+            rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.36, clamp(dt * 12, 0, 1));
+            rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.14, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.28 + stride * 0.34, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.z = lerp(rig.armL.rotation.z, 0.22, clamp(dt * 12, 0, 1));
+            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.48, clamp(dt * 12, 0, 1));
             rig.slashMat.opacity = 0; rig.slashInnerMat.opacity = 0;
         } else if (isKatana) {
             // 武士太刀中段構え：重心沉穩、刀尖微朝前上方
@@ -1868,5 +1883,148 @@ export function createModelFactory(sharedTEX) {
         }
     }
 
-    return { createKnightRig, animateKnight, createMonsterRig, animateMonster };
+    /* =====================================================================
+     * 5. 奇岩王城高精細雕塑 NPC (雜貨商人・潘朵拉 / 裝備鐵匠・赫菲斯托斯)
+     * ===================================================================== */
+    function createNpcRig(role) {
+        const root = new THREE.Group();
+        const body = new THREE.Group();
+        root.add(body);
+
+        // 腳底接觸陰影與淡綠柔和互動光環
+        const shadow = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.4, 1.4),
+            new THREE.MeshBasicMaterial({ map: sharedTEX.blob, color: 0x000000, transparent: true, opacity: 0.48, depthWrite: false })
+        );
+        shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.03;
+        root.add(shadow);
+
+        const ring = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.5, 1.5),
+            new THREE.MeshBasicMaterial({ map: sharedTEX.ring, color: role === 'equip' ? 0xf59e0b : 0x34d399, transparent: true, opacity: 0.24, blending: THREE.AdditiveBlending, depthWrite: false })
+        );
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04;
+        root.add(ring);
+
+        let armR = null, armL = null, head = null;
+
+        if (role === 'general') {
+            // 雜貨商人・潘朵拉：優雅翡翠絨金邊禮服女商人 + 發光煉金藥瓶 + 奇幻貨物箱
+            const dressMat = new THREE.MeshStandardMaterial({ color: 0x115e59, map: sharedTEX.cloth, roughness: 0.66, metalness: 0.12, side: THREE.DoubleSide });
+            const shawlMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, map: sharedTEX.cloth, roughness: 0.72 });
+            const hairMat = new THREE.MeshStandardMaterial({ color: 0x5c3317, roughness: 0.65 });
+
+            // 優雅層次長裙與腰身
+            const skirtPts = [new THREE.Vector2(0.36, 0.02), new THREE.Vector2(0.3, 0.36), new THREE.Vector2(0.2, 0.74), new THREE.Vector2(0.14, 0.92)];
+            addM(body, new THREE.LatheGeometry(skirtPts, 16), dressMat, 0, 0, 0);
+            addM(body, new THREE.TorusGeometry(0.35, 0.015, 6, 18), M.gold, 0, 0.05, 0).rotation.x = Math.PI / 2;
+            addM(body, new THREE.TorusGeometry(0.155, 0.02, 6, 14), M.gold, 0, 0.9, 0).rotation.x = Math.PI / 2;
+            // 上身與金邊披肩
+            const torsoPts = [new THREE.Vector2(0.14, 0), new THREE.Vector2(0.18, 0.22), new THREE.Vector2(0.2, 0.42), new THREE.Vector2(0.11, 0.52)];
+            addM(body, new THREE.LatheGeometry(torsoPts, 14), dressMat, 0, 0.9, 0).scale.set(1.02, 1.0, 0.82);
+            addM(body, new THREE.ConeGeometry(0.26, 0.22, 14, 1, true), shawlMat, 0, 1.33, 0);
+            addM(body, new THREE.TorusGeometry(0.25, 0.014, 6, 16), M.gold, 0, 1.23, 0).rotation.x = Math.PI / 2;
+
+            // 精緻頭部、波浪栗髮與金色冠飾
+            head = new THREE.Group(); head.position.set(0, 1.48, 0.02); body.add(head);
+            addM(head, new THREE.CylinderGeometry(0.055, 0.07, 0.1, 10), M.skin, 0, -0.02, 0);
+            addM(head, new THREE.SphereGeometry(0.125, 16, 14), M.skin, 0, 0.1, 0).scale.set(0.92, 1.06, 0.95);
+            addM(head, new THREE.SphereGeometry(0.135, 14, 12, 0, TAU, 0, Math.PI * 0.62), hairMat, 0, 0.12, -0.015);
+            addM(head, new THREE.CapsuleGeometry(0.085, 0.26, 8, 10), hairMat, 0, 0.02, -0.11).rotation.x = 0.2;
+            addM(head, new THREE.TorusGeometry(0.13, 0.014, 6, 16), M.gold, 0, 0.175, 0).rotation.x = Math.PI / 2;
+            for (const s of [-1, 1]) addM(head, new THREE.SphereGeometry(0.014, 6, 6), M.darkSteel, s * 0.04, 0.1, 0.115, false);
+
+            // 左手抱帳本
+            armL = new THREE.Group(); armL.position.set(-0.22, 1.36, 0.02); body.add(armL);
+            addM(armL, new THREE.CapsuleGeometry(0.044, 0.24, 8, 10), dressMat, -0.02, -0.15, 0).rotation.z = -0.14;
+            addM(armL, new THREE.CapsuleGeometry(0.038, 0.22, 8, 10), M.skin, -0.04, -0.34, 0.08).rotation.x = -0.55;
+            addM(armL, new THREE.BoxGeometry(0.2, 0.04, 0.26), M.leather, -0.02, -0.4, 0.2).rotation.set(0.3, 0.2, 0);
+
+            // 右手托起發光魔力藥水瓶
+            armR = new THREE.Group(); armR.position.set(0.22, 1.36, 0.02); body.add(armR);
+            addM(armR, new THREE.CapsuleGeometry(0.044, 0.24, 8, 10), dressMat, 0.02, -0.15, 0).rotation.z = 0.14;
+            addM(armR, new THREE.CapsuleGeometry(0.038, 0.22, 8, 10), M.skin, 0.04, -0.34, 0.08).rotation.x = -0.5;
+            const potMat = new THREE.MeshStandardMaterial({ color: 0xef4444, emissive: 0xef4444, emissiveIntensity: 1.4, roughness: 0.15 });
+            addM(armR, new THREE.SphereGeometry(0.075, 10, 8), potMat, 0.05, -0.36, 0.22, false);
+            addM(armR, new THREE.CylinderGeometry(0.028, 0.035, 0.07, 8), M.gold, 0.05, -0.27, 0.22);
+
+            // 身旁精緻木貨箱與藥水陳列
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21, roughness: 0.88 });
+            addM(root, new THREE.BoxGeometry(0.62, 0.56, 0.52), woodMat, -0.78, 0.28, 0.15);
+            addM(root, new THREE.BoxGeometry(0.65, 0.05, 0.55), M.darkSteel, -0.78, 0.55, 0.15);
+            addM(root, new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 1.1, roughness: 0.2 }), -0.9, 0.65, 0.12, false);
+            addM(root, new THREE.SphereGeometry(0.08, 8, 8), new THREE.MeshStandardMaterial({ color: 0x22c55e, emissive: 0x16a34a, emissiveIntensity: 1.1, roughness: 0.2 }), -0.68, 0.65, 0.2, false);
+        } else {
+            // 裝備商人・赫菲斯托斯：魁梧大鬍子鍛造大師 + 鉚釘皮圍裙 + 熾熱戰鎚 + 鍛鐵砧台！
+            const apronMat = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.85, metalness: 0.08 });
+            const beardMat = new THREE.MeshStandardMaterial({ color: 0x292524, roughness: 0.9 });
+
+            // 粗壯雙腿與重型戰靴
+            for (const s of [-1, 1]) {
+                addM(body, new THREE.CapsuleGeometry(0.11, 0.52, 8, 10), M.darkSteel, s * 0.16, 0.42, 0);
+                addM(body, new THREE.BoxGeometry(0.16, 0.12, 0.28), M.leather, s * 0.16, 0.08, 0.05);
+            }
+            // 魁梧胸肌鎖甲與皮圍裙
+            const chestPts = [new THREE.Vector2(0.24, 0), new THREE.Vector2(0.29, 0.25), new THREE.Vector2(0.34, 0.5), new THREE.Vector2(0.24, 0.64)];
+            addM(body, new THREE.LatheGeometry(chestPts, 14), M.darkSteel, 0, 0.78, 0).scale.set(1.12, 1.0, 0.88);
+            addM(body, new THREE.BoxGeometry(0.46, 0.78, 0.08), apronMat, 0, 0.84, 0.25);
+            addM(body, new THREE.BoxGeometry(0.48, 0.06, 0.1), M.gold, 0, 0.86, 0.26);
+            // 雙肩金屬護肩
+            for (const s of [-1, 1]) {
+                addM(body, new THREE.SphereGeometry(0.16, 12, 10), M.darkSteel, s * 0.38, 1.34, 0).scale.set(1.1, 0.85, 1.0);
+                addM(body, new THREE.TorusGeometry(0.15, 0.018, 6, 12), M.gold, s * 0.38, 1.32, 0).rotation.x = Math.PI / 2;
+            }
+
+            // 威嚴大鬍子頭像與金飾鍛造頭箍
+            head = new THREE.Group(); head.position.set(0, 1.48, 0.02); body.add(head);
+            addM(head, new THREE.SphereGeometry(0.15, 14, 12), M.skin, 0, 0.11, 0);
+            addM(head, new THREE.SphereGeometry(0.158, 12, 10, 0, TAU, 0, Math.PI * 0.55), beardMat, 0, 0.13, -0.01);
+            addM(head, new THREE.ConeGeometry(0.13, 0.26, 8), beardMat, 0, -0.04, 0.1).rotation.x = Math.PI;
+            addM(head, new THREE.TorusGeometry(0.154, 0.018, 6, 14), M.gold, 0, 0.18, 0).rotation.x = Math.PI / 2;
+            for (const s of [-1, 1]) addM(head, new THREE.SphereGeometry(0.016, 6, 6), M.darkSteel, s * 0.05, 0.12, 0.14, false);
+
+            // 左手厚實臂膀與鋼護手
+            armL = new THREE.Group(); armL.position.set(-0.38, 1.3, 0); body.add(armL);
+            addM(armL, new THREE.CapsuleGeometry(0.08, 0.34, 8, 10), M.skin, 0, -0.22, 0.04);
+            addM(armL, new THREE.CylinderGeometry(0.085, 0.075, 0.24, 10), M.darkSteel, 0, -0.48, 0.08);
+
+            // 右手緊握熾熱鍛造大戰鎚！
+            armR = new THREE.Group(); armR.position.set(0.38, 1.3, 0); body.add(armR);
+            addM(armR, new THREE.CapsuleGeometry(0.08, 0.34, 8, 10), M.skin, 0, -0.22, 0.04);
+            addM(armR, new THREE.CylinderGeometry(0.085, 0.075, 0.24, 10), M.darkSteel, 0, -0.48, 0.08);
+            const hammer = new THREE.Group(); hammer.position.set(0, -0.54, 0.16); hammer.rotation.x = Math.PI * 0.36; armR.add(hammer);
+            addM(hammer, new THREE.CylinderGeometry(0.028, 0.032, 0.92, 8), M.leather, 0, 0.28, 0);
+            addM(hammer, new THREE.BoxGeometry(0.24, 0.18, 0.34), M.darkSteel, 0, 0.72, 0);
+            addM(hammer, new THREE.BoxGeometry(0.25, 0.04, 0.36), new THREE.MeshBasicMaterial({ color: new THREE.Color(3.2, 1.1, 0.2), toneMapped: false }), 0, 0.72, 0, false);
+
+            // 身旁鍛造鐵砧＋通紅未冷卻神劍胚＋暖橘爐火光源
+            const anvil = new THREE.Group(); anvil.position.set(0.84, 0, 0.22); root.add(anvil);
+            addM(anvil, new THREE.CylinderGeometry(0.24, 0.3, 0.42, 10), M.leather, 0, 0.21, 0); // 樹樁底座
+            addM(anvil, new THREE.BoxGeometry(0.56, 0.22, 0.28), M.darkSteel, 0, 0.56, 0);       // 鐵砧主體
+            addM(anvil, new THREE.ConeGeometry(0.12, 0.28, 6), M.darkSteel, 0.38, 0.58, 0).rotation.z = -Math.PI / 2;
+            addM(anvil, new THREE.BoxGeometry(0.42, 0.035, 0.09), new THREE.MeshBasicMaterial({ color: new THREE.Color(3.6, 1.3, 0.2), toneMapped: false }), 0, 0.69, 0, false);
+            const forgeLight = new THREE.PointLight(0xf97316, 3.2, 6, 2);
+            forgeLight.position.set(0, 0.95, 0.1); anvil.add(forgeLight);
+        }
+
+        setShadows(body, true);
+        return { root, body, armR, armL, head, ring, role };
+    }
+
+    function animateNpc(rig, t) {
+        if (!rig) return;
+        const b = Math.sin(t * 2.1);
+        rig.body.position.y = b * 0.018;
+        if (rig.head) rig.head.rotation.y = Math.sin(t * 0.9 + (rig.role === 'equip' ? 1.5 : 0)) * 0.18;
+        if (rig.ring) rig.ring.rotation.z = t * 0.6;
+        if (rig.role === 'equip' && rig.armR) {
+            // 鐵匠偶爾輕輕舉鎚鍛打節奏
+            const strike = Math.max(0, Math.sin(t * 2.6));
+            rig.armR.rotation.x = -0.35 - Math.pow(strike, 4) * 0.72;
+        } else if (rig.armR) {
+            rig.armR.rotation.x = -0.25 + Math.sin(t * 1.8) * 0.08;
+        }
+    }
+
+    return { createKnightRig, animateKnight, createMonsterRig, animateMonster, createNpcRig, animateNpc };
 }
