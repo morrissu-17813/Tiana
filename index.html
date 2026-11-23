@@ -1035,7 +1035,7 @@
         const TILE_WIDTH = 64;
         const TILE_HEIGHT = 32;
         const ELEVATION_PX = 20;
-        const MAP_SIZE = 108;
+        const MAP_SIZE = 144;
         const mapGrid = [];
         const heightMap = [];
         const mapRamp = [];
@@ -1118,6 +1118,15 @@
                         h = (x >= 83 && x <= 95 && y >= 28 && y <= 52) ? 2 : 1;
                     } else if (x >= 44 && x <= 64 && y >= 78 && y <= 94) {
                         h = 1;
+                    } else if (x >= 106 && x <= 136 && y >= 12 && y <= 56) {
+                        // 東北極寒冰原高地
+                        h = (x >= 114 && x <= 130 && y >= 20 && y <= 46) ? 2 : 1;
+                    } else if (x >= 104 && x <= 138 && y >= 76 && y <= 134) {
+                        // 東南死亡沙漠起伏沙丘臺地
+                        h = (x >= 114 && x <= 132 && y >= 90 && y <= 122) ? 1 : 0;
+                    } else if (x >= 12 && x <= 56 && y >= 106 && y <= 136) {
+                        // 西南象牙雪原高地
+                        h = (x >= 20 && x <= 44 && y >= 114 && y <= 130) ? 2 : 1;
                     }
                     heightMap[y][x] = h;
                 }
@@ -1137,6 +1146,11 @@
                         heightMap[y][x] = x === 78 ? 0.5 : 1.5; mapRamp[y][x] = true;
                     }
                     if (y === 78 && x >= 52 && x <= 55) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
+                    // 極寒冰原與象牙雪原通往高地斜坡
+                    if (x === 106 && y >= 32 && y <= 35) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
+                    if (x === 114 && y >= 32 && y <= 35) { heightMap[y][x] = 1.5; mapRamp[y][x] = true; }
+                    if (y === 106 && x >= 30 && x <= 33) { heightMap[y][x] = 0.5; mapRamp[y][x] = true; }
+                    if (y === 114 && x >= 30 && x <= 33) { heightMap[y][x] = 1.5; mapRamp[y][x] = true; }
                 }
             }
 
@@ -1187,6 +1201,7 @@
                     const dLakeW = Math.hypot(x - 24, y - 80);
                     const dLakeE = Math.hypot(x - 82, y - 80);
                     const dAbyss = Math.hypot(x - 86, y - 84);
+                    const dOasis = Math.hypot(x - 120, y - 108);
                     if (heightMap[y][x] === 0 && (
                         dAbyss < 6.8 ||
                         (Math.hypot(x - 24, y - 80) < 3.6)
@@ -1195,7 +1210,7 @@
                         continue;
                     }
                     if (heightMap[y][x] === 0 && (
-                        dLakeW < 9.5 || dLakeE < 11.5 ||
+                        dLakeW < 9.5 || dLakeE < 11.5 || dOasis < 6.2 ||
                         ((x >= 31 && x <= 35) && y >= 10 && y <= 24) ||
                         ((x >= 72 && x <= 76) && y >= 10 && y <= 24)
                     )) {
@@ -1208,20 +1223,29 @@
                         continue;
                     }
 
+                    // 生態分區：死亡沙漠 (tile 9) 與 極寒冰原 (tile 10)
+                    const isDesertZone = (x >= 102 && y >= 62) || (x >= 68 && y >= 100);
+                    const isSnowZone = (x >= 102 && y < 62) || (x < 68 && y >= 102);
+
                     const r = mapRnd();
                     const distFromTownCenter = Math.hypot(x - 54, y - 54);
                     const isElvenForest = (x < 30 && y > 22 && y < 70);
-                    const treeChance = isElvenForest ? 0.11 : 0.065;
+                    // 大幅降低樹木密度 (~60%)，畫面更開闊、手機幀數更流暢！
+                    const treeChance = isDesertZone ? 0.0 : (isSnowZone ? 0.014 : (isElvenForest ? 0.042 : 0.022));
 
-                    if (r < treeChance && distFromTownCenter > 8.5) {
+                    if (r < treeChance && distFromTownCenter > 10.0) {
                         mapGrid[y][x] = 3;
                         const sizeRoll = mapRnd();
-                        if (sizeRoll < 0.22) mapTreeScale[y][x] = 0.80 + mapRnd() * 0.25;
-                        else if (sizeRoll < 0.62) mapTreeScale[y][x] = 1.25 + mapRnd() * 0.35;
-                        else mapTreeScale[y][x] = 1.75 + mapRnd() * 0.70;
-                    } else if (r < 0.32) {
+                        if (sizeRoll < 0.25) mapTreeScale[y][x] = 0.80 + mapRnd() * 0.25;
+                        else if (sizeRoll < 0.68) mapTreeScale[y][x] = 1.18 + mapRnd() * 0.30;
+                        else mapTreeScale[y][x] = 1.55 + mapRnd() * 0.55;
+                    } else if (isDesertZone) {
+                        mapGrid[y][x] = 9; // 死亡沙漠沙地
+                    } else if (isSnowZone) {
+                        mapGrid[y][x] = 10; // 極寒冰原雪地
+                    } else if (r < 0.26) {
                         mapGrid[y][x] = 4;
-                        if (mapRnd() < 0.14) {
+                        if (mapRnd() < 0.12) {
                             mapFoliage[y][x] = [{
                                 ox: (mapRnd() - 0.5) * 18,
                                 oy: (mapRnd() - 0.5) * 9,
@@ -1749,9 +1773,13 @@
             { id: 'lair_10', name: '暗黑前哨混編巢',   type: 'de_archer',    x: 54, y: 88, radius: 6.0, maxCount: 4, altType: 'dark_mage' },
             { id: 'lair_11', name: '龍之谷飛龍峭壁',   type: 'drake',        x: 90, y: 34, radius: 6.5, maxCount: 2 },
             { id: 'lair_12', name: '末日水龍深藍海淵', type: 'water_dragon',  x: 84, y: 82, radius: 5.5, maxCount: 1 },
-            { id: 'lair_13', name: '詛咒墓地骸骨群',   type: 'skeleton',      x: 34, y: 68, radius: 5.5, maxCount: 5 },
-            { id: 'lair_14', name: '古廢墟石魔像群',   type: 'golem',         x: 74, y: 34, radius: 5.5, maxCount: 3 },
-            { id: 'lair_15', name: '深淵巴風特祭壇',   type: 'baphomet_boss', x: 90, y: 66, radius: 5.0, maxCount: 1 }
+            { id: 'lair_13', name: '詛咒墓地骸骨群',   type: 'skeleton',      x: 34,  y: 68,  radius: 5.5, maxCount: 5 },
+            { id: 'lair_14', name: '古廢墟石魔像群',   type: 'golem',         x: 74,  y: 34,  radius: 5.5, maxCount: 3 },
+            { id: 'lair_15', name: '深淵巴風特祭壇',   type: 'baphomet_boss', x: 90,  y: 66,  radius: 5.0, maxCount: 1 },
+            { id: 'lair_16', name: '死亡沙漠骸骨軍團', type: 'skeleton',      x: 118, y: 92,  radius: 7.5, maxCount: 6 },
+            { id: 'lair_17', name: '沙漠深淵巴風特',   type: 'baphomet_boss', x: 124, y: 122, radius: 6.0, maxCount: 1 },
+            { id: 'lair_18', name: '極寒冰原石魔像群', type: 'golem',         x: 122, y: 34,  radius: 7.0, maxCount: 4 },
+            { id: 'lair_19', name: '象牙雪原冰霜巨龍', type: 'drake',         x: 34,  y: 122, radius: 7.0, maxCount: 2 }
         ];
 
         // 定時世界王降臨系統 (每 180 秒全服廣播一隻世界王甦醒！)
@@ -4983,10 +5011,12 @@
             const regionEl = document.getElementById('uiRegionName');
             if (regionEl) {
                 let regionTitle = '說話之島';
-                if (player.y <= 19 && player.x >= 20 && player.x <= 51) regionTitle = '奇岩王城';
-                else if (player.x <= 18) regionTitle = '妖精古森';
-                else if (player.x >= 53) regionTitle = '龍之谷高台';
-                else if (player.y >= 50) regionTitle = '南方古戰場';
+                if ((player.x >= 102 && player.y >= 62) || (player.x >= 68 && player.y >= 100)) regionTitle = '死亡沙漠';
+                else if ((player.x >= 102 && player.y < 62) || (player.x < 68 && player.y >= 102)) regionTitle = '極寒冰原';
+                else if (player.y <= 22 && player.x >= 37 && player.x <= 71) regionTitle = '奇岩王城';
+                else if (player.x <= 26) regionTitle = '妖精古森';
+                else if (player.x >= 76) regionTitle = '龍之谷高台';
+                else if (player.y >= 68) regionTitle = '南方古戰場';
                 regionEl.textContent = `${regionTitle}(${playerElev}階)`;
             }
 
@@ -5284,9 +5314,11 @@
         import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
-        import { createModelFactory } from './js/models3d.js';
-        import { buildAllBuildings } from './js/buildings3d.js';
-        import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js';
+        import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
+        import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+        import { createModelFactory } from './js/models3d.js?v=20261123b';
+        import { buildAllBuildings } from './js/buildings3d.js?v=20261123b';
+        import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js?v=20261123b';
 
         const EH = 0.75;               // 每一階高度 = 0.75 世界單位
         const TAU = Math.PI * 2;
@@ -5575,11 +5607,37 @@
             return toTex(heightToNormal(hc, 3.5), false);
         }
 
+        function loadPbrSet(prefix, fallbackSet) {
+            const loader = new THREE.TextureLoader();
+            const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+            const prep = (t, srgb) => {
+                t.wrapS = t.wrapT = THREE.RepeatWrapping;
+                if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+                t.anisotropy = aniso;
+                return t;
+            };
+            const map = prep(loader.load(`./assets/textures/${prefix}_diff.jpg`, undefined, undefined, () => {
+                if (fallbackSet && fallbackSet.map) map.image = fallbackSet.map.image;
+            }), true);
+            const normalMap = prep(loader.load(`./assets/textures/${prefix}_nor.jpg`, undefined, undefined, () => {
+                if (fallbackSet && fallbackSet.normalMap) normalMap.image = fallbackSet.normalMap.image;
+            }), false);
+            const roughnessMap = prep(loader.load(`./assets/textures/${prefix}_rough.jpg`), false);
+            return { map, normalMap, roughnessMap };
+        }
+
         function buildTextures() {
-            TEX.cobble = genStones({ rows: 8, cols: 8, gap: '#24211c', seed: 11, moss: 0.12, color: (r) => `hsl(${28 + r() * 16},${6 + r() * 8}%,${34 + r() * 16}%)` });
+            const fbCobble = genStones({ rows: 8, cols: 8, gap: '#24211c', seed: 11, moss: 0.12, color: (r) => `hsl(${28 + r() * 16},${6 + r() * 8}%,${34 + r() * 16}%)` });
+            const fbRock = genStones({ rows: 6, cols: 4, gap: '#151310', seed: 41, brick: true, moss: 0.25, color: (r) => `hsl(${30 + r() * 15},${7 + r() * 7}%,${26 + r() * 14}%)` });
+            const fbGrass = genGrass();
+
+            // 真實 Poly Haven CC0 1K 寫實 PBR 貼圖 (石板、城牆岩壁、草地、死亡沙漠、極寒冰雪)
+            TEX.cobble = loadPbrSet('cobble', fbCobble);
+            TEX.rock = loadPbrSet('rock', fbRock);
+            TEX.grass = loadPbrSet('grass', fbGrass);
+            TEX.sand = loadPbrSet('sand', fbGrass);
+            TEX.snow = loadPbrSet('snow', fbGrass);
             TEX.road = genStones({ rows: 4, cols: 3, gap: '#2a221a', seed: 21, brick: true, color: (r) => `hsl(${24 + r() * 12},${14 + r() * 10}%,${38 + r() * 14}%)` });
-            TEX.rock = genStones({ rows: 6, cols: 4, gap: '#151310', seed: 41, brick: true, moss: 0.25, color: (r) => `hsl(${30 + r() * 15},${7 + r() * 7}%,${26 + r() * 14}%)` });
-            TEX.grass = genGrass();
             TEX.roof = genRoof();
             TEX.plaster = genPlaster();
             TEX.scales = genScales();
@@ -5609,10 +5667,16 @@
             const t = mapGrid[y][x];
             if (t === 2) h -= 0.16;
             else if (t === 8) h -= 0.72;
-            // 野外草地與樹林加上連續柔和地形起伏，告別死板方格地磚
+            // 野外草地、沙漠沙丘與冰原雪地加上連續柔和地形起伏，告別死板方格地磚
             if (t === 0 || t === 3 || t === 4) {
                 const vx = x + cx, vy = y + cy;
                 h += (vnoise(vx * 0.22, vy * 0.22) - 0.5) * 0.34;
+            } else if (t === 9) {
+                const vx = x + cx, vy = y + cy;
+                h += (vnoise(vx * 0.14, vy * 0.14) - 0.5) * 0.62;
+            } else if (t === 10) {
+                const vx = x + cx, vy = y + cy;
+                h += (vnoise(vx * 0.18, vy * 0.18) - 0.5) * 0.42;
             }
             return h;
         }
@@ -5636,12 +5700,12 @@
         }
 
         function buildTerrain() {
-            const tops = { grass: new GeoBuilder(), cobble: new GeoBuilder(), road: new GeoBuilder(), bed: new GeoBuilder() };
+            const tops = { grass: new GeoBuilder(), cobble: new GeoBuilder(), road: new GeoBuilder(), bed: new GeoBuilder(), sand: new GeoBuilder(), snow: new GeoBuilder() };
             const cliff = new GeoBuilder();
             const water = new GeoBuilder();
             const deepWater = new GeoBuilder();
             const steps = [];
-            const UVS = { grass: 0.25, cobble: 0.5, road: 0.5, bed: 0.5 };
+            const UVS = { grass: 0.18, cobble: 0.32, road: 0.5, bed: 0.4, sand: 0.16, snow: 0.18 };
 
             for (let y = 0; y < MAP_SIZE; y++) for (let x = 0; x < MAP_SIZE; x++) {
                 const t = mapGrid[y][x];
@@ -5663,10 +5727,12 @@
                         steps.push(g);
                     }
                 } else {
-                    const key = (t === 2 || t === 8) ? 'bed' : (t === 1 || t === 6) ? 'cobble' : t === 5 ? 'road' : 'grass';
+                    const key = (t === 2 || t === 8) ? 'bed' : (t === 1 || t === 6) ? 'cobble' : t === 5 ? 'road' : t === 9 ? 'sand' : t === 10 ? 'snow' : 'grass';
                     const s = UVS[key];
                     let c = 1;
-                    if (key === 'grass') c = 0.75 + vnoise(x * 0.16, y * 0.16) * 0.38 - (t === 3 ? 0.1 : 0);
+                    if (key === 'grass') c = 0.78 + vnoise(x * 0.16, y * 0.16) * 0.34 - (t === 3 ? 0.08 : 0);
+                    else if (key === 'sand') c = 0.88 + vnoise(x * 0.15, y * 0.15) * 0.22;
+                    else if (key === 'snow') c = 0.90 + vnoise(x * 0.18, y * 0.18) * 0.14;
                     else c = 0.9 + vnoise(x * 0.35, y * 0.35) * 0.14;
                     tops[key].quad([x, h00, y], [x, h01, y + 1], [x + 1, h11, y + 1], [x + 1, h10, y],
                         [x * s, y * s], [x * s, (y + 1) * s], [(x + 1) * s, (y + 1) * s], [(x + 1) * s, y * s], c, c, c, c);
@@ -5700,11 +5766,13 @@
             const cobbleRough = genCobbleRoughnessTex(256);
             const group = new THREE.Group();
             const mk = (geo, mat, cast = false) => { const m = new THREE.Mesh(geo, mat); m.receiveShadow = true; m.castShadow = cast; group.add(m); pickables.push(m); return m; };
-            mk(tops.grass.build(), new THREE.MeshStandardMaterial({ map: TEX.grass.map, normalMap: TEX.grass.normalMap, normalScale: new THREE.Vector2(1.4, 1.4), vertexColors: true, roughness: 0.94 }));
-            mk(tops.cobble.build(), new THREE.MeshStandardMaterial({ map: TEX.cobble.map, normalMap: TEX.cobble.normalMap, normalScale: new THREE.Vector2(1.75, 1.75), roughnessMap: cobbleRough, roughness: 0.9, metalness: 0.08, vertexColors: true }));
+            mk(tops.grass.build(), new THREE.MeshStandardMaterial({ map: TEX.grass.map, normalMap: TEX.grass.normalMap, normalScale: new THREE.Vector2(1.35, 1.35), roughnessMap: TEX.grass.roughnessMap, vertexColors: true, roughness: 0.94 }));
+            mk(tops.cobble.build(), new THREE.MeshStandardMaterial({ map: TEX.cobble.map, normalMap: TEX.cobble.normalMap, normalScale: new THREE.Vector2(1.65, 1.65), roughnessMap: TEX.cobble.roughnessMap || cobbleRough, roughness: 0.88, metalness: 0.08, vertexColors: true }));
             mk(tops.road.build(), new THREE.MeshStandardMaterial({ map: TEX.road.map, normalMap: TEX.road.normalMap, normalScale: new THREE.Vector2(1.5, 1.5), roughnessMap: cobbleRough, roughness: 0.85, metalness: 0.08, vertexColors: true }));
+            mk(tops.sand.build(), new THREE.MeshStandardMaterial({ color: 0xebd3a4, map: TEX.sand.map, normalMap: TEX.sand.normalMap, normalScale: new THREE.Vector2(1.4, 1.4), roughnessMap: TEX.sand.roughnessMap, vertexColors: true, roughness: 0.96, metalness: 0.02 }));
+            mk(tops.snow.build(), new THREE.MeshStandardMaterial({ color: 0xe6f2ff, map: TEX.snow.map, normalMap: TEX.snow.normalMap, normalScale: new THREE.Vector2(1.15, 1.15), roughnessMap: TEX.snow.roughnessMap, vertexColors: true, roughness: 0.62, metalness: 0.08 }));
             mk(tops.bed.build(), new THREE.MeshStandardMaterial({ color: 0x3a3226, map: TEX.cobble.map, vertexColors: true, roughness: 1 }));
-            mk(cliff.build(), new THREE.MeshStandardMaterial({ map: TEX.rock.map, normalMap: TEX.rock.normalMap, normalScale: new THREE.Vector2(1.9, 1.9), roughnessMap: cobbleRough, vertexColors: true, roughness: 0.92, side: THREE.DoubleSide }), true);
+            mk(cliff.build(), new THREE.MeshStandardMaterial({ map: TEX.rock.map, normalMap: TEX.rock.normalMap, normalScale: new THREE.Vector2(1.85, 1.85), roughnessMap: TEX.rock.roughnessMap || cobbleRough, vertexColors: true, roughness: 0.92, side: THREE.DoubleSide }), true);
             if (steps.length) {
                 const sm = mk(mergeGeometries(steps), new THREE.MeshStandardMaterial({ map: TEX.road.map, normalMap: TEX.road.normalMap, color: 0xb8b0a4, roughness: 0.85 }), true);
                 sm.material.map = TEX.road.map;
@@ -5719,6 +5787,7 @@
             deepMesh.receiveShadow = true;
             group.add(deepMesh);
             R3D._water = waterMat;
+            R3D._deepWater = deepWaterMat;
 
             // 地圖外圍延伸地面
             const outer = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x1d2a17, roughness: 1 }));
@@ -5782,11 +5851,11 @@
                 if (mapGrid[y][x] !== 3) continue;
                 spots[(x * 7 + y * 3) % 2].push([x + 0.5 + (rnd() - 0.5) * 0.4, y + 0.5 + (rnd() - 0.5) * 0.4, mapTreeScale[y][x], heightMap[y][x] * EH]);
             }
-            // 地圖外圍裝飾林
-            for (let i = 0; i < 260; i++) {
+            // 地圖外圍裝飾林 (精簡數量以保持流暢幀數)
+            for (let i = 0; i < 90; i++) {
                 const side = Math.floor(rnd() * 4), d = 1 + rnd() * 9, a = rnd() * MAP_SIZE;
                 const px = side === 0 ? -d : side === 1 ? MAP_SIZE + d : a, pz = side === 2 ? -d : side === 3 ? MAP_SIZE + d : a;
-                spots[i % 2].push([px, pz, 1.6 + rnd() * 0.8, 0]);
+                spots[i % 2].push([px, pz, 1.5 + rnd() * 0.7, 0]);
             }
             const dummy = new THREE.Object3D();
             const col = new THREE.Color();
@@ -5799,12 +5868,36 @@
                     dummy.position.set(x, h, z); dummy.rotation.set(0, rnd() * TAU, 0); dummy.scale.set(s, s * (0.9 + rnd() * 0.25), s);
                     dummy.updateMatrix();
                     lm.setMatrixAt(i, dummy.matrix); tm.setMatrixAt(i, dummy.matrix);
-                    col.setHSL(0.27 + rnd() * 0.07, 0.35 + rnd() * 0.2, 0.22 + rnd() * 0.1);
+                    const inSnow = (x >= 100 && z < 64) || (x < 70 && z >= 100);
+                    if (inSnow) col.setHSL(0.56 + rnd() * 0.04, 0.28, 0.72 + rnd() * 0.14);
+                    else col.setHSL(0.27 + rnd() * 0.07, 0.35 + rnd() * 0.2, 0.22 + rnd() * 0.1);
                     lm.setColorAt(i, col);
                 });
                 lm.castShadow = false; tm.castShadow = true; lm.receiveShadow = true;
                 scene.add(lm, tm);
             });
+
+            // 冰原冰晶柱 (單一 Draw Call InstancedMesh)
+            const iceSpots = [];
+            for (let y = 4; y < MAP_SIZE - 4; y += 3) for (let x = 4; x < MAP_SIZE - 4; x += 3) {
+                if (mapGrid[y][x] === 10 && rnd() < 0.075) iceSpots.push([x + rnd(), y + rnd(), heightMap[y][x] * EH]);
+            }
+            if (iceSpots.length) {
+                const iceGeo = new THREE.ConeGeometry(0.42, 1.85, 5);
+                iceGeo.translate(0, 0.92, 0);
+                const iceMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, emissive: 0x0c4a6e, emissiveIntensity: 0.45, roughness: 0.16, metalness: 0.25, flatShading: true });
+                const im = new THREE.InstancedMesh(iceGeo, iceMat, iceSpots.length);
+                iceSpots.forEach(([x, z, h], i) => {
+                    const sc = 0.65 + rnd() * 1.1;
+                    dummy.position.set(x, h - 0.05, z);
+                    dummy.rotation.set((rnd() - 0.5) * 0.3, rnd() * TAU, (rnd() - 0.5) * 0.3);
+                    dummy.scale.set(sc * 0.85, sc, sc * 0.85);
+                    dummy.updateMatrix();
+                    im.setMatrixAt(i, dummy.matrix);
+                });
+                im.castShadow = false; im.receiveShadow = true;
+                scene.add(im);
+            }
 
             // 岩石
             const rockGeo = new THREE.IcosahedronGeometry(0.5, 1);
@@ -5966,14 +6059,11 @@
         // 使用者只要把 AI 生成的 .glb 放進 assets/models/ 並在這裡開啟對應路徑，就會自動替換成外部 3D 模型！
         // 找不到檔案時會自動無縫退回內建高精細程序化 3D 模型，完全不會報錯。
         const EXTERNAL_GLB_CONFIG = {
-            enabled: false, // 放入 .glb 檔案後改成 true 即可啟用
+            enabled: true, // 已內建首批免費 CC0 .glb 寫實模型 (可持續擴充 assets/models/)
             models: {
-                player:   { url: 'assets/models/paladin.glb',      scale: 1.0, yOffset: 0 },
-                werewolf: { url: 'assets/models/werewolf.glb',     scale: 1.1, yOffset: 0 },
-                drake:    { url: 'assets/models/black_dragon.glb', scale: 2.2, yOffset: 0.4 },
-                shelob:   { url: 'assets/models/shelob.glb',       scale: 1.0, yOffset: 0 },
-                croc:     { url: 'assets/models/croc.glb',         scale: 1.0, yOffset: 0 },
-                slime:    { url: 'assets/models/slime.glb',        scale: 0.8, yOffset: 0 }
+                // player 保留內建可換裝＋雙職業＋變身系統；怪物與建築自動掛載 CC0 .glb
+                werewolf: { url: './assets/models/werewolf.glb', targetHeight: 1.45, yOffset: 0 },
+                shelob:   { url: './assets/models/shelob.glb',   targetHeight: 1.05, yOffset: 0 }
             }
         };
         window.EXTERNAL_GLB_CONFIG = EXTERNAL_GLB_CONFIG;
@@ -5990,15 +6080,22 @@
             const cfg = EXTERNAL_GLB_CONFIG.models[key];
             if (!cfg || !cfg.url) return;
             const applyModel = (gltf) => {
-                const model = gltf.scene.clone(true);
-                model.scale.setScalar(cfg.scale || 1.0);
-                model.position.y = cfg.yOffset || 0;
+                const model = SkeletonUtils.clone(gltf.scene);
+                // 自動量測包圍盒，將外部 .glb 精準歸一化至指定高度並貼地
+                const box = new THREE.Box3().setFromObject(model);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const sc = cfg.targetHeight && size.y > 0.001 ? (cfg.targetHeight / size.y) : (cfg.scale || 1.0);
+                model.scale.setScalar(sc);
+                const box2 = new THREE.Box3().setFromObject(model);
+                model.position.y = (cfg.yOffset || 0) - box2.min.y;
                 setShadows(model, true);
                 if (rig.body) rig.body.visible = false;
                 rig.root.add(model);
                 if (gltf.animations && gltf.animations.length > 0) {
                     const mixer = new THREE.AnimationMixer(model);
-                    mixer.clipAction(gltf.animations[0]).play();
+                    const walkClip = gltf.animations.find(c => /walk|run|idle/i.test(c.name)) || gltf.animations[0];
+                    mixer.clipAction(walkClip).play();
                     activeMixers.push(mixer);
                     rig._mixer = mixer;
                 }
@@ -6560,6 +6657,8 @@
                 else if (t === 6) g.fillStyle = '#94a3b8';
                 else if (t === 1) g.fillStyle = '#646058';
                 else if (t === 5) g.fillStyle = '#7f2d24';
+                else if (t === 9) g.fillStyle = h >= 1 ? '#d4b06a' : '#b8914f';
+                else if (t === 10) g.fillStyle = h >= 2 ? '#e2eef8' : '#b8cfe0';
                 else if (t === 3) g.fillStyle = '#1b3a1e';
                 else g.fillStyle = h >= 2 ? '#4d5c3b' : (h === 1 ? '#3b4e2f' : '#2b3e24');
                 g.fillRect(x, y, 1, 1);
@@ -6661,6 +6760,18 @@
                 ENV = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
                 scene.environment = ENV;
                 scene.environmentIntensity = 1.25;
+                // 非同步載入真實 Poly Haven CC0 黃昏 HDRI 環境光 (載入後無縫升級全場金屬與水面電影反射)
+                new RGBELoader().load('./assets/env/dusk_1k.hdr', (hdrTex) => {
+                    const hdrPmrem = new THREE.PMREMGenerator(renderer);
+                    hdrPmrem.compileEquirectangularShader();
+                    const envRT = hdrPmrem.fromEquirectangular(hdrTex);
+                    ENV = envRT.texture;
+                    scene.environment = ENV;
+                    if (R3D._water) R3D._water.envMap = ENV;
+                    if (R3D._deepWater) R3D._deepWater.envMap = ENV;
+                    hdrTex.dispose();
+                    hdrPmrem.dispose();
+                }, undefined, () => {});
                 pmrem.dispose();
 
                 cam = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.2, 160);

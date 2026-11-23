@@ -1490,10 +1490,14 @@ export function createModelFactory(sharedTEX) {
             addM(body, new THREE.TorusGeometry(0.14 - r * 0.012, 0.018, 6, 12), M.bone, 0, 1.2 - r * 0.075, 0.01).rotation.x = Math.PI / 2;
         }
         addM(body, new THREE.BoxGeometry(0.24, 0.1, 0.14), M.bone, 0, 0.76, 0);
-        // 骸骨頭顱 + 幽綠眼窩
+        // 骸骨頭顱 + 幽綠眼窩 + 殘破黑鐵頭盔緣與肩甲
         addM(body, new THREE.SphereGeometry(0.135, 12, 10), M.bone, 0, 1.46, 0.02);
         addM(body, new THREE.BoxGeometry(0.11, 0.07, 0.1), M.bone, 0, 1.36, 0.05);
-        for (const s of [-1, 1]) addM(body, new THREE.SphereGeometry(0.024, 6, 6), M.greenGlow, s * 0.048, 1.47, 0.135, false);
+        addM(body, new THREE.CylinderGeometry(0.145, 0.145, 0.06, 10, 1, true), M.darkSteel, 0, 1.53, 0.02);
+        for (const s of [-1, 1]) {
+            addM(body, new THREE.SphereGeometry(0.024, 6, 6), M.greenGlow, s * 0.048, 1.47, 0.135, false);
+            addM(body, new THREE.SphereGeometry(0.1, 8, 6), M.darkSteel, s * 0.22, 1.29, 0).scale.set(1.15, 0.65, 1.0);
+        }
 
         const legL = new THREE.Group(); legL.position.set(-0.09, 0.72, 0); body.add(legL);
         addM(legL, new THREE.CylinderGeometry(0.032, 0.028, 0.68, 7), M.bone, 0, -0.34, 0);
@@ -1553,6 +1557,17 @@ export function createModelFactory(sharedTEX) {
         addM(body, new THREE.CylinderGeometry(0.42, 0.28, 0.85, 12), demonSkin, 0, 1.32, 0);
         addM(body, new THREE.OctahedronGeometry(0.18, 0), M.purpleGlow, 0, 1.42, 0.32, false);
         addM(body, new THREE.PlaneGeometry(0.95, 1.45), new THREE.MeshStandardMaterial({ color: 0x2b0936, side: THREE.DoubleSide, roughness: 0.85 }), 0, 1.05, -0.34).rotation.x = 0.22;
+        // 巨大惡魔雙翼 (深淵領主剪影)
+        const wingMat = new THREE.MeshStandardMaterial({ color: 0x240b1e, roughness: 0.82, side: THREE.DoubleSide });
+        for (const s of [-1, 1]) {
+            const wGrp = new THREE.Group();
+            wGrp.position.set(s * 0.24, 1.56, -0.26);
+            wGrp.rotation.y = -s * 0.42;
+            wGrp.rotation.z = s * 0.25;
+            addM(wGrp, new THREE.PlaneGeometry(1.05, 0.88), wingMat, s * 0.52, 0.12, -0.08);
+            addM(wGrp, new THREE.CylinderGeometry(0.032, 0.022, 1.12, 6), M.dragonHorn, s * 0.48, 0.46, -0.05).rotation.z = s * 1.25;
+            body.add(wGrp);
+        }
 
         // 巨大惡魔羊頭與雙盤旋角
         const head = new THREE.Group(); head.position.set(0, 1.92, 0.08); body.add(head);
@@ -1603,7 +1618,7 @@ export function createModelFactory(sharedTEX) {
         ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; ring.visible = false;
         rig.root.add(ring);
         // 怪物腳底輕量接觸假陰影 (手機關閉即時陰影仍極具立體感)
-        const mShadowSize = (m.type === 'drake' || m.type === 'water_dragon') ? 2.6 : 1.35;
+        const mShadowSize = (m.type === 'drake' || m.type === 'water_dragon') ? 2.6 : (m.type === 'baphomet_boss' ? 2.3 : (m.type === 'golem' ? 1.85 : 1.35));
         const mShadow = new THREE.Mesh(
             new THREE.PlaneGeometry(mShadowSize, mShadowSize),
             new THREE.MeshBasicMaterial({ map: sharedTEX.blob, color: 0x000000, transparent: true, opacity: m.type === 'drake' ? 0.32 : 0.48, depthWrite: false })
@@ -1612,7 +1627,7 @@ export function createModelFactory(sharedTEX) {
         rig.root.add(mShadow);
         rig.ring = ring; rig.ringMat = ringMat;
         rig.type = m.type;
-        const bossScale = (m.type === 'drake' || m.type === 'water_dragon') ? 1.52 : 0.96;
+        const bossScale = (m.type === 'drake' || m.type === 'water_dragon') ? 1.52 : (m.type === 'baphomet_boss' ? 1.45 : (m.type === 'golem' ? 1.28 : (m.type === 'skeleton' ? 1.04 : 0.96)));
         rig.root.scale.setScalar(m.scale * bossScale);
         rig.root.userData.monsterId = m.id;
         return rig;
