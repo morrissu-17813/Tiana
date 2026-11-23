@@ -412,14 +412,21 @@ export function createModelFactory(sharedTEX) {
         torso.add(chestAura);
         const armorAuraMeshes = [chestAura];
 
-        // 胸前金飾浮雕與皇家紋章
+        // 胸前金飾浮雕與皇家紋章 + 精雕腰帶與雙側戰裙甲片 (Tassets)
         addM(torso, new THREE.TorusGeometry(0.21, 0.022, 8, 16), M.gold, 0, 0.56, 0).rotation.x = Math.PI / 2;
         const crest = addM(torso, new THREE.OctahedronGeometry(0.095, 1), M.gold, 0, 0.36, 0.22);
         crest.scale.set(0.9, 1.25, 0.4);
-        // 胸甲斜向金邊
+        // 精雕腰帶與中央獅紋扣
+        addM(torso, new THREE.CylinderGeometry(0.215, 0.225, 0.075, 14), M.leather, 0, 0.02, 0);
+        addM(torso, new THREE.BoxGeometry(0.09, 0.08, 0.045), M.gold, 0, 0.02, 0.215);
         for (const s of [-1, 1]) {
             const trim = addM(torso, new THREE.BoxGeometry(0.032, 0.38, 0.04), M.gold, s * 0.14, 0.32, 0.21);
             trim.rotation.z = -s * 0.22;
+            // 兩側分層護腿戰裙甲片
+            const tasset = addM(torso, new THREE.BoxGeometry(0.14, 0.28, 0.18), armorMat, s * 0.21, -0.14, 0.03);
+            tasset.rotation.z = -s * 0.18;
+            const tRim = addM(torso, new THREE.BoxGeometry(0.145, 0.025, 0.19), M.gold, s * 0.225, -0.27, 0.03);
+            tRim.rotation.z = -s * 0.18;
         }
 
         // 多層獅紋重型肩甲 (Ornate Layered Pauldrons) + 貼合肩甲發光外殼
@@ -560,17 +567,17 @@ export function createModelFactory(sharedTEX) {
         wKat.visible = false;
         swordGroup.add(wKat);
 
-        // (D) 刺客短刀 / 匕首 (dagger) — 精悍微彎短刃
+        // (D) 刺客雙刀 / 幽暗雙刃 (dagger) — 修長流線雙彎刃 + 新月護手
         const wDag = new THREE.Group();
-        addM(wDag, new THREE.CylinderGeometry(0.02, 0.022, 0.2, 8), M.leather, 0, -0.08, 0);
-        addM(wDag, new THREE.BoxGeometry(0.14, 0.03, 0.04), M.gold, 0, 0.03, 0);
+        addM(wDag, new THREE.CylinderGeometry(0.02, 0.024, 0.24, 8), M.leather, 0, -0.1, 0);
+        addM(wDag, new THREE.TorusGeometry(0.085, 0.016, 6, 12, Math.PI), M.gold, 0, 0.04, 0).rotation.z = Math.PI;
         const dShape = new THREE.Shape();
-        dShape.moveTo(-0.038, 0); dShape.lineTo(0.038, 0);
-        dShape.quadraticCurveTo(0.06, 0.28, 0.015, 0.62);
-        dShape.quadraticCurveTo(-0.045, 0.3, -0.038, 0); dShape.closePath();
-        const dGeo = new THREE.ExtrudeGeometry(dShape, { depth: 0.012, bevelEnabled: true, bevelThickness: 0.008, bevelSize: 0.006 });
-        dGeo.translate(0, 0.04, -0.006); normBladeUV(dGeo, 0.06, 0.66);
-        addBladeWithAura(wDag, dGeo, 1.25, 1.04, 2.2);
+        dShape.moveTo(-0.036, 0); dShape.lineTo(0.038, 0);
+        dShape.quadraticCurveTo(0.082, 0.36, 0.04, 0.78);
+        dShape.quadraticCurveTo(-0.035, 0.42, -0.036, 0); dShape.closePath();
+        const dGeo = new THREE.ExtrudeGeometry(dShape, { depth: 0.014, bevelEnabled: true, bevelThickness: 0.009, bevelSize: 0.007 });
+        dGeo.translate(0, 0.04, -0.007); normBladeUV(dGeo, 0.08, 0.82);
+        addBladeWithAura(wDag, dGeo, 1.28, 1.04, 2.3);
         wDag.visible = false;
         swordGroup.add(wDag);
 
@@ -685,11 +692,11 @@ export function createModelFactory(sharedTEX) {
         foreL.add(shield);
         addM(shield, new THREE.OctahedronGeometry(0.085, 0), M.gold, 0, 0.05, 0.065);
 
-        // 左手副手短刀 (裝備短刀時顯示雙刀流，隱藏盾牌)
+        // 左手副手反手雙刀 (裝備雙刀時採網遊刺客反手握刀帥氣戰鬥姿勢，隱藏盾牌)
         const offDagger = wDag.clone();
         offDagger.visible = false;
-        offDagger.position.set(0, -0.28, 0.06);
-        offDagger.rotation.x = Math.PI * 0.45;
+        offDagger.position.set(-0.02, -0.28, 0.06);
+        offDagger.rotation.set(-Math.PI * 0.56, 0.18, 0.28); // 經典反手握刀角度
         foreL.add(offDagger);
 
         // 輕量化腳底接觸假陰影 (手機 60FPS 模式關閉即時陰影時依然立體接地不懸浮！)
@@ -701,12 +708,12 @@ export function createModelFactory(sharedTEX) {
         blobShadow.position.y = 0.03;
         root.add(blobShadow);
 
-        // 腳底加速光環與升級光柱
-        const hasteRing = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: sharedTEX.ringDash, color: 0x34d399, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+        // 腳底加速光環 (半透明低調質感，不遮蔽角色腳步) 與升級光柱
+        const hasteRing = new THREE.Mesh(new THREE.PlaneGeometry(1.42, 1.42), new THREE.MeshBasicMaterial({ map: sharedTEX.ringDash, color: 0x34d399, transparent: true, opacity: 0.24, blending: THREE.AdditiveBlending, depthWrite: false }));
         hasteRing.rotation.x = -Math.PI / 2; hasteRing.position.y = 0.04; hasteRing.visible = false;
         root.add(hasteRing);
 
-        const braveRing = new THREE.Mesh(new THREE.PlaneGeometry(1.85, 1.85), new THREE.MeshBasicMaterial({ map: sharedTEX.ringDash, color: 0xf43f5e, transparent: true, opacity: 0.88, blending: THREE.AdditiveBlending, depthWrite: false }));
+        const braveRing = new THREE.Mesh(new THREE.PlaneGeometry(1.72, 1.72), new THREE.MeshBasicMaterial({ map: sharedTEX.ringDash, color: 0xf43f5e, transparent: true, opacity: 0.26, blending: THREE.AdditiveBlending, depthWrite: false }));
         braveRing.rotation.x = -Math.PI / 2; braveRing.position.y = 0.05; braveRing.visible = false;
         root.add(braveRing);
 
@@ -930,27 +937,61 @@ export function createModelFactory(sharedTEX) {
             }
         }
 
-        // 英雄戰姿 + 雙段連擊揮刀與雙層月牙劍氣
+        // 英雄戰姿 + 雙刀流網遊帥氣低重心交叉連斬 vs 騎士大開大闔揮劍
+        const isDualBlade = (wClass === 'dagger');
         if (state.swingAnimTimer > 0) {
             const p = 1 - clamp(state.swingAnimTimer / 0.26, 0, 1);
             const comboDir = (state.swingCombo % 2 === 0) ? 1 : -1;
-            rig.torso.rotation.y = lerp(-0.58 * comboDir, 0.68 * comboDir, smooth(p));
-            rig.armR.rotation.x = lerp(-2.3, 0.88, smooth(p));
-            rig.armR.rotation.z = lerp(-0.58 * comboDir, 0.75 * comboDir, smooth(p));
-            rig.foreR.rotation.x = lerp(-0.2, -0.72, smooth(p));
-            rig.armL.rotation.x = -0.4;
+            if (isDualBlade) {
+                // 雙刀流：低重心前傾 + 左右手 X 型交叉反手連斬！
+                rig.body.position.y = bob - 0.09;
+                rig.torso.rotation.x = 0.26;
+                rig.torso.rotation.y = lerp(-0.72 * comboDir, 0.78 * comboDir, smooth(p));
+                rig.armR.rotation.x = lerp(-2.15, 0.85, smooth(p));
+                rig.armR.rotation.z = lerp(-0.68 * comboDir, 0.72 * comboDir, smooth(p));
+                rig.foreR.rotation.x = lerp(-0.18, -0.68, smooth(p));
+                // 左手反手刀反向橫劈呼應
+                rig.armL.rotation.x = lerp(0.55, -1.95, smooth(p));
+                rig.armL.rotation.z = lerp(0.65 * comboDir, -0.58 * comboDir, smooth(p));
+                rig.foreL.rotation.x = lerp(-0.85, -0.25, smooth(p));
+            } else {
+                rig.torso.rotation.x = lerp(0.06, 0.16, Math.sin(p * Math.PI));
+                rig.torso.rotation.y = lerp(-0.58 * comboDir, 0.68 * comboDir, smooth(p));
+                rig.armR.rotation.x = lerp(-2.3, 0.88, smooth(p));
+                rig.armR.rotation.z = lerp(-0.58 * comboDir, 0.75 * comboDir, smooth(p));
+                rig.foreR.rotation.x = lerp(-0.2, -0.72, smooth(p));
+                rig.armL.rotation.x = -0.4;
+                rig.armL.rotation.z = 0.18;
+                rig.foreL.rotation.x = -0.75;
+            }
             const env = Math.sin(p * Math.PI);
-            rig.slashMat.opacity = env * 0.92;
-            rig.slashInnerMat.opacity = env * 0.95;
-            rig.slashGroup.rotation.y = lerp(-1.1 * comboDir, 1.15 * comboDir, p);
-            rig.slashGroup.rotation.z = comboDir * 0.22;
+            rig.slashMat.opacity = env * 0.88;
+            rig.slashInnerMat.opacity = env * 0.92;
+            rig.slashGroup.rotation.y = lerp(-1.15 * comboDir, 1.2 * comboDir, p);
+            rig.slashGroup.rotation.z = comboDir * (isDualBlade ? 0.36 : 0.22);
             rig.slashGroup.scale.setScalar(0.9 + p * 0.34);
+        } else if (isDualBlade) {
+            // 網遊刺客雙刀待機／奔跑戰鬥姿勢：壓低重心、微側身、右刀斜下前指、左反手刀護於側翼
+            rig.body.position.y = bob - (state.isMoving ? 0.08 : 0.06);
+            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.28 : 0.18, clamp(dt * 10, 0, 1));
+            rig.torso.rotation.y = lerp(rig.torso.rotation.y, -0.34 + Math.sin(t * 2.2) * 0.04, clamp(dt * 10, 0, 1));
+            rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.52 - stride * 0.32, clamp(dt * 12, 0, 1));
+            rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.44, clamp(dt * 12, 0, 1));
+            rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.58, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.82 + stride * 0.26, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.z = lerp(rig.armL.rotation.z, 0.52, clamp(dt * 12, 0, 1));
+            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.82, clamp(dt * 12, 0, 1));
+            rig.slashMat.opacity = 0;
+            rig.slashInnerMat.opacity = 0;
         } else {
+            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.1 : Math.sin(t * 2.1) * 0.015, clamp(dt * 10, 0, 1));
             rig.torso.rotation.y = lerp(rig.torso.rotation.y, 0.14, clamp(dt * 10, 0, 1));
             rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.35 - stride * 0.38, clamp(dt * 12, 0, 1));
             rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.22, clamp(dt * 12, 0, 1));
             rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.45, clamp(dt * 12, 0, 1));
             rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.28 + stride * 0.3, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.z = lerp(rig.armL.rotation.z, 0.14, clamp(dt * 12, 0, 1));
+            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.75, clamp(dt * 12, 0, 1));
             rig.slashMat.opacity = 0;
             rig.slashInnerMat.opacity = 0;
         }
@@ -1033,25 +1074,26 @@ export function createModelFactory(sharedTEX) {
             }
         }
 
-        // 武器每 +10 階色階光芒 (+10白 / +20綠 / +30藍 / +40紫 / +50紅 / +60金)
+        // 武器每 +10 階色階光芒 (+10白 / +20綠 / +30藍 / +40紫 / +50紅 / +60金) — 手機直出模式同樣清晰顯色！
         const wEnch = state.weaponEnchant || 0;
         const wTierHex = getEnchantTierHex(wEnch);
         const bc = new THREE.Color(wTierHex !== null ? wTierHex : (state.bladeColor || '#38bdf8'));
-        const wBoost = wTierHex !== null ? (2.0 + Math.min(6, Math.floor(wEnch / 10)) * 0.35) : (1.35 + wEnch * 0.1);
+        const wBoost = wTierHex !== null ? (1.55 + Math.min(6, Math.floor(wEnch / 10)) * 0.22) : (1.15 + wEnch * 0.08);
+        rig.bladeMat.color.setHex(0xffffff).lerp(bc, 0.58);
         rig.bladeMat.emissive.copy(bc);
         rig.bladeMat.emissiveIntensity = wBoost;
-        rig.bladeCoreMat.color.copy(bc).multiplyScalar(wBoost * 1.05);
+        rig.bladeCoreMat.color.copy(bc).multiplyScalar(1.35);
         if (rig.bladeAuraMat) {
-            rig.bladeAuraMat.color.copy(bc).multiplyScalar(wBoost * 0.9);
-            rig.bladeAuraMat.opacity = wEnch >= 10 ? 0.38 : 0.24;
+            rig.bladeAuraMat.color.copy(bc);
+            rig.bladeAuraMat.opacity = wEnch >= 10 ? 0.36 : 0.22;
         }
         rig.swordLight.color.copy(bc);
-        rig.slashMat.color.copy(bc).multiplyScalar(2.3);
+        rig.slashMat.color.copy(bc).multiplyScalar(1.85);
         if (rig.bladeSparks) {
-            for (const b of rig.bladeSparks) b.sp.material.color.copy(bc).multiplyScalar(2.1);
+            for (const b of rig.bladeSparks) b.sp.material.color.copy(bc).multiplyScalar(1.7);
         }
 
-        // 防具每 +10 階緊貼輪廓光芒 (+10白 / +20綠 / +30藍 / +40紫 / +50紅 / +60金)
+        // 防具每 +10 階緊貼輪廓光芒 — 調整為柔和透明微光，不刺眼遮擋服裝細節
         const aEnch = state.armorEnchant || 0;
         const aTierHex = getEnchantTierHex(aEnch);
         if (rig.armorAuraMat && rig.armorAuraMeshes) {
@@ -1059,8 +1101,8 @@ export function createModelFactory(sharedTEX) {
             for (const m of rig.armorAuraMeshes) m.visible = showArmorGlow;
             if (showArmorGlow) {
                 const ac = new THREE.Color(aTierHex);
-                const pulse = 0.22 + Math.sin(t * 4) * 0.06;
-                rig.armorAuraMat.color.copy(ac).multiplyScalar(1.8 + Math.min(6, Math.floor(aEnch / 10)) * 0.25);
+                const pulse = 0.11 + Math.sin(t * 3.5) * 0.03;
+                rig.armorAuraMat.color.copy(ac);
                 rig.armorAuraMat.opacity = pulse;
             }
         }
