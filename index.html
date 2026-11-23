@@ -285,6 +285,12 @@
         </div>
     </div>
 
+    <!-- 世界王降臨全服廣播橫幅 -->
+    <div id="worldBossBanner" class="hidden fixed top-12 left-1/2 -translate-x-1/2 z-40 px-5 py-2 rounded-sm border border-rose-500/90 bg-gradient-to-r from-black/95 via-[#2c0910]/95 to-black/95 shadow-[0_8px_32px_rgba(225,29,72,0.55)] pointer-events-none text-center max-w-[92vw]">
+        <div class="serif-font text-xs sm:text-sm font-black tracking-[0.18em] text-amber-300" id="worldBossBannerTitle">【世界王降臨】</div>
+        <div class="text-[11px] text-rose-200 mt-0.5" id="worldBossBannerSub"></div>
+    </div>
+
     <!-- ==========================================================
          3.5 頂部中央：暗黑奇幻世界時鐘 ＆ 日夜光影一鍵切換列
          ========================================================== -->
@@ -340,7 +346,10 @@
             <button onclick="spawnSpecificMonster('de_archer')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-violet-300 cursor-pointer">+暗黑弓手</button>
             <button onclick="spawnSpecificMonster('dark_mage')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-fuchsia-300 cursor-pointer">+暗黑法師</button>
             <button onclick="spawnSpecificMonster('drake')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-orange-300 font-bold cursor-pointer">+飛龍Boss</button>
+            <button onclick="spawnSpecificMonster('skeleton')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-stone-200 cursor-pointer">+骸骨劍士</button>
+            <button onclick="spawnSpecificMonster('golem')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-amber-300 cursor-pointer">+遠古石魔像</button>
             <button onclick="spawnSpecificMonster('water_dragon')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-cyan-300 font-bold cursor-pointer">+末日水龍Boss</button>
+            <button onclick="spawnSpecificMonster('baphomet_boss')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-purple-300 font-bold cursor-pointer">+巴風特Boss</button>
         </div>
 
         <!-- 經典圓形雷達小地圖 (永遠顯示目前位置、朝向箭頭、怪物與 Boss) -->
@@ -1374,6 +1383,8 @@
                     { id: 'pot_blue',  name: '藍色魔力藥水',       type: 'consumable', subType: 'blue',  count: 8,  icon: '💧', desc: '恢復 45 MP 並加速回魔' },
                     { id: 'zel_scroll',name: '對武器施法的卷軸',   type: 'scroll',     subType: 'dai',   count: 15, icon: '📜', desc: '強化目前主手武器 (+1，每 +10 升級光芒色階)' },
                     { id: 'arm_scroll',name: '對防具施法的卷軸',   type: 'scroll',     subType: 'zel',   count: 15, icon: '🛡️', desc: '強化目前身體防具 (+1，每 +10 升級盔甲光芒色階)' },
+                    { id: 'b_dai_scroll',name: '祝福的對武器施法卷軸', type: 'scroll', subType: 'blessed_dai', count: 3, icon: '✨', desc: '【祝福武卷】100% 不倒退，一次隨機跳升 +1 ~ +3 階！' },
+                    { id: 'b_zel_scroll',name: '祝福的對防具施法卷軸', type: 'scroll', subType: 'blessed_zel', count: 3, icon: '💠', desc: '【祝福防卷】100% 不倒退，一次隨機跳升 +1 ~ +3 階！' },
                     { id: 'poly_scroll',name: '變身卷軸',          type: 'scroll',     subType: 'poly',  count: 2,  icon: '🎭', desc: '雙擊選擇變身為：死亡騎士(巨劍) / 巴風特(權杖) / 暗黑精靈王(雙刀)' },
                     { id: 'w_greatsw', name: '+10 亞丁雙手巨劍',   type: 'weapon',     weaponClass: '2h_sword', atk: 22, def: 0, sp: 12, enchant: 10, bladeColor: '#f8fafc', icon: '🗡️', desc: '雙手巨劍 (自動卸下盾牌)，+10 散發純白聖光！' },
                     { id: 'w_dagger',  name: '+6 暗影雙刃短刀',    type: 'weapon',     weaponClass: 'dagger',   atk: 13, def: 0, sp: 8,  enchant: 6,  bladeColor: '#38bdf8', icon: '🔪', desc: '雙刀流敏捷短刀 (無盾牌)，高攻速連斬！' },
@@ -1651,22 +1662,33 @@
         window.player = player;
 
         function getPlayerStats() {
-            let bonusAtk = 0;
-            let bonusDef = 0;
-            let bonusSp = 5;
+            let bonusAtk = 0, bonusDef = 0, bonusSp = 5;
+            let lifestealPct = 0, critBonusPct = 0, cdrPct = 0, bossDmgPct = 0;
             for (const slot of EQUIP_SLOTS_META) {
                 const eq = player.equipped[slot.key];
                 if (eq) {
                     bonusAtk += (eq.atk || 0);
                     bonusDef += (eq.def || 0);
                     bonusSp  += (eq.sp  || 0);
+                    if (Array.isArray(eq.affixes)) {
+                        for (const af of eq.affixes) {
+                            if (af.key === 'lifesteal') lifestealPct += af.val;
+                            else if (af.key === 'crit') critBonusPct += af.val;
+                            else if (af.key === 'cdr') cdrPct += af.val;
+                            else if (af.key === 'bossDmg') bossDmgPct += af.val;
+                        }
+                    }
                 }
             }
             return {
                 minAtk: player.baseAtkMin + bonusAtk,
                 maxAtk: player.baseAtkMax + bonusAtk,
                 totalDef: player.baseDef + bonusDef,
-                spellPowerPct: bonusSp
+                spellPowerPct: bonusSp,
+                lifestealPct: Math.min(25, lifestealPct),
+                critBonusPct: Math.min(45, critBonusPct),
+                cdrPct: Math.min(45, cdrPct),
+                bossDmgPct
             };
         }
 
@@ -1697,7 +1719,10 @@
             de_archer:    { type: 'de_archer',    name: '暗黑精靈弓箭手', level: 11, maxHp: 210, atkMin: 19, atkMax: 29, speed: 2.2, aggroRange: 7.5, attackRange: 6.2,  exp: 150, scale: 1.08, isFlying: false, hitRadius: 32, ranged: 'arrow' },
             dark_mage:    { type: 'dark_mage',    name: '暗黑法師',       level: 13, maxHp: 235, atkMin: 24, atkMax: 36, speed: 1.85,aggroRange: 7.8, attackRange: 6.8,  exp: 185, scale: 1.1,  isFlying: false, hitRadius: 32, ranged: 'dark_fireball' },
             drake:        { type: 'drake',        name: '高空飛龍 Boss',  level: 16, maxHp: 560, atkMin: 28, atkMax: 42, speed: 2.55,aggroRange: 7.5, attackRange: 3.6,  exp: 380, scale: 1.38, isFlying: true,  hitRadius: 48 },
-            water_dragon: { type: 'water_dragon', name: '末日水龍 Boss',  level: 20, maxHp: 880, atkMin: 34, atkMax: 52, speed: 2.35,aggroRange: 8.5, attackRange: 5.2,  exp: 680, scale: 1.55, isFlying: false, hitRadius: 54, ranged: 'icicle' }
+            water_dragon:  { type: 'water_dragon',  name: '末日水龍 Boss',      level: 20, maxHp: 880,  atkMin: 34, atkMax: 52, speed: 2.35, aggroRange: 8.5, attackRange: 5.2, exp: 680, scale: 1.55, isFlying: false, hitRadius: 54, ranged: 'icicle' },
+            skeleton:      { type: 'skeleton',      name: '骸骨劍士',           level: 5,  maxHp: 115,  atkMin: 10, atkMax: 16, speed: 2.0,  aggroRange: 5.0, attackRange: 1.4, exp: 58,  scale: 1.05, isFlying: false, hitRadius: 30 },
+            golem:         { type: 'golem',         name: '遠古石魔像(精英)',   level: 14, maxHp: 420,  atkMin: 24, atkMax: 36, speed: 1.45, aggroRange: 5.5, attackRange: 1.9, exp: 260, scale: 1.32, isFlying: false, hitRadius: 42 },
+            baphomet_boss: { type: 'baphomet_boss', name: '深淵魔神・巴風特Boss', level: 22, maxHp: 1150, atkMin: 38, atkMax: 58, speed: 2.25, aggroRange: 9.0, attackRange: 5.5, exp: 920, scale: 1.5,  isFlying: false, hitRadius: 52, ranged: 'dark_fireball' }
         };
 
         // 12 座怪物生態群聚巢穴 (自動群聚活動 + 自動重生)
@@ -1713,8 +1738,38 @@
             { id: 'lair_9',  name: '暗黑法師祭壇',     type: 'dark_mage',    x: 88, y: 54, radius: 6.0, maxCount: 4 },
             { id: 'lair_10', name: '暗黑前哨混編巢',   type: 'de_archer',    x: 54, y: 88, radius: 6.0, maxCount: 4, altType: 'dark_mage' },
             { id: 'lair_11', name: '龍之谷飛龍峭壁',   type: 'drake',        x: 90, y: 34, radius: 6.5, maxCount: 2 },
-            { id: 'lair_12', name: '末日水龍深藍海淵', type: 'water_dragon', x: 84, y: 82, radius: 5.5, maxCount: 1 }
+            { id: 'lair_12', name: '末日水龍深藍海淵', type: 'water_dragon',  x: 84, y: 82, radius: 5.5, maxCount: 1 },
+            { id: 'lair_13', name: '詛咒墓地骸骨群',   type: 'skeleton',      x: 34, y: 68, radius: 5.5, maxCount: 5 },
+            { id: 'lair_14', name: '古廢墟石魔像群',   type: 'golem',         x: 74, y: 34, radius: 5.5, maxCount: 3 },
+            { id: 'lair_15', name: '深淵巴風特祭壇',   type: 'baphomet_boss', x: 90, y: 66, radius: 5.0, maxCount: 1 }
         ];
+
+        // 定時世界王降臨系統 (每 180 秒全服廣播一隻世界王甦醒！)
+        let worldBossTimer = 150;
+        function showWorldBossBanner(title, sub) {
+            const b = document.getElementById('worldBossBanner');
+            const t = document.getElementById('worldBossBannerTitle');
+            const s = document.getElementById('worldBossBannerSub');
+            if (!b || !t || !s) return;
+            t.textContent = title; s.textContent = sub;
+            b.classList.remove('hidden');
+            clearTimeout(window._wbBannerTid);
+            window._wbBannerTid = setTimeout(() => b.classList.add('hidden'), 6500);
+        }
+        function triggerWorldBossEvent() {
+            const pool = [
+                { type: 'baphomet_boss', area: '深淵祭壇', x: 88, y: 66 },
+                { type: 'water_dragon',  area: '深藍海淵', x: 82, y: 80 },
+                { type: 'drake',         area: '龍之谷峭壁', x: 88, y: 34 }
+            ];
+            const pick = pool[Math.floor(Math.random() * pool.length)];
+            const cfg = MONSTER_TYPES[pick.type];
+            const boss = createMonster(pick.type, pick.x, pick.y);
+            broadcastPlayerState('monster_spawn', JSON.stringify({ id: boss.id, type: boss.type, x: pick.x, y: pick.y }));
+            sound.playLevelUp();
+            showWorldBossBanner(`【世界王降臨】${cfg.name}`, `已於 ${pick.area} (${pick.x}, ${pick.y}) 甦醒！全服英雄速往討伐！`);
+            addChatLog(`🔥 <span class="text-rose-400 font-bold">【世界王廣播】${cfg.name} 已降臨於 ${pick.area} (${pick.x}, ${pick.y})！擊殺必掉祝福強化卷軸！</span>`, 'text-amber-300');
+        }
 
         let monsterIdSeq = 1;
         const worldMonsterRng = createSeededRng(88817813);
@@ -1862,7 +1917,8 @@
             }
 
             player.mp -= cfg.mpCost;
-            player.spellCooldowns[spellKey] = cfg.cd;
+            const cdrMult = 1 - ((getPlayerStats().cdrPct || 0) / 100);
+            player.spellCooldowns[spellKey] = Math.max(0.4, cfg.cd * cdrMult);
             player.castAnimTimer = 0.46;
             player.swingAnimTimer = 0.28;
 
@@ -2180,8 +2236,29 @@
             }
         ];
 
+        const AFFIX_POOL = [
+            { key: 'lifesteal', label: '吸血', min: 3, max: 6, unit: '%' },
+            { key: 'crit',      label: '暴擊', min: 5, max: 12, unit: '%' },
+            { key: 'cdr',       label: '冷卻縮減', min: 6, max: 15, unit: '%' },
+            { key: 'bossDmg',   label: '對王增傷', min: 12, max: 28, unit: '%' }
+        ];
+        function rollItemAffixes(item, isBoss = false, isElite = false) {
+            if (!VALID_EQUIP_TYPES.has(item.type)) return item;
+            const count = isBoss ? 3 : (isElite ? 2 : (Math.random() < 0.65 ? 1 : 2));
+            const picked = [];
+            const shuffled = [...AFFIX_POOL].sort(() => Math.random() - 0.5);
+            for (let i = 0; i < count; i++) {
+                const a = shuffled[i];
+                const val = Math.floor(a.min + Math.random() * (a.max - a.min + 1));
+                picked.push({ key: a.key, label: a.label, val, unit: a.unit });
+            }
+            item.affixes = picked;
+            return item;
+        }
+
         function dropMonsterLoot(m) {
-            const isBoss = (m.type === 'drake' || m.type === 'water_dragon');
+            const isBoss = (m.type === 'drake' || m.type === 'water_dragon' || m.type === 'baphomet_boss');
+            const isElite = (m.type === 'golem');
             const goldAmt = Math.floor((18 + Math.random() * 35) * m.level * (isBoss ? 3.2 : 1));
             groundLoots.push({
                 id: 'loot_' + Date.now() + '_' + Math.random(),
@@ -2194,10 +2271,23 @@
                 color: '#facc15'
             });
 
+            // (A0) Boss 必掉 / 精英 40% 掉落「祝福強化卷軸 (跳 +1~+3 不倒退)」
+            if (isBoss || (isElite && Math.random() < 0.4)) {
+                const isW = Math.random() < 0.55;
+                const bScroll = isW
+                    ? { id: 'b_dai_scroll', name: '祝福的對武器施法卷軸', type: 'scroll', subType: 'blessed_dai', count: 1, icon: '✨', desc: '【祝福武卷】100% 不倒退，一次隨機跳升 +1 ~ +3 階！' }
+                    : { id: 'b_zel_scroll', name: '祝福的對防具施法卷軸', type: 'scroll', subType: 'blessed_zel', count: 1, icon: '💠', desc: '【祝福防卷】100% 不倒退，一次隨機跳升 +1 ~ +3 階！' };
+                groundLoots.push({
+                    id: 'loot_bl_' + Date.now() + '_' + Math.random(),
+                    wx: m.x + (Math.random() - 0.5) * 0.7, wy: m.y + (Math.random() - 0.5) * 0.7,
+                    kind: 'item', itemData: bScroll, name: bScroll.name, icon: bScroll.icon, color: '#fde047'
+                });
+            }
+
             // (A) 10% 機率掉落三大最強傳說專屬武器 (死亡騎士巨劍 / 巴風特權杖 / 暗黑精靈王雙刀)
             if (Math.random() < (isBoss ? 0.35 : 0.10)) {
                 const tpl = LEGENDARY_POLY_WEAPONS[Math.floor(Math.random() * LEGENDARY_POLY_WEAPONS.length)];
-                const legItem = { ...tpl, id: tpl.id + '_' + Date.now() + '_' + Math.floor(Math.random() * 999) };
+                const legItem = rollItemAffixes({ ...tpl, id: tpl.id + '_' + Date.now() + '_' + Math.floor(Math.random() * 999) }, true, false);
                 groundLoots.push({
                     id: 'loot_leg_' + Date.now() + '_' + Math.random(),
                     wx: m.x + (Math.random() - 0.5) * 0.7,
@@ -2229,7 +2319,7 @@
                     itemData = { id: 'arm_scroll', name: '對防具施法的卷軸', type: 'scroll', subType: 'zel', count: 1, icon: '🛡️', desc: '強化身體防具 (+1，每 +10 換盔甲光芒)' };
                 } else {
                     const eqTemplate = LOOT_POOL_9SLOTS[Math.floor(Math.random() * LOOT_POOL_9SLOTS.length)];
-                    itemData = { ...eqTemplate, id: eqTemplate.id + '_' + Date.now() + '_' + Math.floor(Math.random() * 999) };
+                    itemData = rollItemAffixes({ ...eqTemplate, id: eqTemplate.id + '_' + Date.now() + '_' + Math.floor(Math.random() * 999) }, isBoss, isElite);
                 }
             } else if (roll < 0.72) {
                 const pRoll = Math.random();
@@ -2362,6 +2452,9 @@
             if (item.atk) statParts.push(`<span class="text-amber-300">攻擊 +${item.atk}</span>`);
             if (item.def) statParts.push(`<span class="text-emerald-400">防禦 -${item.def}</span>`);
             if (item.sp) statParts.push(`<span class="text-sky-400">魔傷 +${item.sp}%</span>`);
+            const affixHtml = (Array.isArray(item.affixes) && item.affixes.length)
+                ? `<div class="flex flex-wrap gap-1.5 text-[9px] text-cyan-300 font-mono mt-0.5">${item.affixes.map(a => `<span>◆${a.label} +${a.val}${a.unit}</span>`).join('')}</div>`
+                : '';
             const actionHint = isEquippedSlot ? '點兩下卸下' : (VALID_EQUIP_TYPES.has(item.type) ? '點兩下穿上裝備' : '點兩下使用');
             const confirmBtn = (!isEquippedSlot && idx >= 0)
                 ? `<button onclick="handleInventoryClick(${idx})" class="lineage-btn px-2 py-0.5 rounded text-[10px] font-bold text-yellow-200 cursor-pointer shrink-0">${VALID_EQUIP_TYPES.has(item.type) ? '確認穿上' : '確認使用'}</button>`
@@ -2372,6 +2465,7 @@
                     ${confirmBtn || `<span class="text-[9px] text-emerald-400 shrink-0">${actionHint}</span>`}
                 </div>
                 ${statParts.length ? `<div class="flex gap-2 text-[10px] font-mono mt-0.5">${statParts.join('')}</div>` : ''}
+                ${affixHtml}
                 <div class="text-stone-300 text-[10px] mt-0.5">${item.desc || ''}</div>
             `;
         }
@@ -2495,10 +2589,10 @@
 
             if (item.type === 'consumable') {
                 consumePotionItem(item, index);
-            } else if (item.type === 'scroll' && item.subType === 'dai') {
-                useWeaponScroll(index);
-            } else if (item.type === 'scroll' && item.subType === 'zel') {
-                useArmorScroll(index);
+            } else if (item.type === 'scroll' && (item.subType === 'dai' || item.subType === 'blessed_dai')) {
+                useWeaponScroll(index, item.subType === 'blessed_dai');
+            } else if (item.type === 'scroll' && (item.subType === 'zel' || item.subType === 'blessed_zel')) {
+                useArmorScroll(index, item.subType === 'blessed_zel');
             } else if (item.type === 'scroll' && item.subType === 'poly') {
                 openPolyModal(index);
             } else if (VALID_EQUIP_TYPES.has(item.type)) {
@@ -2529,28 +2623,36 @@
             updateUI();
         }
 
-        function useWeaponScroll(invIndex) {
+        function useWeaponScroll(invIndex, isBlessed = false) {
             const scrollItem = player.inventory[invIndex];
             const weapon = player.equipped.weapon;
-            if (!weapon) {
-                addChatLog('請先裝備主手武器！', 'text-red-400');
-                return;
-            }
+            if (!weapon) { addChatLog('請先裝備主手武器！', 'text-red-400'); return; }
             const cur = getItemEnchantNum(weapon);
-            weapon.enchant = cur + 1;
-            weapon.atk += 2;
-            weapon.sp = (weapon.sp || 0) + 2;
             const baseName = weapon.name.replace(/^\+\d+\s*/, '');
-            weapon.name = `+${weapon.enchant} ${baseName}`;
-
             scrollItem.count -= 1;
             if (scrollItem.count <= 0) player.inventory.splice(invIndex, 1);
 
-            sound.playScroll();
-            spawnHitSparks(player.x, player.y, '#fde047', 16, 20);
-            const tierTag = (weapon.enchant % 10 === 0) ? ` 【${getEnchantTierLabel(weapon.enchant)}覺醒!】` : '';
-            addFloatingText(player.x, player.y, `✨ ${weapon.name}${tierTag}`, '#fde047', 14);
-            addChatLog(`📜 ${weapon.name} 強化成功！${tierTag}`, 'text-amber-300');
+            // 武器安定值 +6；祝福卷軸 100% 成功且隨機跳 +1~+3 階；普通卷軸超安定值有機會倒退 -1
+            const successRate = (isBlessed || cur < 6) ? 1.0 : (cur < 10 ? 0.78 : (cur < 20 ? 0.65 : 0.52));
+            if (Math.random() <= successRate) {
+                const jump = isBlessed ? (1 + Math.floor(Math.random() * 3)) : 1;
+                weapon.enchant = cur + jump;
+                weapon.atk += jump * 2;
+                weapon.sp = (weapon.sp || 0) + jump * 2;
+                weapon.name = `+${weapon.enchant} ${baseName}`;
+                sound.playScroll();
+                spawnHitSparks(player.x, player.y, '#fde047', 18, 20);
+                const tierTag = (Math.floor(weapon.enchant / 10) > Math.floor(cur / 10)) ? ` 【${getEnchantTierLabel(weapon.enchant)}覺醒!】` : '';
+                addFloatingText(player.x, player.y, `+${jump} ${weapon.name}`, '#fde047', 14);
+                addChatLog(`✨ ${isBlessed ? '祝福武卷跳升 +' + jump + '！' : ''}${weapon.name} 強化成功！${tierTag}`, 'text-amber-300');
+            } else {
+                weapon.enchant = Math.max(6, cur - 1);
+                weapon.atk = Math.max(5, weapon.atk - 2);
+                weapon.name = `+${weapon.enchant} ${baseName}`;
+                sound.playHit(false);
+                addFloatingText(player.x, player.y, `強化失敗 (${weapon.name})`, '#f87171', 13);
+                addChatLog(`💥 超過安定值(+6)強化失敗，${weapon.name} 退回一階（使用祝福卷軸可保底跳階）`, 'text-rose-400');
+            }
             saveCharacterProgress();
             updateUI();
         }
@@ -2586,27 +2688,35 @@
         window.closePolyModal = closePolyModal;
         window.confirmPolymorph = confirmPolymorph;
 
-        function useArmorScroll(invIndex) {
+        function useArmorScroll(invIndex, isBlessed = false) {
             const scrollItem = player.inventory[invIndex];
             const armor = player.equipped.armor;
-            if (!armor) {
-                addChatLog('請先裝備身體防具！', 'text-red-400');
-                return;
-            }
+            if (!armor) { addChatLog('請先裝備身體防具！', 'text-red-400'); return; }
             const cur = getItemEnchantNum(armor);
-            armor.enchant = cur + 1;
-            armor.def += 2;
             const baseName = armor.name.replace(/^\+\d+\s*/, '');
-            armor.name = `+${armor.enchant} ${baseName}`;
-
             scrollItem.count -= 1;
             if (scrollItem.count <= 0) player.inventory.splice(invIndex, 1);
 
-            sound.playScroll();
-            spawnHitSparks(player.x, player.y, '#38bdf8', 16, 18);
-            const tierTag = (armor.enchant % 10 === 0) ? ` 【盔甲${getEnchantTierLabel(armor.enchant)}覺醒!】` : '';
-            addFloatingText(player.x, player.y, `🛡️ ${armor.name}${tierTag}`, '#7dd3fc', 14);
-            addChatLog(`🛡️ ${armor.name} 強化成功！${tierTag}`, 'text-sky-300');
+            // 防具安定值 +4；祝福防卷 100% 不倒退且跳 +1~+3 階
+            const successRate = (isBlessed || cur < 4) ? 1.0 : (cur < 10 ? 0.78 : (cur < 20 ? 0.65 : 0.52));
+            if (Math.random() <= successRate) {
+                const jump = isBlessed ? (1 + Math.floor(Math.random() * 3)) : 1;
+                armor.enchant = cur + jump;
+                armor.def += jump * 2;
+                armor.name = `+${armor.enchant} ${baseName}`;
+                sound.playScroll();
+                spawnHitSparks(player.x, player.y, '#38bdf8', 18, 18);
+                const tierTag = (Math.floor(armor.enchant / 10) > Math.floor(cur / 10)) ? ` 【盔甲${getEnchantTierLabel(armor.enchant)}覺醒!】` : '';
+                addFloatingText(player.x, player.y, `+${jump} ${armor.name}`, '#7dd3fc', 14);
+                addChatLog(`💠 ${isBlessed ? '祝福防卷跳升 +' + jump + '！' : ''}${armor.name} 強化成功！${tierTag}`, 'text-sky-300');
+            } else {
+                armor.enchant = Math.max(4, cur - 1);
+                armor.def = Math.max(2, armor.def - 2);
+                armor.name = `+${armor.enchant} ${baseName}`;
+                sound.playHit(false);
+                addFloatingText(player.x, player.y, `強化失敗 (${armor.name})`, '#f87171', 13);
+                addChatLog(`💥 超過安定值(+4)強化失敗，${armor.name} 退回一階`, 'text-rose-400');
+            }
             saveCharacterProgress();
             updateUI();
         }
@@ -3019,11 +3129,17 @@
 
             if (player.frozenTimer > 0) return; // 冰凍中無法攻擊
             const stats = getPlayerStats();
-            const critChance = (player.polyForm === 'dark_elf_king') ? 0.55 : 0.26;
+            const critChance = ((player.polyForm === 'dark_elf_king') ? 0.55 : 0.26) + (stats.critBonusPct || 0) / 100;
             const isCrit = Math.random() < critChance;
             let dmg = Math.floor(stats.minAtk + Math.random() * (stats.maxAtk - stats.minAtk + 1));
             if (player.polyForm === 'death_knight') dmg = Math.floor(dmg * 1.25);
+            const targetIsBoss = (target.type === 'drake' || target.type === 'water_dragon' || target.type === 'baphomet_boss');
+            if (targetIsBoss && stats.bossDmgPct > 0) dmg = Math.floor(dmg * (1 + stats.bossDmgPct / 100));
             if (isCrit) dmg = Math.floor(dmg * 1.6);
+            if (stats.lifestealPct > 0 && player.hp < player.maxHp) {
+                const ls = Math.max(1, Math.floor(dmg * (stats.lifestealPct / 100)));
+                player.hp = Math.min(player.maxHp, player.hp + ls);
+            }
 
             sound.playSwing(player.braveTimer > 0);
             sound.playHit(isCrit);
@@ -3500,7 +3616,14 @@
                 }
             }
 
-            // 12 座生態巢穴每 6 秒自動巡檢補充重生 (全圖源源不絕且維持群聚生態！)
+            // 定時世界王降臨事件倒數 (每 180 秒全服廣播一隻世界王！)
+            worldBossTimer -= dt;
+            if (worldBossTimer <= 0) {
+                worldBossTimer = 180;
+                triggerWorldBossEvent();
+            }
+
+            // 15 座生態巢穴每 6 秒自動巡檢補充重生 (全圖源源不絕且維持群聚生態！)
             player._lairRespawnAccum = (player._lairRespawnAccum || 0) + dt;
             if (player._lairRespawnAccum >= 6.0) {
                 player._lairRespawnAccum = 0;
@@ -6418,8 +6541,8 @@
             }
             // 怪物紅點 / Boss 紫光點
             for (const m of monsters) {
-                const isBoss = (m.type === 'drake' || m.type === 'water_dragon');
-                g.fillStyle = m.type === 'water_dragon' ? '#22d3ee' : (m.type === 'drake' ? '#c084fc' : '#ef4444');
+                const isBoss = (m.type === 'drake' || m.type === 'water_dragon' || m.type === 'baphomet_boss');
+                g.fillStyle = m.type === 'water_dragon' ? '#22d3ee' : (m.type === 'baphomet_boss' ? '#f43f5e' : (m.type === 'drake' ? '#c084fc' : '#ef4444'));
                 g.beginPath(); g.arc(m.x * sx, m.y * sy, isBoss ? 3.8 : 2.0, 0, TAU); g.fill();
             }
             // 其他玩家青藍點

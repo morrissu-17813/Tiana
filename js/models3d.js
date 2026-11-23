@@ -1479,6 +1479,110 @@ export function createModelFactory(sharedTEX) {
         return { root, body, staffArm, yaw: 0 };
     }
 
+    // 10. 骸骨劍士 (寫實亡靈骷髏 + 殘破鋼盾與長劍)
+    function createSkeletonRig() {
+        const root = new THREE.Group();
+        const body = new THREE.Group();
+        root.add(body);
+        // 胸廓肋骨與脊椎
+        addM(body, new THREE.CylinderGeometry(0.055, 0.05, 0.56, 8), M.bone, 0, 1.02, 0);
+        for (let r = 0; r < 4; r++) {
+            addM(body, new THREE.TorusGeometry(0.14 - r * 0.012, 0.018, 6, 12), M.bone, 0, 1.2 - r * 0.075, 0.01).rotation.x = Math.PI / 2;
+        }
+        addM(body, new THREE.BoxGeometry(0.24, 0.1, 0.14), M.bone, 0, 0.76, 0);
+        // 骸骨頭顱 + 幽綠眼窩
+        addM(body, new THREE.SphereGeometry(0.135, 12, 10), M.bone, 0, 1.46, 0.02);
+        addM(body, new THREE.BoxGeometry(0.11, 0.07, 0.1), M.bone, 0, 1.36, 0.05);
+        for (const s of [-1, 1]) addM(body, new THREE.SphereGeometry(0.024, 6, 6), M.greenGlow, s * 0.048, 1.47, 0.135, false);
+
+        const legL = new THREE.Group(); legL.position.set(-0.09, 0.72, 0); body.add(legL);
+        addM(legL, new THREE.CylinderGeometry(0.032, 0.028, 0.68, 7), M.bone, 0, -0.34, 0);
+        const legR = new THREE.Group(); legR.position.set(0.09, 0.72, 0); body.add(legR);
+        addM(legR, new THREE.CylinderGeometry(0.032, 0.028, 0.68, 7), M.bone, 0, -0.34, 0);
+
+        const armR = new THREE.Group(); armR.position.set(0.22, 1.26, 0); body.add(armR);
+        addM(armR, new THREE.CylinderGeometry(0.028, 0.024, 0.52, 7), M.bone, 0, -0.24, 0.06).rotation.x = -0.35;
+        addM(armR, new THREE.BoxGeometry(0.045, 0.92, 0.018), M.darkSteel, 0, -0.42, 0.52).rotation.x = Math.PI * 0.48;
+
+        const armL = new THREE.Group(); armL.position.set(-0.22, 1.26, 0); body.add(armL);
+        addM(armL, new THREE.CylinderGeometry(0.028, 0.024, 0.52, 7), M.bone, 0, -0.24, 0.06).rotation.x = -0.5;
+        addM(armL, new THREE.CylinderGeometry(0.24, 0.24, 0.04, 8), M.darkSteel, -0.06, -0.32, 0.24).rotation.set(Math.PI / 2, 0, 0.3);
+
+        setShadows(body, true);
+        return { root, body, legL, legR, armR, armL, yaw: 0 };
+    }
+
+    // 11. 遠古石魔像 (重型玄武岩巨人 + 胸口橘紅熔岩裂縫核心)
+    function createGolemRig() {
+        const root = new THREE.Group();
+        const body = new THREE.Group();
+        root.add(body);
+        const rockMat = new THREE.MeshStandardMaterial({ color: 0x57524b, roughness: 0.94, metalness: 0.08, flatShading: true });
+        const magmaGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.6, 1.4, 0.25), toneMapped: false });
+
+        // 巨大岩塊軀幹 + 熔岩核心
+        addM(body, new THREE.DodecahedronGeometry(0.58, 0), rockMat, 0, 1.28, 0).scale.set(1.2, 1.05, 0.92);
+        addM(body, new THREE.OctahedronGeometry(0.24, 0), magmaGlow, 0, 1.28, 0.42, false);
+        addM(body, new THREE.DodecahedronGeometry(0.26, 0), rockMat, 0, 1.92, 0.08);
+        for (const s of [-1, 1]) addM(body, new THREE.SphereGeometry(0.04, 6, 6), magmaGlow, s * 0.1, 1.96, 0.28, false);
+
+        const legL = new THREE.Group(); legL.position.set(-0.3, 0.78, 0); body.add(legL);
+        addM(legL, new THREE.BoxGeometry(0.32, 0.78, 0.34), rockMat, 0, -0.39, 0);
+        const legR = new THREE.Group(); legR.position.set(0.3, 0.78, 0); body.add(legR);
+        addM(legR, new THREE.BoxGeometry(0.32, 0.78, 0.34), rockMat, 0, -0.39, 0);
+
+        const armL = new THREE.Group(); armL.position.set(-0.74, 1.54, 0); body.add(armL);
+        addM(armL, new THREE.DodecahedronGeometry(0.3, 0), rockMat, 0, 0, 0);
+        addM(armL, new THREE.BoxGeometry(0.34, 0.95, 0.36), rockMat, -0.04, -0.58, 0.1);
+        const armR = new THREE.Group(); armR.position.set(0.74, 1.54, 0); body.add(armR);
+        addM(armR, new THREE.DodecahedronGeometry(0.3, 0), rockMat, 0, 0, 0);
+        addM(armR, new THREE.BoxGeometry(0.34, 0.95, 0.36), rockMat, 0.04, -0.58, 0.1);
+
+        setShadows(body, true);
+        return { root, body, legL, legR, armL, armR, yaw: 0 };
+    }
+
+    // 12. 深淵魔神・巴風特 Boss (巨型雙彎羊角惡魔領主 + 地獄權杖 + 紫焰魔氣)
+    function createBaphometBossRig() {
+        const root = new THREE.Group();
+        const body = new THREE.Group();
+        root.add(body);
+        const demonSkin = new THREE.MeshStandardMaterial({ color: 0x3b1216, roughness: 0.78, metalness: 0.15 });
+        const demonArmor = new THREE.MeshStandardMaterial({ color: 0x1e1424, metalness: 0.75, roughness: 0.35 });
+
+        addM(body, new THREE.CylinderGeometry(0.42, 0.28, 0.85, 12), demonSkin, 0, 1.32, 0);
+        addM(body, new THREE.OctahedronGeometry(0.18, 0), M.purpleGlow, 0, 1.42, 0.32, false);
+        addM(body, new THREE.PlaneGeometry(0.95, 1.45), new THREE.MeshStandardMaterial({ color: 0x2b0936, side: THREE.DoubleSide, roughness: 0.85 }), 0, 1.05, -0.34).rotation.x = 0.22;
+
+        // 巨大惡魔羊頭與雙盤旋角
+        const head = new THREE.Group(); head.position.set(0, 1.92, 0.08); body.add(head);
+        addM(head, new THREE.SphereGeometry(0.24, 12, 10), demonSkin, 0, 0, 0);
+        addM(head, new THREE.CylinderGeometry(0.08, 0.16, 0.36, 8), M.wolfSnout, 0, -0.06, 0.22).rotation.x = Math.PI / 2;
+        for (const s of [-1, 1]) {
+            addM(head, new THREE.SphereGeometry(0.045, 6, 6), M.purpleGlow, s * 0.1, 0.04, 0.2, false);
+            const horn = addM(head, new THREE.TorusGeometry(0.28, 0.055, 8, 16, Math.PI * 1.45), M.dragonHorn, s * 0.26, 0.2, -0.05);
+            horn.rotation.y = s * 0.65; horn.rotation.z = -s * 0.4;
+        }
+        const bLight = new THREE.PointLight(0xa855f7, 6.0, 11, 1.8);
+        bLight.position.set(0, 1.8, 0.6); body.add(bLight);
+
+        const legL = new THREE.Group(); legL.position.set(-0.2, 0.9, 0); body.add(legL);
+        addM(legL, new THREE.CapsuleGeometry(0.13, 0.65, 6, 8), demonArmor, 0, -0.45, 0);
+        const legR = new THREE.Group(); legR.position.set(0.2, 0.9, 0); body.add(legR);
+        addM(legR, new THREE.CapsuleGeometry(0.13, 0.65, 6, 8), demonArmor, 0, -0.45, 0);
+
+        const armL = new THREE.Group(); armL.position.set(-0.5, 1.62, 0); body.add(armL);
+        addM(armL, new THREE.CapsuleGeometry(0.11, 0.58, 6, 8), demonSkin, 0, -0.35, 0.08);
+        const armR = new THREE.Group(); armR.position.set(0.5, 1.62, 0); body.add(armR);
+        addM(armR, new THREE.CapsuleGeometry(0.11, 0.58, 6, 8), demonSkin, 0, -0.35, 0.08);
+        // 巨大巴風特地獄權杖
+        addM(armR, new THREE.CylinderGeometry(0.045, 0.05, 2.3, 8), M.darkSteel, 0.06, -0.3, 0.35).rotation.x = 0.25;
+        addM(armR, new THREE.OctahedronGeometry(0.22, 1), M.purpleGlow, 0.06, 0.82, 0.62, false);
+
+        setShadows(body, true);
+        return { root, body, legL, legR, armL, armR, yaw: 0 };
+    }
+
     function createMonsterRig(m) {
         let rig;
         if (m.type === 'werewolf') rig = createWerewolfRig();
@@ -1489,6 +1593,9 @@ export function createModelFactory(sharedTEX) {
         else if (m.type === 'niss') rig = createNissRig();
         else if (m.type === 'de_archer') rig = createDarkElfArcherRig();
         else if (m.type === 'dark_mage') rig = createDarkMageRig();
+        else if (m.type === 'skeleton') rig = createSkeletonRig();
+        else if (m.type === 'golem') rig = createGolemRig();
+        else if (m.type === 'baphomet_boss') rig = createBaphometBossRig();
         else rig = createSlimeRig();
 
         const ringMat = new THREE.MeshBasicMaterial({ map: sharedTEX.ring, color: 0xef4444, transparent: true, opacity: 0.92, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -1583,6 +1690,12 @@ export function createModelFactory(sharedTEX) {
         } else if (m.type === 'dark_mage') {
             rig.body.position.y = 0.18 + Math.sin(t * 2.8 + m.id) * 0.12;
             rig.staffArm.rotation.x = -lunge * 0.65;
+        } else if (m.type === 'skeleton' || m.type === 'golem' || m.type === 'baphomet_boss') {
+            const w = Math.sin(m.walkPhase * (m.type === 'golem' ? 0.55 : 0.85));
+            rig.legL.rotation.x = w * 0.55;
+            rig.legR.rotation.x = -w * 0.55;
+            rig.armR.rotation.x = -0.25 - w * 0.35 - lunge * 1.45;
+            rig.armL.rotation.x = -0.2 + w * 0.35 - (m.type === 'golem' ? lunge * 1.45 : 0);
         } else {
             const bounce = Math.abs(Math.sin(m.walkPhase * 0.6));
             rig.body.position.y = bounce * 0.24;
