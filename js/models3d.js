@@ -1709,6 +1709,136 @@ export function createModelFactory(sharedTEX) {
         return { root, body, legL, legR, armL, armR, yaw: 0 };
     }
 
+    // 13. 冰原冰狼 (雪白霜毛＋冰晶背棘＋冰藍雙眼)
+    function createIceWolfRig() {
+        const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+        const frostFur = new THREE.MeshStandardMaterial({ color: 0xdbeafe, map: T.furMap, normalMap: T.furNormal, roughness: 0.78, metalness: 0.08 });
+        const iceCrystal = new THREE.MeshStandardMaterial({ color: 0x38bdf8, emissive: 0x0284c7, emissiveIntensity: 0.85, roughness: 0.18, metalness: 0.2 });
+        const iceEye = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 2.8, 4.2), toneMapped: false });
+
+        addM(body, new THREE.CapsuleGeometry(0.24, 0.72, 8, 12), frostFur, 0, 0.74, 0).rotation.x = Math.PI / 2;
+        // 冰晶背棘
+        for (let i = 0; i < 4; i++) addM(body, new THREE.ConeGeometry(0.06, 0.24, 5), iceCrystal, 0, 1.0, 0.25 - i * 0.22).rotation.x = -0.35;
+        // 狼首與吻部
+        const head = new THREE.Group(); head.position.set(0, 0.94, 0.56); body.add(head);
+        addM(head, new THREE.SphereGeometry(0.19, 12, 10), frostFur, 0, 0, 0);
+        addM(head, new THREE.CylinderGeometry(0.06, 0.12, 0.28, 8), frostFur, 0, -0.04, 0.2).rotation.x = Math.PI / 2;
+        for (const s of [-1, 1]) {
+            addM(head, new THREE.ConeGeometry(0.045, 0.16, 5), frostFur, s * 0.11, 0.18, -0.02);
+            addM(head, new THREE.SphereGeometry(0.025, 6, 6), iceEye, s * 0.07, 0.04, 0.16, false);
+        }
+        const legs = [];
+        for (const [sx, sz] of [[-0.17, 0.36], [0.17, 0.36], [-0.17, -0.36], [0.17, -0.36]]) {
+            const lg = new THREE.Group(); lg.position.set(sx, 0.62, sz); body.add(lg);
+            addM(lg, new THREE.CapsuleGeometry(0.065, 0.48, 6, 8), frostFur, 0, -0.3, 0);
+            legs.push({ g: lg, sx, sz });
+        }
+        const tail = new THREE.Group(); tail.position.set(0, 0.76, -0.54); body.add(tail);
+        addM(tail, new THREE.ConeGeometry(0.09, 0.52, 8), frostFur, 0, -0.05, -0.22).rotation.x = -1.15;
+        setShadows(body, true);
+        return { root, body, legs, tail, head, yaw: 0 };
+    }
+
+    // 14. 冰原雪怪 (龐大雪白毛髮巨獸＋冰藍巨掌與獠牙)
+    function createYetiRig() {
+        const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+        const snowFur = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, map: T.furMap, normalMap: T.furNormal, roughness: 0.9, metalness: 0.04 });
+        const frostSkin = new THREE.MeshStandardMaterial({ color: 0x6488a8, roughness: 0.68 });
+        const iceEye = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.5, 2.8, 4.2), toneMapped: false });
+
+        addM(body, new THREE.SphereGeometry(0.52, 14, 12), snowFur, 0, 1.24, 0).scale.set(1.18, 1.08, 0.92);
+        addM(body, new THREE.SphereGeometry(0.24, 12, 10), frostSkin, 0, 1.82, 0.12);
+        addM(body, new THREE.SphereGeometry(0.26, 12, 10, 0, TAU, 0, Math.PI * 0.62), snowFur, 0, 1.86, 0.06);
+        for (const s of [-1, 1]) {
+            addM(body, new THREE.SphereGeometry(0.032, 6, 6), iceEye, s * 0.08, 1.86, 0.32, false);
+            addM(body, new THREE.ConeGeometry(0.04, 0.22, 6), M.bone, s * 0.2, 2.02, 0.08).rotation.z = -s * 0.5;
+        }
+        const legL = new THREE.Group(); legL.position.set(-0.26, 0.74, 0); body.add(legL);
+        addM(legL, new THREE.CapsuleGeometry(0.15, 0.48, 8, 10), snowFur, 0, -0.36, 0);
+        const legR = new THREE.Group(); legR.position.set(0.26, 0.74, 0); body.add(legR);
+        addM(legR, new THREE.CapsuleGeometry(0.15, 0.48, 8, 10), snowFur, 0, -0.36, 0);
+        const armL = new THREE.Group(); armL.position.set(-0.62, 1.48, 0); body.add(armL);
+        addM(armL, new THREE.CapsuleGeometry(0.14, 0.72, 8, 10), snowFur, -0.04, -0.42, 0.08);
+        addM(armL, new THREE.SphereGeometry(0.16, 8, 8), frostSkin, -0.04, -0.86, 0.14);
+        const armR = new THREE.Group(); armR.position.set(0.62, 1.48, 0); body.add(armR);
+        addM(armR, new THREE.CapsuleGeometry(0.14, 0.72, 8, 10), snowFur, 0.04, -0.42, 0.08);
+        addM(armR, new THREE.SphereGeometry(0.16, 8, 8), frostSkin, 0.04, -0.86, 0.14);
+        setShadows(body, true);
+        return { root, body, legL, legR, armL, armR, yaw: 0 };
+    }
+
+    // 15. 沙漠火焰弓箭手 (赤金沙漠兜帽游牧射手＋熾焰長弓)
+    function createFireArcherRig() {
+        const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+        const desertCloak = new THREE.MeshStandardMaterial({ color: 0x9a3412, map: sharedTEX.cloth, roughness: 0.78 });
+        const emberGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.8, 1.4, 0.25), toneMapped: false });
+        addM(body, new THREE.CylinderGeometry(0.2, 0.26, 0.8, 10), desertCloak, 0, 1.05, 0);
+        addM(body, new THREE.SphereGeometry(0.14, 10, 10), M.skin, 0, 1.56, 0.02);
+        addM(body, new THREE.ConeGeometry(0.22, 0.34, 10), desertCloak, 0, 1.66, -0.02);
+        for (const s of [-1, 1]) addM(body, new THREE.SphereGeometry(0.02, 6, 6), emberGlow, s * 0.048, 1.56, 0.14, false);
+        const legL = new THREE.Group(); legL.position.set(-0.1, 0.65, 0); body.add(legL);
+        addM(legL, new THREE.CapsuleGeometry(0.06, 0.48, 6, 8), M.leather, 0, -0.32, 0);
+        const legR = new THREE.Group(); legR.position.set(0.1, 0.65, 0); body.add(legR);
+        addM(legR, new THREE.CapsuleGeometry(0.06, 0.48, 6, 8), M.leather, 0, -0.32, 0);
+        const bowArm = new THREE.Group(); bowArm.position.set(-0.24, 1.32, 0.04); body.add(bowArm);
+        addM(bowArm, new THREE.CapsuleGeometry(0.048, 0.36, 6, 8), desertCloak, 0, -0.18, 0.16).rotation.x = -0.9;
+        addM(bowArm, new THREE.TorusGeometry(0.46, 0.026, 6, 14, Math.PI), M.gold, 0, -0.16, 0.46).rotation.y = Math.PI / 2;
+        addM(bowArm, new THREE.SphereGeometry(0.055, 8, 8), emberGlow, 0, -0.16, 0.68, false);
+        setShadows(body, true);
+        return { root, body, legL, legR, bowArm, yaw: 0 };
+    }
+
+    // 16. 沙漠巨蟻 (赤褐甲殼三節體＋開合大顎＋六足爬行)
+    function createGiantAntRig() {
+        const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+        const shellMat = new THREE.MeshStandardMaterial({ color: 0x7c2d12, roughness: 0.32, metalness: 0.35 });
+        const darkShell = new THREE.MeshStandardMaterial({ color: 0x451a03, roughness: 0.38, metalness: 0.42 });
+        addM(body, new THREE.SphereGeometry(0.28, 12, 10), darkShell, 0, 0.48, -0.45).scale.set(1.0, 0.85, 1.45); // 巨腹
+        addM(body, new THREE.SphereGeometry(0.18, 10, 8), shellMat, 0, 0.44, 0.06).scale.set(0.95, 0.85, 1.2);     // 胸部
+        const head = new THREE.Group(); head.position.set(0, 0.5, 0.44); body.add(head);
+        addM(head, new THREE.SphereGeometry(0.17, 10, 8), shellMat, 0, 0, 0);
+        for (const s of [-1, 1]) {
+            addM(head, new THREE.ConeGeometry(0.045, 0.26, 6), M.darkSteel, s * 0.09, -0.04, 0.22).rotation.set(Math.PI / 2, 0, -s * 0.35);
+            addM(head, new THREE.CylinderGeometry(0.012, 0.012, 0.32, 5), darkShell, s * 0.08, 0.14, 0.16).rotation.set(0.55, 0, -s * 0.4);
+        }
+        const legs = [];
+        for (let i = 0; i < 3; i++) for (const s of [-1, 1]) {
+            const lg = new THREE.Group(); lg.position.set(s * 0.16, 0.4, 0.2 - i * 0.24); body.add(lg);
+            addM(lg, new THREE.CylinderGeometry(0.026, 0.02, 0.55, 6), darkShell, s * 0.24, -0.18, 0).rotation.z = s * 0.78;
+            legs.push({ g: lg, s, i });
+        }
+        setShadows(body, true);
+        return { root, body, legs, head, yaw: 0 };
+    }
+
+    // 17. 沙漠蜥蜴人戰士 (翠黃鱗甲直立爬蟲戰士＋沙漠彎刀與骨盾)
+    function createLizardmanRig() {
+        const root = new THREE.Group(), body = new THREE.Group(); root.add(body);
+        const scaleMat = new THREE.MeshStandardMaterial({ color: 0x4d7c0f, map: sharedTEX.scales.map, normalMap: sharedTEX.scales.normalMap, roughness: 0.58, metalness: 0.12 });
+        const bellyMat = new THREE.MeshStandardMaterial({ color: 0xb5a662, roughness: 0.72 });
+        addM(body, new THREE.CylinderGeometry(0.24, 0.2, 0.76, 10), scaleMat, 0, 1.05, 0);
+        addM(body, new THREE.BoxGeometry(0.26, 0.56, 0.08), bellyMat, 0, 1.02, 0.17);
+        const head = new THREE.Group(); head.position.set(0, 1.54, 0.06); body.add(head);
+        addM(head, new THREE.SphereGeometry(0.15, 10, 8), scaleMat, 0, 0, 0);
+        addM(head, new THREE.BoxGeometry(0.14, 0.11, 0.28), scaleMat, 0, -0.02, 0.18);
+        addM(head, new THREE.ConeGeometry(0.05, 0.22, 5), M.gold, 0, 0.16, -0.04).rotation.x = -0.5;
+        for (const s of [-1, 1]) addM(head, new THREE.SphereGeometry(0.022, 6, 6), M.redGlow, s * 0.065, 0.04, 0.13, false);
+        const tail = new THREE.Group(); tail.position.set(0, 0.76, -0.2); body.add(tail);
+        addM(tail, new THREE.ConeGeometry(0.11, 0.95, 8), scaleMat, 0, -0.1, -0.45).rotation.x = -1.35;
+        const legL = new THREE.Group(); legL.position.set(-0.12, 0.68, 0); body.add(legL);
+        addM(legL, new THREE.CapsuleGeometry(0.075, 0.5, 6, 8), scaleMat, 0, -0.34, 0);
+        const legR = new THREE.Group(); legR.position.set(0.12, 0.68, 0); body.add(legR);
+        addM(legR, new THREE.CapsuleGeometry(0.075, 0.5, 6, 8), scaleMat, 0, -0.34, 0);
+        const armR = new THREE.Group(); armR.position.set(0.28, 1.32, 0); body.add(armR);
+        addM(armR, new THREE.CapsuleGeometry(0.055, 0.42, 6, 8), scaleMat, 0, -0.24, 0.06);
+        addM(armR, new THREE.BoxGeometry(0.06, 0.82, 0.02), M.gold, 0, -0.38, 0.46).rotation.x = Math.PI * 0.46;
+        const armL = new THREE.Group(); armL.position.set(-0.28, 1.32, 0); body.add(armL);
+        addM(armL, new THREE.CapsuleGeometry(0.055, 0.42, 6, 8), scaleMat, 0, -0.24, 0.06);
+        addM(armL, new THREE.CylinderGeometry(0.24, 0.24, 0.045, 8), M.bone, -0.06, -0.3, 0.22).rotation.set(Math.PI / 2, 0, 0.25);
+        setShadows(body, true);
+        return { root, body, legL, legR, armR, armL, tail, yaw: 0 };
+    }
+
     function createMonsterRig(m) {
         let rig;
         if (m.type === 'werewolf') rig = createWerewolfRig();
@@ -1722,6 +1852,11 @@ export function createModelFactory(sharedTEX) {
         else if (m.type === 'skeleton') rig = createSkeletonRig();
         else if (m.type === 'golem') rig = createGolemRig();
         else if (m.type === 'baphomet_boss') rig = createBaphometBossRig();
+        else if (m.type === 'ice_wolf') rig = createIceWolfRig();
+        else if (m.type === 'yeti') rig = createYetiRig();
+        else if (m.type === 'fire_archer') rig = createFireArcherRig();
+        else if (m.type === 'giant_ant') rig = createGiantAntRig();
+        else if (m.type === 'lizardman') rig = createLizardmanRig();
         else rig = createSlimeRig();
 
         const ringMat = new THREE.MeshBasicMaterial({ map: sharedTEX.ring, color: 0xef4444, transparent: true, opacity: 0.92, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -1867,6 +2002,44 @@ export function createModelFactory(sharedTEX) {
             rig.legR.rotation.x = -w * 0.52;
             rig.armR.rotation.x = -0.28 - w * 0.28 - windUp * 1.45 + lunge * 0.95;
             rig.armL.rotation.x = -0.35 + w * 0.28 - windUp * 0.65;
+        } else if (m.type === 'ice_wolf') {
+            const w = Math.sin(m.walkPhase * 1.15);
+            rig.body.position.y = Math.abs(w) * 0.07 + breath * 0.02;
+            rig.body.rotation.x = -windUp * 0.18 + lunge * 0.24;
+            rig.body.position.z = -windUp * 0.14 + lunge * 0.45;
+            if (rig.legs) rig.legs.forEach(({ g, sx, sz }) => { g.rotation.x = ((sx * sz > 0) ? w : -w) * 0.65; });
+            if (rig.tail) rig.tail.rotation.y = Math.sin(t * 6.5 + m.id) * 0.45;
+        } else if (m.type === 'yeti') {
+            const w = Math.sin(m.walkPhase * 0.62);
+            rig.body.position.y = Math.abs(w) * 0.1 + breath * 0.03;
+            rig.body.rotation.z = -w * 0.1;
+            rig.body.rotation.x = 0.06 - windUp * 0.22 + lunge * 0.32;
+            rig.legL.rotation.x = w * 0.5;
+            rig.legR.rotation.x = -w * 0.5;
+            rig.armR.rotation.x = -0.25 - w * 0.38 - windUp * 1.85 + lunge * 1.55;
+            rig.armL.rotation.x = -0.25 + w * 0.38 - windUp * 1.85 + lunge * 1.55;
+        } else if (m.type === 'fire_archer') {
+            const w = Math.sin(m.walkPhase);
+            rig.body.position.y = Math.abs(w) * 0.05 + breath * 0.015;
+            rig.body.rotation.y = -0.22 - windUp * 0.32 + lunge * 0.18;
+            rig.legL.rotation.x = w * 0.58;
+            rig.legR.rotation.x = -w * 0.58;
+            rig.bowArm.rotation.x = -0.25 - windUp * 0.35 + lunge * 0.25;
+        } else if (m.type === 'giant_ant') {
+            rig.body.position.y = Math.abs(Math.sin(m.walkPhase * 1.3)) * 0.04;
+            rig.body.rotation.x = -windUp * 0.2 + lunge * 0.22;
+            rig.body.position.z = -windUp * 0.1 + lunge * 0.38;
+            if (rig.legs) rig.legs.forEach(({ g, s, i }) => { g.rotation.y = Math.sin(m.walkPhase * 1.4 + i * 1.6 + (s > 0 ? 0 : Math.PI)) * 0.42; });
+        } else if (m.type === 'lizardman') {
+            const w = Math.sin(m.walkPhase * 0.9);
+            rig.body.position.y = Math.abs(w) * 0.06 + breath * 0.02;
+            rig.body.rotation.z = w * 0.08;
+            rig.body.rotation.y = w * 0.12 - windUp * 0.4 + lunge * 0.5;
+            rig.legL.rotation.x = w * 0.6;
+            rig.legR.rotation.x = -w * 0.6;
+            rig.armR.rotation.x = -0.3 - w * 0.35 - windUp * 1.3 + lunge * 1.25;
+            rig.armL.rotation.x = -0.45 + w * 0.25;
+            if (rig.tail) rig.tail.rotation.y = Math.sin(t * 4.5 + m.id) * 0.42;
         } else {
             const bounce = Math.abs(Math.sin(m.walkPhase * 0.6));
             rig.body.position.y = bounce * 0.24;

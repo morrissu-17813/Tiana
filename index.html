@@ -314,6 +314,7 @@
                         <span id="frozenBadge" class="hidden bg-cyan-900/90 text-[8px] text-cyan-200 px-1 rounded border border-cyan-300 animate-pulse">凍</span>
                         <span id="burnBadge" class="hidden bg-orange-900/90 text-[8px] text-orange-200 px-1 rounded border border-orange-400">灼</span>
                         <span id="poisonBadge" class="hidden bg-lime-900/90 text-[8px] text-lime-200 px-1 rounded border border-lime-400">毒</span>
+                        <span id="slowBadge" class="hidden bg-amber-900/90 text-[8px] text-amber-200 px-1 rounded border border-amber-400 animate-pulse">緩</span>
                     </div>
                 </div>
 
@@ -487,6 +488,11 @@
             <button onclick="spawnSpecificMonster('drake')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-orange-300 font-bold cursor-pointer">+飛龍Boss</button>
             <button onclick="spawnSpecificMonster('skeleton')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-stone-200 cursor-pointer">+骸骨劍士</button>
             <button onclick="spawnSpecificMonster('golem')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-amber-300 cursor-pointer">+遠古石魔像</button>
+            <button onclick="spawnSpecificMonster('ice_wolf')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-sky-200 cursor-pointer">+冰狼</button>
+            <button onclick="spawnSpecificMonster('yeti')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-cyan-200 cursor-pointer">+雪怪</button>
+            <button onclick="spawnSpecificMonster('fire_archer')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-orange-300 cursor-pointer">+火焰弓手</button>
+            <button onclick="spawnSpecificMonster('giant_ant')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-amber-400 cursor-pointer">+巨蟻</button>
+            <button onclick="spawnSpecificMonster('lizardman')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-lime-300 cursor-pointer">+蜥蜴人</button>
             <button onclick="spawnSpecificMonster('water_dragon')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-cyan-300 font-bold cursor-pointer">+末日水龍Boss</button>
             <button onclick="spawnSpecificMonster('baphomet_boss')" class="lineage-btn px-2 py-0.5 rounded text-[10px] text-purple-300 font-bold cursor-pointer">+巴風特Boss</button>
         </div>
@@ -1495,13 +1501,11 @@
             if (tx < 1 || ty < 1 || tx >= MAP_SIZE - 1 || ty >= MAP_SIZE - 1) return false;
             if (isFlying) return true;
             const tile = mapGrid[ty]?.[tx];
-            // 樹木(3)、城牆(6)、建築物無論走路或跳躍都不可穿透
+            // 樹木(3)、城牆(6)、建築物不可穿透；所有水域皆可涉水通行（修正 (80,80) 深水邊緣莫名卡死問題！）
             if (tile === 3 || tile === 6) return false;
             if (isInsideBuildingFootprint(tx, ty)) return false;
-            // 淺水(2)可直接踩水走過不卡點！只有深藍深水(8)不可直接走入 (跳躍可飛越邊緣)
-            if (tile === 8 && !isJumping) return false;
 
-            // 符合人體力學：1 階高低差都能自然上下走動不卡牆；超過 1 階陡峭斷崖需跳躍或走階梯
+            // 符合人體力學：1.5 階內高低差自然上下通行，避免邊緣誤卡；僅 2 階以上陡崖需走階梯或跳躍
             if (!isJumping && fromX !== null && fromY !== null) {
                 const ftx = Math.max(0, Math.min(MAP_SIZE - 1, Math.floor(fromX)));
                 const fty = Math.max(0, Math.min(MAP_SIZE - 1, Math.floor(fromY)));
@@ -1509,7 +1513,7 @@
                     const h1 = heightMap[fty]?.[ftx] ?? 0;
                     const h2 = heightMap[ty]?.[tx] ?? 0;
                     const onRamp = mapRamp[fty]?.[ftx] || mapRamp[ty]?.[tx];
-                    if (Math.abs(h1 - h2) > 1.15 && !onRamp) {
+                    if (Math.abs(h1 - h2) > 1.55 && !onRamp) {
                         return false;
                     }
                 }
@@ -1679,8 +1683,9 @@
             baseDef: defaultTpl.baseDef,
             gold: defaultTpl.gold,
             charClass: 'knight',
-            baseSpeed: 1.85,
+            baseSpeed: 2.0,
             pkMode: false,
+            slowTimer: 0,
             hasteTimer: 0,
             braveTimer: 0,
             bluePotionTimer: 0,
@@ -1981,7 +1986,14 @@
             water_dragon:  { type: 'water_dragon',  name: '末日水龍 Boss',      level: 20, maxHp: 880,  atkMin: 34, atkMax: 52, speed: 2.35, aggroRange: 8.5, attackRange: 5.2, exp: 680, scale: 1.55, isFlying: false, hitRadius: 54, ranged: 'icicle' },
             skeleton:      { type: 'skeleton',      name: '骸骨劍士',           level: 5,  maxHp: 115,  atkMin: 10, atkMax: 16, speed: 2.0,  aggroRange: 5.0, attackRange: 1.4, exp: 58,  scale: 1.05, isFlying: false, hitRadius: 30 },
             golem:         { type: 'golem',         name: '遠古石魔像(精英)',   level: 14, maxHp: 420,  atkMin: 24, atkMax: 36, speed: 1.45, aggroRange: 5.5, attackRange: 1.9, exp: 260, scale: 1.32, isFlying: false, hitRadius: 42 },
-            baphomet_boss: { type: 'baphomet_boss', name: '深淵魔神・巴風特Boss', level: 22, maxHp: 1150, atkMin: 38, atkMax: 58, speed: 2.25, aggroRange: 9.0, attackRange: 5.5, exp: 920, scale: 1.5,  isFlying: false, hitRadius: 52, ranged: 'dark_fireball' }
+            baphomet_boss: { type: 'baphomet_boss', name: '深淵魔神・巴風特Boss', level: 22, maxHp: 1150, atkMin: 38, atkMax: 58, speed: 2.25, aggroRange: 9.0, attackRange: 5.8, exp: 920, scale: 1.5,  isFlying: false, hitRadius: 52, ranged: 'dark_fireball' },
+            // 冰原族群
+            ice_wolf:      { type: 'ice_wolf',      name: '冰原冰狼',           level: 11, maxHp: 215,  atkMin: 18, atkMax: 27, speed: 2.55, aggroRange: 6.2, attackRange: 1.45, exp: 148, scale: 1.12, isFlying: false, hitRadius: 32 },
+            yeti:          { type: 'yeti',          name: '極寒雪怪',           level: 15, maxHp: 440,  atkMin: 26, atkMax: 39, speed: 1.7,  aggroRange: 6.0, attackRange: 1.85, exp: 275, scale: 1.35, isFlying: false, hitRadius: 42 },
+            // 沙漠族群
+            fire_archer:   { type: 'fire_archer',   name: '沙漠火焰弓箭手',     level: 12, maxHp: 230,  atkMin: 20, atkMax: 31, speed: 2.05, aggroRange: 7.6, attackRange: 6.4,  exp: 168, scale: 1.08, isFlying: false, hitRadius: 32, ranged: 'fire_arrow' },
+            giant_ant:     { type: 'giant_ant',     name: '沙漠巨蟻',           level: 10, maxHp: 205,  atkMin: 17, atkMax: 26, speed: 2.3,  aggroRange: 5.5, attackRange: 1.45, exp: 138, scale: 1.15, isFlying: false, hitRadius: 34 },
+            lizardman:     { type: 'lizardman',     name: '沙漠蜥蜴人戰士',     level: 13, maxHp: 295,  atkMin: 22, atkMax: 33, speed: 2.1,  aggroRange: 5.8, attackRange: 1.6,  exp: 195, scale: 1.16, isFlying: false, hitRadius: 35 }
         };
 
         // 12 座怪物生態群聚巢穴 (自動群聚活動 + 自動重生)
@@ -2001,10 +2013,18 @@
             { id: 'lair_13', name: '詛咒墓地骸骨群',   type: 'skeleton',      x: 34,  y: 68,  radius: 5.5, maxCount: 5 },
             { id: 'lair_14', name: '古廢墟石魔像群',   type: 'golem',         x: 74,  y: 34,  radius: 5.5, maxCount: 3 },
             { id: 'lair_15', name: '深淵巴風特祭壇',   type: 'baphomet_boss', x: 90,  y: 66,  radius: 5.0, maxCount: 1 },
-            { id: 'lair_16', name: '死亡沙漠骸骨軍團', type: 'skeleton',      x: 118, y: 92,  radius: 7.5, maxCount: 6 },
+            { id: 'lair_16', name: '死亡沙漠骸骨軍團', type: 'skeleton',      x: 118, y: 92,  radius: 7.5, maxCount: 5 },
             { id: 'lair_17', name: '沙漠深淵巴風特',   type: 'baphomet_boss', x: 124, y: 122, radius: 6.0, maxCount: 1 },
-            { id: 'lair_18', name: '極寒冰原石魔像群', type: 'golem',         x: 122, y: 34,  radius: 7.0, maxCount: 4 },
-            { id: 'lair_19', name: '象牙雪原冰霜巨龍', type: 'drake',         x: 34,  y: 122, radius: 7.0, maxCount: 2 }
+            { id: 'lair_18', name: '極寒冰原石魔像群', type: 'golem',         x: 122, y: 34,  radius: 7.0, maxCount: 3 },
+            { id: 'lair_19', name: '象牙雪原冰霜巨龍', type: 'drake',         x: 34,  y: 122, radius: 7.0, maxCount: 2 },
+            // 冰原族群巢穴
+            { id: 'lair_20', name: '極寒冰狼群聚地',   type: 'ice_wolf',      x: 114, y: 24,  radius: 7.0, maxCount: 6 },
+            { id: 'lair_21', name: '象牙雪原雪怪部落', type: 'yeti',          x: 28,  y: 116, radius: 7.0, maxCount: 4, altType: 'ice_wolf' },
+            { id: 'lair_22', name: '北境雪怪冰窟',     type: 'yeti',          x: 128, y: 46,  radius: 6.5, maxCount: 4 },
+            // 沙漠族群巢穴
+            { id: 'lair_23', name: '烈焰弓手沙漠營地', type: 'fire_archer',   x: 108, y: 114, radius: 7.0, maxCount: 5 },
+            { id: 'lair_24', name: '死亡沙漠巨蟻巢穴', type: 'giant_ant',     x: 92,  y: 118, radius: 7.5, maxCount: 6 },
+            { id: 'lair_25', name: '綠洲蜥蜴人戰士團', type: 'lizardman',     x: 122, y: 104, radius: 7.0, maxCount: 5 }
         ];
 
         // 定時世界王降臨系統 (每 180 秒全服廣播一隻世界王甦醒！附一鍵瞬移討伐！)
@@ -2722,6 +2742,7 @@
             const fb = document.getElementById('frozenBadge'); if (fb) fb.classList.toggle('hidden', player.frozenTimer <= 0);
             const bb = document.getElementById('burnBadge'); if (bb) bb.classList.toggle('hidden', player.burnTimer <= 0);
             const psb = document.getElementById('poisonBadge'); if (psb) psb.classList.toggle('hidden', player.poisonTimer <= 0);
+            const slb = document.getElementById('slowBadge'); if (slb) slb.classList.toggle('hidden', (player.slowTimer || 0) <= 0);
 
             const redPot = player.inventory.find(i => i.subType === 'red');
             const greenPot = player.inventory.find(i => i.subType === 'green');
@@ -4685,7 +4706,7 @@
             if (player.hp <= 0) {
                 sound.playDeathShaft(); // 小朋友下樓梯經典死亡音效！
                 player.hp = player.maxHp;
-                player.frozenTimer = 0; player.burnTimer = 0; player.poisonTimer = 0;
+                player.frozenTimer = 0; player.burnTimer = 0; player.poisonTimer = 0; player.slowTimer = 0;
                 player.x = 54.0; player.y = 56.5;
                 player.targetX = 54.0; player.targetY = 56.5;
                 player.attackTarget = null;
@@ -4722,6 +4743,10 @@
             if (player.frozenTimer > 0) {
                 player.frozenTimer = Math.max(0, player.frozenTimer - dt);
                 if (player.frozenTimer === 0) updateStatusNumbersUI();
+            }
+            if (player.slowTimer > 0) {
+                player.slowTimer = Math.max(0, player.slowTimer - dt);
+                if (player.slowTimer === 0) updateStatusNumbersUI();
             }
             if (player.burnTimer > 0 || player.poisonTimer > 0) {
                 if (player.burnTimer > 0) player.burnTimer = Math.max(0, player.burnTimer - dt);
@@ -4859,6 +4884,7 @@
             if (player.hasteTimer > 0) speedMult *= 1.18;
             if (player.braveTimer > 0) speedMult *= 1.14;
             if (player.polyForm === 'dark_elf_king') speedMult *= 1.18;
+            if (player.slowTimer > 0) speedMult *= 0.5; // 巴風特地裂術緩速 -50%
             if (player.frozenTimer > 0) speedMult = 0; // 冰凍時完全無法移動！
             const currentSpeed = player.baseSpeed * speedMult;
 
@@ -5000,15 +5026,46 @@
                             const rawDmg = Math.floor(m.atkMin + Math.random() * (m.atkMax - m.atkMin + 1));
                             const finalDmg = Math.max(1, rawDmg - Math.floor(stats.totalDef * 0.55));
 
-                            if (cfg.ranged) {
-                                // 遠距離投射物：暗黑箭矢 / 黑元素火球 / 末日水龍冰錐 + 極寒冰霜
+                            if (m.type === 'baphomet_boss' && Math.random() < 0.62) {
+                                // 深淵魔神・巴風特雙專屬技能：火風暴 (4個火焰龍捲風) / 地裂術 (緩速-50% 5秒)
+                                if (Math.random() < 0.5) {
+                                    // 1. 火風暴：召喚 4 個旋轉火焰龍捲風範圍轟擊！
+                                    sound.playSpell('fireball');
+                                    camera.shakeTimer = 0.28; camera.shakeIntensity = 7;
+                                    addFloatingText(m.x, m.y, '🔥 火風暴!', '#fb923c', 16, true);
+                                    addChatLog('🔥 <span class="text-orange-400 font-bold">【巴風特施放・火風暴】4 道烈焰龍捲風席捲戰場！</span>', 'text-orange-300');
+                                    if (window.R3D && window.R3D.spawnBaphometSkillVfx) window.R3D.spawnBaphometSkillVfx('firestorm', player.x, player.y);
+                                    if (Math.hypot(player.x - m.x, player.y - m.y) <= 7.2) {
+                                        applyPlayerDamage(Math.floor(finalDmg * 1.25));
+                                        if (Math.random() < 0.55) {
+                                            player.burnTimer = 4.0;
+                                            addFloatingText(player.x, player.y, '🔥 烈焰灼傷!', '#fb923c', 13);
+                                        }
+                                    }
+                                } else {
+                                    // 2. 地裂術：地表裂開熔岩地裂紋＋緩速 -50% 持續 5 秒！
+                                    sound.playSpell('meteor_rock');
+                                    camera.shakeTimer = 0.32; camera.shakeIntensity = 8;
+                                    addFloatingText(m.x, m.y, '🌋 地裂術!', '#f59e0b', 16, true);
+                                    addChatLog('🌋 <span class="text-amber-400 font-bold">【巴風特施放・地裂術】大地崩裂，移動速度降低 50%（5秒）！</span>', 'text-amber-300');
+                                    if (window.R3D && window.R3D.spawnBaphometSkillVfx) window.R3D.spawnBaphometSkillVfx('earth_crack', player.x, player.y);
+                                    if (Math.hypot(player.x - m.x, player.y - m.y) <= 7.5) {
+                                        player.slowTimer = 5.0;
+                                        addFloatingText(player.x, player.y, '🌋 地裂緩速 -50% (5秒)', '#fbbf24', 14);
+                                        applyPlayerDamage(Math.floor(finalDmg * 1.15));
+                                    }
+                                }
+                            } else if (cfg.ranged) {
+                                // 遠距離投射物：暗黑箭矢 / 沙漠火焰箭(機率灼傷) / 黑元素火球 / 末日水龍冰錐與極寒冰霜
                                 const isFrostSkill = (m.type === 'water_dragon' && Math.random() < 0.35);
+                                const isBurnArrow = (cfg.ranged === 'fire_arrow' && Math.random() < 0.42);
                                 enemyProjectiles.push({
                                     kind: isFrostSkill ? 'frost_nova' : cfg.ranged,
                                     x: m.x, y: m.y, tx: player.x, ty: player.y,
-                                    speed: cfg.ranged === 'arrow' ? 13 : 9.5,
+                                    speed: (cfg.ranged === 'arrow' || cfg.ranged === 'fire_arrow') ? 13 : 9.5,
                                     dmg: isFrostSkill ? Math.floor(finalDmg * 1.25) : finalDmg,
-                                    freeze: isFrostSkill
+                                    freeze: isFrostSkill,
+                                    burn: isBurnArrow
                                 });
                                 if (isFrostSkill) addFloatingText(m.x, m.y, '❄️極寒冰霜!', '#38bdf8', 15);
                                 else if (m.type === 'water_dragon') addFloatingText(m.x, m.y, '🧊冰錐!', '#7dd3fc', 13);
@@ -5072,6 +5129,12 @@
                         player.frozenTimer = 2.0;
                         spawnHitSparks(player.x, player.y, '#38bdf8', 20, 16);
                         addFloatingText(player.x, player.y, '❄️ 冰凍無法動作 2 秒!', '#7dd3fc', 15);
+                    } else if (ep.burn) {
+                        player.burnTimer = 4.0;
+                        spawnHitSparks(player.x, player.y, '#fb923c', 16, 16);
+                        addFloatingText(player.x, player.y, '🔥 火箭灼傷 (4秒)!', '#fb923c', 14);
+                    } else if (ep.kind === 'fire_arrow') {
+                        spawnHitSparks(player.x, player.y, '#f97316', 12, 16);
                     } else if (ep.kind === 'dark_fireball') {
                         spawnHitSparks(player.x, player.y, '#a855f7', 14, 16);
                     } else {
@@ -6412,7 +6475,7 @@
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-        import { createModelFactory } from './js/models3d.js?v=20261124a';
+        import { createModelFactory } from './js/models3d.js?v=20261124c';
         import { buildAllBuildings } from './js/buildings3d.js?v=20261124b';
         import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js?v=20261123b';
 
@@ -7560,6 +7623,12 @@
                     if (ep.kind === 'arrow') {
                         m = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.85, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.2, 0.8, 3.6), toneMapped: false }));
                         m.rotation.x = Math.PI / 2;
+                    } else if (ep.kind === 'fire_arrow') {
+                        m = new THREE.Group();
+                        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.92, 6), new THREE.MeshBasicMaterial({ color: new THREE.Color(3.6, 1.4, 0.25), toneMapped: false }));
+                        shaft.rotation.x = Math.PI / 2; m.add(shaft);
+                        const ember = new THREE.Sprite(new THREE.SpriteMaterial({ map: TEX.glow, color: new THREE.Color(3.4, 1.1, 0.2), blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }));
+                        ember.scale.set(0.65, 0.65, 1); ember.position.z = 0.35; m.add(ember);
                     } else if (ep.kind === 'dark_fireball') {
                         m = new THREE.Group();
                         m.add(new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8), new THREE.MeshBasicMaterial({ color: 0x09040f })));
@@ -7580,6 +7649,87 @@
                 if (!alive.has(ep)) { scene.remove(m); epMeshes.delete(ep); }
             }
         }
+
+        // 巴風特專屬 3D 技能特效：火風暴 (4道旋轉火焰龍捲風) / 地裂術 (熔岩地裂紋＋飛濺碎石)
+        R3D.spawnBaphometSkillVfx = function (kind, cx, cy) {
+            if (!R3D.ready || !scene) return;
+            const grp = new THREE.Group();
+            const baseY = worldY(cx, cy);
+            grp.position.set(cx, baseY, cy);
+            scene.add(grp);
+
+            if (kind === 'firestorm') {
+                // 4 個圍繞目標旋轉呼嘯的 3D 火焰龍捲風！
+                const cyclones = [];
+                const fireMat = new THREE.MeshBasicMaterial({ map: TEX.swirl, color: new THREE.Color(3.4, 1.2, 0.2), transparent: true, opacity: 0.82, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
+                const coreMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.8, 2.0, 0.5), transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
+                for (let k = 0; k < 4; k++) {
+                    const ang = (k / 4) * TAU;
+                    const cg = new THREE.Group();
+                    const funnel = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 0.24, 4.2, 14, 1, true), fireMat);
+                    funnel.position.y = 2.1; cg.add(funnel);
+                    const core = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.14, 3.8, 10, 1, true), coreMat);
+                    core.position.y = 1.9; cg.add(core);
+                    cg.position.set(Math.cos(ang) * 2.4, 0, Math.sin(ang) * 2.4);
+                    grp.add(cg);
+                    cyclones.push({ cg, baseAng: ang });
+                }
+                vfxList.push({
+                    group: grp, life: 2.2, maxLife: 2.2,
+                    update(dt, p) {
+                        const fade = p < 0.15 ? p / 0.15 : (p > 0.8 ? (1 - p) / 0.2 : 1);
+                        fireMat.opacity = 0.82 * fade;
+                        coreMat.opacity = 0.65 * fade;
+                        for (const c of cyclones) {
+                            const a = c.baseAng + p * 4.5;
+                            const rad = 2.2 + Math.sin(p * Math.PI) * 1.1;
+                            c.cg.position.set(Math.cos(a) * rad, 0, Math.sin(a) * rad);
+                            c.cg.rotation.y += dt * 10;
+                        }
+                    }
+                });
+            } else if (kind === 'earth_crack') {
+                // 3D 熔岩地裂術：放射狀焦黑熔岩裂縫＋向上飛濺碎石！
+                const lavaMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(3.8, 1.1, 0.15), transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+                const darkCrackMat = new THREE.MeshBasicMaterial({ color: 0x180a05, transparent: true, opacity: 0.9, depthWrite: false });
+                for (let k = 0; k < 7; k++) {
+                    const ang = (k / 7) * TAU + (k % 2) * 0.25;
+                    const len = 2.6 + (k % 3) * 0.7;
+                    const crack = new THREE.Mesh(new THREE.PlaneGeometry(0.28, len), darkCrackMat);
+                    crack.rotation.set(-Math.PI / 2, 0, ang);
+                    crack.position.set(Math.sin(ang) * len * 0.45, 0.05, Math.cos(ang) * len * 0.45);
+                    grp.add(crack);
+                    const lava = new THREE.Mesh(new THREE.PlaneGeometry(0.12, len * 0.92), lavaMat);
+                    lava.rotation.set(-Math.PI / 2, 0, ang);
+                    lava.position.set(Math.sin(ang) * len * 0.45, 0.07, Math.cos(ang) * len * 0.45);
+                    grp.add(lava);
+                }
+                const rocks = [];
+                const rockMat = new THREE.MeshStandardMaterial({ color: 0x3b2c24, roughness: 0.92, flatShading: true });
+                for (let i = 0; i < 12; i++) {
+                    const rm = new THREE.Mesh(new THREE.DodecahedronGeometry(0.18 + (i % 3) * 0.08, 0), rockMat);
+                    const a = (i / 12) * TAU;
+                    rm.position.set(Math.cos(a) * 0.8, 0.2, Math.sin(a) * 0.8);
+                    grp.add(rm);
+                    rocks.push({ m: rm, vx: Math.cos(a) * (1.8 + (i % 3)), vz: Math.sin(a) * (1.8 + (i % 3)), vy: 4.5 + (i % 4) * 1.1 });
+                }
+                vfxList.push({
+                    group: grp, life: 2.0, maxLife: 2.0,
+                    update(dt, p) {
+                        const fade = p > 0.7 ? (1 - p) / 0.3 : 1;
+                        lavaMat.opacity = 0.95 * fade;
+                        darkCrackMat.opacity = 0.9 * fade;
+                        for (const r of rocks) {
+                            r.vy -= 14 * dt;
+                            r.m.position.x += r.vx * dt;
+                            r.m.position.z += r.vz * dt;
+                            r.m.position.y = Math.max(0.08, r.m.position.y + r.vy * dt);
+                            r.m.rotation.x += dt * 4; r.m.rotation.z += dt * 3;
+                        }
+                    }
+                });
+            }
+        };
 
         // 同步點擊水波紋 3D
         function syncClickRings3D(dt) {
