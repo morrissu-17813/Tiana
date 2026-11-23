@@ -17,16 +17,31 @@ function addM(parent, geo, mat, x = 0, y = 0, z = 0, cast = true) {
 
 function makeGableRoofGeo(w, d, h, overW = 0.28, overD = 0.26) {
     const W = w / 2 + overW, D = d / 2 + overD;
+    // 修正雙斜坡頂面法線方向（皆朝外），確保從 45 度等距視角看雙側瓦片皆完整立體！
     const v = [
-        -W, 0, -D,  W, 0, -D,  W, h, 0,  -W, 0, -D,  W, h, 0,  -W, h, 0,
-        -W, 0,  D, -W, h,  0,  W, h, 0,  -W, 0,  D,  W, h, 0,   W, 0,  D,
-        -W, 0, -D, -W, h,  0, -W, 0, D,   W, 0, -D,  W, 0, D,   W, h,  0
+        // 北坡 (-Z) 朝上北
+        -W, 0, -D, -W, h, 0,  W, h, 0,   -W, 0, -D,  W, h, 0,  W, 0, -D,
+        // 南坡 (+Z) 朝上南
+        -W, 0,  D,  W, 0, D,  W, h, 0,   -W, 0,  D,  W, h, 0, -W, h,  0
     ];
     const uv = [
-        0, 0, 2.5, 0, 2.5, 1.4, 0, 0, 2.5, 1.4, 0, 1.4,
-        0, 0, 0, 1.4, 2.5, 1.4, 0, 0, 2.5, 1.4, 2.5, 0,
-        0, 0, 0.5, 1, 1, 0, 0, 0, 1, 0, 0.5, 1
+        0, 0, 0, 1.5, 2.5, 1.5, 0, 0, 2.5, 1.5, 2.5, 0,
+        0, 0, 2.5, 0, 2.5, 1.5, 0, 0, 2.5, 1.5, 0, 1.5
     ];
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.computeVertexNormals();
+    return g;
+}
+
+function makeGableEndWallsGeo(w, d, h) {
+    const W = w / 2, D = d / 2;
+    const v = [
+        -W, 0, -D, -W, 0, D, -W, h, 0,
+         W, 0,  D,  W, 0, -D, W, h, 0
+    ];
+    const uv = [0, 0, 1, 0, 0.5, 1, 0, 0, 1, 0, 0.5, 1];
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
@@ -57,7 +72,7 @@ export function buildAllBuildings({ scene, TEX, mapBuildings, heightMap, EH, wat
     for (const k in roofCol) {
         roofMats[k] = new THREE.MeshStandardMaterial({
             map: TEX.roof.map, normalMap: TEX.roof.normalMap, normalScale: new THREE.Vector2(1.3, 1.3),
-            color: roofCol[k], roughness: 0.78, metalness: 0.08
+            color: roofCol[k], roughness: 0.78, metalness: 0.08, side: THREE.DoubleSide
         });
     }
 
@@ -100,12 +115,16 @@ export function buildAllBuildings({ scene, TEX, mapBuildings, heightMap, EH, wat
             addM(parent, new THREE.BoxGeometry(0.12, f1H, 0.12), stoneTrim, sx * (w / 2 - 0.01), 0.24 + f1H / 2, sz * (d / 2 - 0.01));
         }
 
-        // 3. 陡峭斜屋頂 + 屋脊木樑
+        // 3. 歐式人字雙坡瓦片屋頂 + 左右粉刷山牆 + 屋脊木樑與厚實屋簷板
         const roofY = y2Base + 0.08 + f2H;
-        const roofH = wallH * 0.85;
-        const roof = addM(parent, makeGableRoofGeo(d2, w2, roofH, 0.28, 0.28), roofMats[roofKey], 0, roofY, 0);
-        roof.rotation.y = Math.PI / 2;
-        addM(parent, new THREE.BoxGeometry(w2 + 0.62, 0.1, 0.12), darkTimber, 0, roofY + roofH + 0.02, 0);
+        const roofH = Math.min(wallH * 0.72, d2 * 0.58);
+        addM(parent, makeGableRoofGeo(w2, d2, roofH, 0.26, 0.28), roofMats[roofKey], 0, roofY, 0);
+        addM(parent, makeGableEndWallsGeo(w2 - 0.02, d2 - 0.02, roofH - 0.02), plasterMat, 0, roofY, 0);
+        // 屋脊橫樑與前後屋簷封板 (完全對齊屋頂方向，不再垂直穿插！)
+        addM(parent, new THREE.BoxGeometry(w2 + 0.58, 0.11, 0.14), darkTimber, 0, roofY + roofH + 0.02, 0);
+        for (const sz of [-1, 1]) {
+            addM(parent, new THREE.BoxGeometry(w2 + 0.56, 0.08, 0.08), darkTimber, 0, roofY + 0.02, sz * (d2 / 2 + 0.26));
+        }
 
         // 4. 拱形木門 + 雙柱小門廊雨遮
         const frontZ = d / 2;

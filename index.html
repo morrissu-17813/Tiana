@@ -270,10 +270,10 @@
     <!-- ==========================================================
          3. 左上角：暗黑魔龍鍛鐵頭像框 ＆ 雙層高光紅藍血魔條 HUD
          ========================================================== -->
-    <div class="fixed top-2 left-2 z-20 pointer-events-auto select-none" style="max-width: 268px;">
+    <div class="fixed top-2 left-2 z-20 pointer-events-auto select-none" style="max-width: 295px;">
         <div class="relative flex items-center">
-            <!-- 左側：暗黑魔龍雕塑頭像框 (SVG 曜石龍首＋背刺＋等級圓徽) -->
-            <div class="relative w-[68px] h-[68px] sm:w-[74px] sm:h-[74px] shrink-0 -mr-3 z-10">
+            <!-- 左側：點擊自己頭像切換強制 PK 模式 (紅名全服可見) -->
+            <div id="selfPortraitBtn" onclick="toggleSelfPkMode()" title="點擊自己頭像：開啟／關閉強制 PK 模式（紅名）" class="relative w-[68px] h-[68px] sm:w-[74px] sm:h-[74px] shrink-0 -mr-3 z-10 cursor-pointer transition-transform active:scale-95">
                 <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] overflow-visible">
                     <defs>
                         <linearGradient id="ironGrad" x1="0" y1="0" x2="1" y2="1">
@@ -287,33 +287,27 @@
                             <stop offset="100%" stop-color="#090707"/>
                         </radialGradient>
                     </defs>
-                    <!-- 龍背尖刺外廓 -->
                     <path d="M22,26 L32,8 L45,17 L58,6 L66,18 L82,16 L76,30 L88,38 L78,52 L84,66 L68,78 L54,88 L36,84 L22,74 L12,56 Z" fill="url(#ironGrad)" stroke="#6b7280" stroke-width="1.4"/>
-                    <!-- 左側暗黑魔龍頭首 -->
                     <path d="M26,48 L8,54 L2,65 L12,67 L6,76 L18,75 L16,84 L28,74 L34,62 Z" fill="#17191f" stroke="#525866" stroke-width="1.4"/>
-                    <!-- 魔龍熾紅雙眼 -->
                     <circle cx="17" cy="60" r="2.2" fill="#ef4444"/>
-                    <!-- 圓形鍛鐵頭像框 -->
-                    <circle cx="54" cy="50" r="27" fill="url(#portraitBg)" stroke="#686d78" stroke-width="3.2"/>
+                    <circle id="selfPortraitRing" cx="54" cy="50" r="27" fill="url(#portraitBg)" stroke="#686d78" stroke-width="3.2"/>
                     <circle cx="54" cy="50" r="24" fill="none" stroke="#181a20" stroke-width="1.5"/>
-                    <!-- 角色肖像剪影 (優雅奇幻英雄側像) -->
                     <path d="M38,68 C40,56 48,54 54,54 C60,54 68,56 70,68 A24,24 0 0,1 38,68 Z" fill="#7c2d12"/>
                     <circle cx="54" cy="45" r="10.5" fill="#e2b494"/>
                     <path d="M42,46 C42,33 50,29 58,31 C65,33 67,41 64,49 C62,42 56,39 48,42 C45,43 43,45 42,46 Z" fill="#d99a4e"/>
                     <path d="M44,37 L54,32 L64,37" fill="none" stroke="#facc15" stroke-width="1.8"/>
                 </svg>
-                <!-- 左上角圓形等級徽章 (對應截圖圓盾位置) -->
                 <div class="absolute top-1 left-2.5 w-6 h-6 rounded-full bg-gradient-to-b from-[#3c414d] to-[#111318] border border-[#8e95a3] shadow flex items-center justify-center text-[10px] font-mono font-bold text-amber-200" title="目前等級">
                     <span id="uiLevel">1</span>
                 </div>
             </div>
 
-            <!-- 右側：鍛鐵雙層高光紅藍血魔條 + 角色名稱與狀態 -->
-            <div class="flex-1 min-w-[172px] sm:min-w-[192px] pl-2.5">
-                <!-- 名稱與 Buff 標籤列 -->
+            <!-- 右側：鍛鐵雙層高光紅藍血魔條 + 彈性兩行清晰資訊 -->
+            <div class="flex-1 min-w-[186px] sm:min-w-[208px] pl-2.5">
                 <div class="flex items-center justify-between gap-1 mb-0.5 pl-1 pr-0.5">
-                    <span id="uiPlayerName" class="serif-font text-amber-100 text-[11px] tracking-wide truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">亞丁騎士</span>
+                    <span id="uiPlayerName" class="serif-font text-amber-100 text-[11px] tracking-wide whitespace-nowrap drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">亞丁騎士</span>
                     <div class="flex items-center gap-0.5 shrink-0">
+                        <span id="pkModeBadge" class="hidden bg-red-900/95 text-[8px] text-red-200 px-1 rounded border border-red-400 font-bold">PK</span>
                         <span id="hasteBadge" class="hidden bg-emerald-900/85 text-[8px] text-emerald-200 px-1 rounded border border-emerald-500/60">綠</span>
                         <span id="braveBadge" class="hidden bg-red-900/85 text-[8px] text-red-200 px-1 rounded border border-amber-400/60">勇</span>
                         <span id="polyBadge" class="hidden bg-purple-900/85 text-[8px] text-purple-200 px-1 rounded border border-purple-400/60">變</span>
@@ -323,21 +317,17 @@
                     </div>
                 </div>
 
-                <!-- 鍛鐵尖刺雙層血魔條 (截圖同款風格) -->
                 <div class="relative">
-                    <!-- 頂部微小鍛鐵尖刺裝飾 -->
                     <svg viewBox="0 0 180 8" class="w-full h-1.5 block -mb-[1px] pointer-events-none">
                         <path d="M62,8 L72,1 L75,8 Z M132,8 L142,2 L144,8 Z" fill="#252932" stroke="#5b616e" stroke-width="0.7"/>
                     </svg>
                     <div class="space-y-[3px]">
-                        <!-- 紅血條 -->
                         <div class="dragon-bar-track w-full h-[15px] rounded-r-sm overflow-hidden">
                             <div id="hpBar" class="dragon-hp-fill h-full transition-all duration-150" style="width: 100%;"></div>
                             <div class="absolute inset-0 flex items-center justify-end pr-1.5 text-[9px] font-mono text-white/95 drop-shadow-[0_1px_1px_#000]">
                                 <span><span id="uiHp">220</span>/<span id="uiMaxHp">220</span></span>
                             </div>
                         </div>
-                        <!-- 藍魔條 -->
                         <div class="dragon-bar-track w-full h-[13px] rounded-r-sm overflow-hidden">
                             <div id="mpBar" class="dragon-mp-fill h-full transition-all duration-150" style="width: 100%;"></div>
                             <div class="absolute inset-0 flex items-center justify-end pr-1.5 text-[8px] font-mono text-white/95 drop-shadow-[0_1px_1px_#000]">
@@ -347,13 +337,80 @@
                     </div>
                 </div>
 
-                <!-- 精簡底部鍛鐵資訊列 (AC / 金幣 / 地區 / 在線) -->
-                <div class="flex items-center justify-between gap-1.5 mt-1 pl-1 pr-0.5 text-[9px] text-stone-300 drop-shadow-[0_1px_2px_#000]">
-                    <span class="text-emerald-300 font-mono">AC <span id="uiDef">-26</span></span>
-                    <span class="text-amber-300 font-mono truncate"><i class="fa-solid fa-coins mr-0.5 text-[8px]"></i><span id="uiGold">2,000</span></span>
-                    <span id="uiRegionName" class="text-stone-300 truncate">說話之島</span>
-                    <span class="hidden" id="saveIndicator">已存</span>
-                    <span class="text-emerald-400/90 font-mono shrink-0">●<span id="onlineCountBadge">1</span></span>
+                <!-- 彈性兩行資訊列 (絕不折行、不隱藏成 ...) -->
+                <div class="mt-1 pl-1 pr-0.5 space-y-0.5 text-[9.5px] leading-tight text-stone-200 drop-shadow-[0_1px_2px_#000]">
+                    <div class="flex items-center justify-between gap-2 whitespace-nowrap">
+                        <span class="text-emerald-300 font-mono">AC <span id="uiDef">-26</span></span>
+                        <span class="text-amber-300 font-mono"><i class="fa-solid fa-coins mr-0.5 text-[8px]"></i><span id="uiGold">2,000</span></span>
+                    </div>
+                    <div class="flex items-center justify-between gap-2 whitespace-nowrap">
+                        <span id="uiRegionName" class="text-stone-200">說話之島(1階)</span>
+                        <span class="hidden" id="saveIndicator">已存</span>
+                        <span class="text-emerald-400 font-mono">線上:<span id="onlineCountBadge">1</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 點擊其他玩家顯示：頭像、裝備基礎資訊與交易／PK 攻擊操作面板 -->
+    <div id="targetPlayerCard" class="hidden fixed top-12 left-1/2 -translate-x-1/2 z-30 lineage-panel px-3 py-2 w-[275px] sm:w-[300px] border border-amber-500/85 shadow-2xl pointer-events-auto">
+        <div class="flex items-center justify-between gap-2">
+            <div onclick="attackInspectedPlayer()" title="開啟 PK 模式後點擊頭像即可鎖定攻擊" class="flex items-center gap-2 cursor-pointer group min-w-0">
+                <div id="tpPortrait" class="w-10 h-10 rounded-full bg-gradient-to-b from-stone-700 to-black border-2 border-amber-500/80 flex items-center justify-center text-lg shrink-0 group-hover:border-rose-400">⚔️</div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-1">
+                        <span id="tpName" class="text-xs font-bold text-amber-200 truncate">玩家名稱</span>
+                        <span id="tpLevel" class="text-[9px] font-mono bg-amber-950/90 text-amber-300 px-1 rounded border border-amber-700/70">Lv.1</span>
+                    </div>
+                    <div id="tpClass" class="text-[10px] text-stone-400">魔騎士</div>
+                </div>
+            </div>
+            <button onclick="closeTargetPlayerCard()" class="text-stone-400 hover:text-white px-1 cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="tpEquipSummary" class="mt-1.5 pt-1.5 border-t border-amber-900/60 text-[10px] text-stone-300 space-y-0.5 font-mono"></div>
+        <div class="grid grid-cols-2 gap-1.5 mt-2">
+            <button onclick="requestTradeWithTarget()" class="lineage-btn py-1 rounded text-[11px] font-bold text-emerald-300 cursor-pointer"><i class="fa-solid fa-handshake mr-1"></i>發起交易</button>
+            <button onclick="attackInspectedPlayer()" class="lineage-btn py-1 rounded text-[11px] font-bold text-rose-300 border-rose-700/80 cursor-pointer"><i class="fa-solid fa-skull-crossbones mr-1"></i>鎖定攻擊</button>
+        </div>
+    </div>
+
+    <!-- 玩家對玩家即時交易視窗 (道具與金幣) -->
+    <div id="tradeModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 pointer-events-auto">
+        <div class="lineage-panel w-full max-w-[400px] overflow-hidden border border-emerald-500/80 shadow-2xl">
+            <div class="lineage-header px-3 py-2 flex items-center justify-between text-xs font-bold">
+                <span id="tradeHeaderTitle"><i class="fa-solid fa-handshake mr-1.5"></i>玩家交易</span>
+                <button onclick="cancelPlayerTrade()" class="text-amber-200 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-2.5 space-y-2 text-xs">
+                <div class="grid grid-cols-2 gap-2">
+                    <div class="bg-black/65 border border-amber-900/60 rounded p-2 space-y-1.5">
+                        <div class="text-[10px] font-bold text-amber-300 flex justify-between">
+                            <span>我的交易欄</span>
+                            <span id="tradeMyStatus" class="text-stone-400">準備中</span>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[10px] text-yellow-300">金幣:</span>
+                            <input id="tradeGoldInput" type="number" min="0" value="0" onchange="updateMyTradeOffer()" class="w-full bg-black/80 border border-amber-800/80 rounded px-1.5 py-0.5 text-[11px] text-yellow-200 font-mono outline-none">
+                        </div>
+                        <div id="tradeMyItems" class="min-h-[44px] text-[10px] text-stone-300 space-y-0.5"></div>
+                    </div>
+                    <div class="bg-black/65 border border-sky-900/60 rounded p-2 space-y-1.5">
+                        <div class="text-[10px] font-bold text-sky-300 flex justify-between">
+                            <span id="tradePartnerName">對方</span>
+                            <span id="tradePartnerStatus" class="text-stone-400">準備中</span>
+                        </div>
+                        <div class="text-[10px] text-yellow-300 font-mono">金幣: <span id="tradePartnerGold">0</span> G</div>
+                        <div id="tradePartnerItems" class="min-h-[44px] text-[10px] text-stone-300 space-y-0.5"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-amber-200/80 mb-1">點擊下方背包道具加入／移出交易欄：</div>
+                    <div id="tradeBagPicker" class="max-h-28 overflow-y-auto grid grid-cols-2 gap-1 bg-black/60 p-1 rounded border border-amber-950/80"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button id="tradeConfirmBtn" onclick="confirmMyTrade()" class="lineage-btn py-1.5 rounded text-xs font-bold text-emerald-300 border-emerald-500/80 cursor-pointer">確認交易</button>
+                    <button onclick="cancelPlayerTrade()" class="lineage-btn py-1.5 rounded text-xs font-bold text-rose-300 cursor-pointer">取消交易</button>
                 </div>
             </div>
         </div>
@@ -1385,9 +1442,12 @@
                         continue;
                     }
 
-                    // 生態分區：死亡沙漠 (tile 9) 與 極寒冰原 (tile 10)
-                    const isDesertZone = (x >= 102 && y >= 62) || (x >= 68 && y >= 100);
-                    const isSnowZone = (x >= 102 && y < 62) || (x < 68 && y >= 102);
+                    // 生態分區：以有機波浪曲線自然過渡死亡沙漠 (tile 9) 與 極寒冰原 (tile 10)，告別生硬方格直線！
+                    const biomeWaveX = Math.sin(y * 0.085) * 9 + Math.cos(y * 0.19) * 4.5;
+                    const biomeWaveY = Math.cos(x * 0.08) * 9 + Math.sin(x * 0.17) * 4.5;
+                    const wxEff = x + biomeWaveX, wyEff = y + biomeWaveY;
+                    const isDesertZone = (wxEff >= 101 && wyEff >= 63) || (wxEff >= 70 && wyEff >= 100);
+                    const isSnowZone = !isDesertZone && ((wxEff >= 101 && wyEff < 63) || (wxEff < 70 && wyEff >= 102));
 
                     const r = mapRnd();
                     const distFromTownCenter = Math.hypot(x - 54, y - 54);
@@ -1619,7 +1679,8 @@
             baseDef: defaultTpl.baseDef,
             gold: defaultTpl.gold,
             charClass: 'knight',
-            baseSpeed: 2.65,
+            baseSpeed: 1.85,
+            pkMode: false,
             hasteTimer: 0,
             braveTimer: 0,
             bluePotionTimer: 0,
@@ -3209,7 +3270,9 @@
                     { id: 'shop_boot',  name: '+4 疾風戰靴',       type: 'boots',    atk: 1,  def: 5,  sp: 5,  enchant: 4, price: 900,  icon: '👢', desc: '防禦 -5、敏捷輕盈' },
                     { id: 'shop_ear',   name: '+2 聖光耳環',       type: 'earring',  atk: 2,  def: 2,  sp: 10, enchant: 2, price: 1100, icon: '💎', desc: '攻+2 防-2 魔傷+10%' },
                     { id: 'shop_neck',  name: '+2 龍之心項鍊',     type: 'necklace', atk: 3,  def: 2,  sp: 8,  enchant: 2, price: 1200, icon: '📿', desc: '攻+3 防-2 魔傷+8%' },
-                    { id: 'shop_ring',  name: '+2 秘銀魔戒',       type: 'ring',     atk: 2,  def: 2,  sp: 14, enchant: 2, price: 1200, icon: '💍', desc: '攻+2 防-2 魔傷+14%' }
+                    { id: 'shop_ring',      name: '+2 秘銀魔戒',         type: 'ring',     atk: 2,  def: 2,  sp: 14, enchant: 2,  price: 1200,    icon: '💍', desc: '攻+2 防-2 魔傷+14%' },
+                    { id: 'shop_god_armor', name: '+15 創世神王聖鎧',    type: 'armor',    atk: 15, def: 48, sp: 45, enchant: 15, armorTint: '#fde047', price: 9999999, icon: '👑', desc: '【全服最強至高鎧甲】防禦 -48、攻擊 +15、魔傷 +45%！' },
+                    { id: 'shop_god_neck',  name: '+10 創世神王之心項鍊', type: 'necklace', atk: 25, def: 25, sp: 60, enchant: 10, price: 9999999, icon: '🔱', desc: '【全服最強至高項鍊】防禦 -25、攻擊 +25、魔傷 +60%！' }
                 ]
             }
         ];
@@ -3827,19 +3890,12 @@
                 }
             }
 
-            // 1. 優先檢查是否點擊其他玩家 (城鎮外強制 PVP 攻擊！)
+            // 1. 優先檢查是否點擊其他玩家 (顯示對方頭像、裝備資訊、可交易；開啟強制 PK 時直接鎖定攻擊！)
             const clickedPlayer = (window.R3D && window.R3D.ready && window.R3D.pickRemotePlayer) ? window.R3D.pickRemotePlayer(e.clientX, e.clientY) : null;
             if (clickedPlayer) {
-                if (isInSafeZone(player.x, player.y) || isInSafeZone(clickedPlayer.x, clickedPlayer.y)) {
-                    addFloatingText(clickedPlayer.x, clickedPlayer.y, '🛡️ 安全區禁止 PVP', '#38bdf8', 13);
-                    addChatLog(`🛡️ 【${escapeHtml(clickedPlayer.name)}】目前在城鎮安全區內，無法強制攻擊。`, 'text-sky-300');
-                } else {
-                    clickedPlayer.isRemotePlayer = true;
-                    player.attackTarget = clickedPlayer;
-                    player.manualMoveOverrideTimer = 0;
-                    addFloatingText(clickedPlayer.x, clickedPlayer.y, '⚔️ 強制攻擊!', '#ef4444', 14);
-                    addChatLog(`⚔️ 你鎖定了玩家【${escapeHtml(clickedPlayer.name)}】發動強制攻擊！`, 'text-rose-400 font-bold');
-                    clickIndicators.push({ wx: clickedPlayer.x, wy: clickedPlayer.y, radius: 4, maxRadius: 24, color: '#ef4444', alpha: 1 });
+                openTargetPlayerCard(clickedPlayer.uid);
+                if (player.pkMode) {
+                    attackInspectedPlayer();
                 }
                 return;
             }
@@ -4252,6 +4308,13 @@
                 bladeColor: player.equipped.weapon ? (player.equipped.weapon.bladeColor || '#bae6fd') : '#bae6fd',
                 weaponEnchant: getItemEnchantNum(player.equipped.weapon),
                 weaponClass: inferWeaponClass(player.equipped.weapon),
+                pkMode: Boolean(player.pkMode),
+                equipSummary: {
+                    weapon: player.equipped.weapon ? player.equipped.weapon.name : '無',
+                    armor: player.equipped.armor ? player.equipped.armor.name : '無',
+                    necklace: player.equipped.necklace ? player.equipped.necklace.name : '無',
+                    cloak: player.equipped.cloak ? player.equipped.cloak.name : '無'
+                },
                 jumpZ: Number((player.jumpZ || 0).toFixed(2)),
                 chatBubbleText: player.chatBubbleTimer > 0 ? player.chatBubbleText : '',
                 extraText,
@@ -4315,6 +4378,8 @@
             rp.bladeColor = pkt.bladeColor || rp.bladeColor;
             rp.weaponEnchant = pkt.weaponEnchant ?? rp.weaponEnchant;
             rp.weaponClass = pkt.weaponClass || rp.weaponClass || '1h_sword';
+            rp.pkMode = Boolean(pkt.pkMode);
+            if (pkt.equipSummary) rp.equipSummary = pkt.equipSummary;
             rp.jumpZ = pkt.jumpZ || 0;
             rp.lastSeen = Date.now();
 
@@ -4380,6 +4445,13 @@
                         updateStatusNumbersUI();
                     }
                 } catch (e) {}
+            } else if (pkt.eventType === 'trade_msg' && pkt.extraText) {
+                try {
+                    const msg = JSON.parse(pkt.extraText);
+                    if (msg && msg.targetUid === player.uid && window.handleIncomingTradePacket) {
+                        window.handleIncomingTradePacket(pkt.uid, rp.name, msg);
+                    }
+                } catch (e) {}
             } else if (isNew || pkt.eventType === 'join') {
                 addChatLog(`🟢 玩家【${escapeHtml(rp.name)} Lv.${rp.level}】進入了亞丁大陸！`, 'text-emerald-400');
             }
@@ -4389,6 +4461,217 @@
 
         window.buildNetworkSnapshot = buildNetworkSnapshot;
         window.handleIncomingNetworkPacket = handleIncomingNetworkPacket;
+
+        /* ==============================================================
+         * 強制 PK 模式 (點擊自己頭像切換紅名) + 玩家裝備查看 + P2P 即時交易系統
+         * ============================================================== */
+        let inspectedPlayerUid = null;
+        let tradeState = null; // { partnerUid, partnerName, myGold, myIndices:[], myConfirmed, partnerGold, partnerItems:[], partnerConfirmed }
+
+        function toggleSelfPkMode() {
+            player.pkMode = !player.pkMode;
+            const nameEl = document.getElementById('uiPlayerName');
+            const pkBadge = document.getElementById('pkModeBadge');
+            const ring = document.getElementById('selfPortraitRing');
+            if (nameEl) {
+                nameEl.classList.toggle('text-red-400', player.pkMode);
+                nameEl.classList.toggle('font-bold', player.pkMode);
+                nameEl.classList.toggle('text-amber-100', !player.pkMode);
+            }
+            if (pkBadge) pkBadge.classList.toggle('hidden', !player.pkMode);
+            if (ring) ring.setAttribute('stroke', player.pkMode ? '#ef4444' : '#686d78');
+            sound.playEquip();
+            broadcastPlayerState('sync');
+            addFloatingText(player.x, player.y, player.pkMode ? '強制 PK 開啟 (紅名)' : '強制 PK 關閉', player.pkMode ? '#ef4444' : '#34d399', 13);
+            addChatLog(player.pkMode
+                ? '🩸 <span class="text-red-400 font-bold">已開啟【強制 PK 模式】，你的 ID 已變為紅字（全服可見），點擊玩家頭像即可直接攻擊！</span>'
+                : '🛡️ 已關閉強制 PK 模式，恢復和平狀態。', 'text-amber-200');
+        }
+        window.toggleSelfPkMode = toggleSelfPkMode;
+
+        function openTargetPlayerCard(uid) {
+            const rp = remotePlayers[uid];
+            if (!rp) return;
+            inspectedPlayerUid = uid;
+            const card = document.getElementById('targetPlayerCard');
+            const nameEl = document.getElementById('tpName');
+            const lvEl = document.getElementById('tpLevel');
+            const clsEl = document.getElementById('tpClass');
+            const portEl = document.getElementById('tpPortrait');
+            const eqEl = document.getElementById('tpEquipSummary');
+            if (nameEl) {
+                nameEl.textContent = rp.pkMode ? `${rp.name} [PK]` : rp.name;
+                nameEl.className = `text-xs font-bold truncate ${rp.pkMode ? 'text-red-400' : 'text-amber-200'}`;
+            }
+            if (lvEl) lvEl.textContent = `Lv.${rp.level || 1}`;
+            if (clsEl) clsEl.textContent = (rp.charClass === 'mage' ? '法師' : '魔騎士') + (rp.pkMode ? ' · 紅名PK中' : '');
+            if (portEl) portEl.textContent = rp.charClass === 'mage' ? '🔮' : '⚔️';
+            const eq = rp.equipSummary || {};
+            if (eqEl) {
+                eqEl.innerHTML = `
+                    <div>武器: <span class="text-amber-200">${escapeHtml(eq.weapon || '未知')}</span></div>
+                    <div>防具: <span class="text-sky-200">${escapeHtml(eq.armor || '未知')}</span></div>
+                    <div>項鍊: <span class="text-fuchsia-200">${escapeHtml(eq.necklace || '未知')}</span> · 斗篷: <span class="text-emerald-200">${escapeHtml(eq.cloak || '未知')}</span></div>
+                `;
+            }
+            if (card) card.classList.remove('hidden');
+        }
+        function closeTargetPlayerCard() {
+            inspectedPlayerUid = null;
+            document.getElementById('targetPlayerCard')?.classList.add('hidden');
+        }
+        function attackInspectedPlayer() {
+            const rp = inspectedPlayerUid ? remotePlayers[inspectedPlayerUid] : null;
+            if (!rp) return;
+            if (!player.pkMode) {
+                addChatLog('⚠️ 請先點擊左上角【自己頭像】開啟強制 PK 模式（紅名），才能攻擊其他玩家！', 'text-amber-300');
+                return;
+            }
+            if (isInSafeZone(player.x, player.y) || isInSafeZone(rp.x, rp.y)) {
+                addFloatingText(rp.x, rp.y, '安全區禁止 PK', '#38bdf8', 12);
+                addChatLog(`🛡️ 【${escapeHtml(rp.name)}】位於安全區內，無法攻擊。`, 'text-sky-300');
+                return;
+            }
+            rp.isRemotePlayer = true;
+            player.attackTarget = rp;
+            player.manualMoveOverrideTimer = 0;
+            addFloatingText(rp.x, rp.y, '強制攻擊!', '#ef4444', 14);
+            addChatLog(`🩸 已鎖定玩家【${escapeHtml(rp.name)}】發動強制 PK 攻擊！`, 'text-rose-400 font-bold');
+            clickIndicators.push({ wx: rp.x, wy: rp.y, radius: 4, maxRadius: 24, color: '#ef4444', alpha: 1 });
+        }
+        window.openTargetPlayerCard = openTargetPlayerCard;
+        window.closeTargetPlayerCard = closeTargetPlayerCard;
+        window.attackInspectedPlayer = attackInspectedPlayer;
+
+        function sendTradePkt(targetUid, payload) {
+            broadcastPlayerState('trade_msg', JSON.stringify({ targetUid, ...payload }));
+        }
+        function requestTradeWithTarget() {
+            const rp = inspectedPlayerUid ? remotePlayers[inspectedPlayerUid] : null;
+            if (!rp) return;
+            openTradeModal(rp.uid, rp.name);
+            sendTradePkt(rp.uid, { action: 'req' });
+            addChatLog(`🤝 已向【${escapeHtml(rp.name)}】發送交易邀請！`, 'text-emerald-300');
+        }
+        function openTradeModal(partnerUid, partnerName) {
+            tradeState = {
+                partnerUid, partnerName,
+                myGold: 0, myIndices: [], myConfirmed: false,
+                partnerGold: 0, partnerItems: [], partnerConfirmed: false
+            };
+            const goldInput = document.getElementById('tradeGoldInput');
+            if (goldInput) goldInput.value = '0';
+            document.getElementById('tradeModal')?.classList.remove('hidden');
+            renderTradeModal();
+        }
+        function renderTradeModal() {
+            if (!tradeState) return;
+            const titleEl = document.getElementById('tradeHeaderTitle');
+            const pNameEl = document.getElementById('tradePartnerName');
+            const mySt = document.getElementById('tradeMyStatus');
+            const pSt = document.getElementById('tradePartnerStatus');
+            const myItEl = document.getElementById('tradeMyItems');
+            const pGoldEl = document.getElementById('tradePartnerGold');
+            const pItEl = document.getElementById('tradePartnerItems');
+            const bagEl = document.getElementById('tradeBagPicker');
+            if (titleEl) titleEl.textContent = `🤝 與【${tradeState.partnerName}】即時交易`;
+            if (pNameEl) pNameEl.textContent = tradeState.partnerName;
+            if (mySt) { mySt.textContent = tradeState.myConfirmed ? '✔ 已確認' : '準備中'; mySt.className = tradeState.myConfirmed ? 'text-emerald-400 font-bold' : 'text-stone-400'; }
+            if (pSt) { pSt.textContent = tradeState.partnerConfirmed ? '✔ 已確認' : '準備中'; pSt.className = tradeState.partnerConfirmed ? 'text-emerald-400 font-bold' : 'text-stone-400'; }
+            if (pGoldEl) pGoldEl.textContent = (tradeState.partnerGold || 0).toLocaleString();
+            if (myItEl) {
+                myItEl.innerHTML = tradeState.myIndices.length
+                    ? tradeState.myIndices.map(i => player.inventory[i] ? `<div class="truncate text-amber-200">${player.inventory[i].icon || '📦'} ${escapeHtml(player.inventory[i].name)}</div>` : '').join('')
+                    : '<div class="text-stone-500">尚未放入道具</div>';
+            }
+            if (pItEl) {
+                pItEl.innerHTML = tradeState.partnerItems.length
+                    ? tradeState.partnerItems.map(it => `<div class="truncate text-sky-200">${it.icon || '📦'} ${escapeHtml(it.name)}</div>`).join('')
+                    : '<div class="text-stone-500">對方尚未放入道具</div>';
+            }
+            if (bagEl) {
+                bagEl.innerHTML = player.inventory.map((it, idx) => {
+                    const sel = tradeState.myIndices.includes(idx);
+                    return `<button onclick="toggleTradeBagItem(${idx})" class="text-left px-1.5 py-1 rounded text-[10px] truncate cursor-pointer border ${sel ? 'bg-emerald-950/80 border-emerald-400 text-emerald-200' : 'bg-black/70 border-amber-900/50 text-stone-300'}">${it.icon || '📦'} ${escapeHtml(it.name)}</button>`;
+                }).join('');
+            }
+        }
+        function toggleTradeBagItem(idx) {
+            if (!tradeState || tradeState.myConfirmed) return;
+            const pos = tradeState.myIndices.indexOf(idx);
+            if (pos >= 0) tradeState.myIndices.splice(pos, 1);
+            else if (tradeState.myIndices.length < 6) tradeState.myIndices.push(idx);
+            updateMyTradeOffer();
+        }
+        function updateMyTradeOffer() {
+            if (!tradeState) return;
+            const rawG = parseInt(document.getElementById('tradeGoldInput')?.value || '0', 10);
+            tradeState.myGold = Math.max(0, Math.min(player.gold || 0, isNaN(rawG) ? 0 : rawG));
+            tradeState.myConfirmed = false;
+            tradeState.partnerConfirmed = false;
+            const offerItems = tradeState.myIndices.map(i => player.inventory[i]).filter(Boolean);
+            sendTradePkt(tradeState.partnerUid, { action: 'offer', gold: tradeState.myGold, items: offerItems });
+            renderTradeModal();
+        }
+        function confirmMyTrade() {
+            if (!tradeState) return;
+            tradeState.myConfirmed = true;
+            sendTradePkt(tradeState.partnerUid, { action: 'confirm' });
+            renderTradeModal();
+            if (tradeState.myConfirmed && tradeState.partnerConfirmed) executeCompletedTrade();
+        }
+        function cancelPlayerTrade(silent = false) {
+            if (tradeState && !silent) sendTradePkt(tradeState.partnerUid, { action: 'cancel' });
+            tradeState = null;
+            document.getElementById('tradeModal')?.classList.add('hidden');
+        }
+        function executeCompletedTrade() {
+            if (!tradeState) return;
+            const st = tradeState;
+            // 扣除我方金幣與道具 (從大 index 往小刪除避免偏移)
+            player.gold = Math.max(0, (player.gold || 0) - st.myGold) + (st.partnerGold || 0);
+            const sortedIdx = st.myIndices.slice().sort((a, b) => b - a);
+            for (const i of sortedIdx) {
+                if (player.inventory[i]) player.inventory.splice(i, 1);
+            }
+            for (const it of (st.partnerItems || [])) {
+                player.inventory.push({ ...it });
+            }
+            sound.playLoot();
+            addChatLog(`🤝 與【${escapeHtml(st.partnerName)}】交易完成！獲得 ${st.partnerGold}G 與 ${(st.partnerItems || []).length} 件道具！`, 'text-emerald-300 font-bold');
+            cancelPlayerTrade(true);
+            saveCharacterProgress();
+            updateUI();
+        }
+        function handleIncomingTradePacket(fromUid, fromName, msg) {
+            if (msg.action === 'req') {
+                if (!tradeState) {
+                    openTradeModal(fromUid, fromName);
+                    addChatLog(`🤝 玩家【${escapeHtml(fromName)}】向你發起交易，已自動開啟交易視窗！`, 'text-emerald-300');
+                }
+            } else if (tradeState && tradeState.partnerUid === fromUid) {
+                if (msg.action === 'offer') {
+                    tradeState.partnerGold = Math.max(0, msg.gold || 0);
+                    tradeState.partnerItems = Array.isArray(msg.items) ? msg.items : [];
+                    tradeState.myConfirmed = false;
+                    tradeState.partnerConfirmed = false;
+                    renderTradeModal();
+                } else if (msg.action === 'confirm') {
+                    tradeState.partnerConfirmed = true;
+                    renderTradeModal();
+                    if (tradeState.myConfirmed && tradeState.partnerConfirmed) executeCompletedTrade();
+                } else if (msg.action === 'cancel') {
+                    addChatLog(`⚠️ 【${escapeHtml(fromName)}】取消了交易。`, 'text-stone-400');
+                    cancelPlayerTrade(true);
+                }
+            }
+        }
+        window.requestTradeWithTarget = requestTradeWithTarget;
+        window.toggleTradeBagItem = toggleTradeBagItem;
+        window.updateMyTradeOffer = updateMyTradeOffer;
+        window.confirmMyTrade = confirmMyTrade;
+        window.cancelPlayerTrade = cancelPlayerTrade;
+        window.handleIncomingTradePacket = handleIncomingTradePacket;
 
         /**************************************************************
          * 9. 遊戲主迴圈更新 (Update Logic)
@@ -4573,9 +4856,9 @@
             runAutoBattleAI(dt);
 
             let speedMult = 1.0;
-            if (player.hasteTimer > 0) speedMult *= 1.32;
-            if (player.braveTimer > 0) speedMult *= 1.28;
-            if (player.polyForm === 'dark_elf_king') speedMult *= 1.35;
+            if (player.hasteTimer > 0) speedMult *= 1.18;
+            if (player.braveTimer > 0) speedMult *= 1.14;
+            if (player.polyForm === 'dark_elf_king') speedMult *= 1.18;
             if (player.frozenTimer > 0) speedMult = 0; // 冰凍時完全無法移動！
             const currentSpeed = player.baseSpeed * speedMult;
 
@@ -5737,33 +6020,36 @@
                 ctx.fillText(m.name, sp.x, sp.y - 4);
             }
 
-            // 3. 遠端玩家頭頂血條與對話泡泡
+            // 3. 遠端玩家頭頂血條與對話泡泡 (開啟強制 PK 者顯示醒目紅名！)
             for (const uid in remotePlayers) {
                 const rp = remotePlayers[uid];
                 const sp = window.R3D.project(rp.x, rp.y, 2.25);
                 if (!sp.visible) continue;
-                drawCompactOverheadBar(sp.x, sp.y, rp.hp / rp.maxHp, '#38bdf8');
+                drawCompactOverheadBar(sp.x, sp.y, rp.hp / rp.maxHp, rp.pkMode ? '#ef4444' : '#38bdf8');
                 ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
                 ctx.textAlign = 'center';
+                const rTitle = rp.pkMode ? `${rp.name} [PK]` : rp.name;
                 ctx.fillStyle = '#000';
-                ctx.fillText(rp.name, sp.x + 1, sp.y - 4);
-                ctx.fillStyle = '#7dd3fc';
-                ctx.fillText(rp.name, sp.x, sp.y - 5);
+                ctx.fillText(rTitle, sp.x + 1, sp.y - 4);
+                ctx.fillStyle = rp.pkMode ? '#ef4444' : '#7dd3fc';
+                ctx.fillText(rTitle, sp.x, sp.y - 5);
                 if (rp.chatBubbleTimer > 0 && rp.chatBubbleText) {
                     drawChatBubble(sp.x, sp.y - 16, rp.chatBubbleText);
                 }
             }
 
-            // 4. 主角頭頂血條、名稱與對話泡泡
+            // 4. 主角頭頂血條、名稱與對話泡泡 (開啟強制 PK 模式變紅字！)
             const psp = window.R3D.project(player.x, player.y, 2.25);
             if (psp.visible) {
                 drawCompactOverheadBar(psp.x, psp.y, player.hp / player.maxHp, '#22c55e');
                 ctx.font = 'bold 10px "Noto Sans TC", sans-serif';
                 ctx.textAlign = 'center';
-                const title = player.autoBattle ? `${player.name} [內掛]` : player.name;
+                const title = player.pkMode
+                    ? `${player.name} [PK]`
+                    : (player.autoBattle ? `${player.name} [內掛]` : player.name);
                 ctx.fillStyle = '#000';
                 ctx.fillText(title, psp.x + 1, psp.y - 3);
-                ctx.fillStyle = player.autoBattle ? '#6ee7b7' : '#fde047';
+                ctx.fillStyle = player.pkMode ? '#ef4444' : (player.autoBattle ? '#6ee7b7' : '#fde047');
                 ctx.fillText(title, psp.x, psp.y - 4);
                 if (player.chatBubbleTimer > 0 && player.chatBubbleText) {
                     drawChatBubble(psp.x, psp.y - 15, player.chatBubbleText);
@@ -6127,7 +6413,7 @@
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
         import { createModelFactory } from './js/models3d.js?v=20261124a';
-        import { buildAllBuildings } from './js/buildings3d.js?v=20261123b';
+        import { buildAllBuildings } from './js/buildings3d.js?v=20261124b';
         import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js?v=20261123b';
 
         const EH = 0.75;               // 每一階高度 = 0.75 世界單位
@@ -6477,16 +6763,11 @@
             const t = mapGrid[y][x];
             if (t === 2) h -= 0.16;
             else if (t === 8) h -= 0.72;
-            // 野外草地、沙漠沙丘與冰原雪地加上連續柔和地形起伏，告別死板方格地磚
-            if (t === 0 || t === 3 || t === 4) {
+            // 統一連續世界座標有機起伏場 (草地／沙漠／雪地共享同一頂點高度場，徹底消除生態交界方格斷層！)
+            if (t === 0 || t === 3 || t === 4 || t === 9 || t === 10) {
                 const vx = x + cx, vy = y + cy;
-                h += (vnoise(vx * 0.22, vy * 0.22) - 0.5) * 0.34;
-            } else if (t === 9) {
-                const vx = x + cx, vy = y + cy;
-                h += (vnoise(vx * 0.14, vy * 0.14) - 0.5) * 0.62;
-            } else if (t === 10) {
-                const vx = x + cx, vy = y + cy;
-                h += (vnoise(vx * 0.18, vy * 0.18) - 0.5) * 0.42;
+                const organic = (vnoise(vx * 0.12, vy * 0.12) - 0.5) * 0.42 + (vnoise(vx * 0.28, vy * 0.28) - 0.5) * 0.16;
+                h += organic;
             }
             return h;
         }
@@ -6496,7 +6777,9 @@
             quad(a, b, c, d, ua, ub, uc, ud, ca, cb, cc, cd) {
                 const P = this.pos, U = this.uv, C = this.col;
                 for (const [p, u, k] of [[a, ua, ca], [b, ub, cb], [c, uc, cc], [a, ua, ca], [c, uc, cc], [d, ud, cd]]) {
-                    P.push(p[0], p[1], p[2]); U.push(u[0], u[1]); C.push(k, k, k);
+                    P.push(p[0], p[1], p[2]); U.push(u[0], u[1]);
+                    if (Array.isArray(k)) C.push(k[0], k[1], k[2]);
+                    else C.push(k, k, k);
                 }
             }
             build() {
@@ -6516,6 +6799,29 @@
             const deepWater = new GeoBuilder();
             const steps = [];
             const UVS = { grass: 0.18, cobble: 0.32, road: 0.5, bed: 0.4, sand: 0.16, snow: 0.18 };
+
+            // 每個頂點周圍 4 格生態權重平滑染色，讓草地／沙漠／雪地交界自然融合、不生硬！
+            const cornerTint = (vx, vy, key) => {
+                const n = 0.84 + vnoise(vx * 0.15, vy * 0.15) * 0.24;
+                if (key !== 'grass' && key !== 'sand' && key !== 'snow') return [n, n, n];
+                let sandW = 0, snowW = 0, grassW = 0;
+                for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 0; dx++) {
+                    const tx = clamp(vx + dx, 0, MAP_SIZE - 1), ty = clamp(vy + dy, 0, MAP_SIZE - 1);
+                    const tt = mapGrid[ty][tx];
+                    if (tt === 9) sandW++;
+                    else if (tt === 10) snowW++;
+                    else grassW++;
+                }
+                const fS = sandW / 4, fI = snowW / 4;
+                if (key === 'grass') {
+                    // 靠近沙漠偏暖黃土、靠近雪地偏冷霜灰綠
+                    return [n * (1 + fS * 0.22 + fI * 0.14), n * (1 + fS * 0.1 + fI * 0.18), n * (1 - fS * 0.12 + fI * 0.26)];
+                } else if (key === 'sand') {
+                    return [n * (1.02 - (1 - fS) * 0.1), n * (0.98 - (1 - fS) * 0.06), n * (0.9 + (1 - fS) * 0.04)];
+                } else {
+                    return [n * (0.96 - (1 - fI) * 0.08), n * (0.98 - (1 - fI) * 0.04), n * (1.04 - (1 - fI) * 0.08)];
+                }
+            };
 
             for (let y = 0; y < MAP_SIZE; y++) for (let x = 0; x < MAP_SIZE; x++) {
                 const t = mapGrid[y][x];
@@ -6539,13 +6845,9 @@
                 } else {
                     const key = (t === 2 || t === 8) ? 'bed' : (t === 1 || t === 6) ? 'cobble' : t === 5 ? 'road' : t === 9 ? 'sand' : t === 10 ? 'snow' : 'grass';
                     const s = UVS[key];
-                    let c = 1;
-                    if (key === 'grass') c = 0.78 + vnoise(x * 0.16, y * 0.16) * 0.34 - (t === 3 ? 0.08 : 0);
-                    else if (key === 'sand') c = 0.88 + vnoise(x * 0.15, y * 0.15) * 0.22;
-                    else if (key === 'snow') c = 0.90 + vnoise(x * 0.18, y * 0.18) * 0.14;
-                    else c = 0.9 + vnoise(x * 0.35, y * 0.35) * 0.14;
+                    const c00 = cornerTint(x, y, key), c01 = cornerTint(x, y + 1, key), c11 = cornerTint(x + 1, y + 1, key), c10 = cornerTint(x + 1, y, key);
                     tops[key].quad([x, h00, y], [x, h01, y + 1], [x + 1, h11, y + 1], [x + 1, h10, y],
-                        [x * s, y * s], [x * s, (y + 1) * s], [(x + 1) * s, (y + 1) * s], [(x + 1) * s, y * s], c, c, c, c);
+                        [x * s, y * s], [x * s, (y + 1) * s], [(x + 1) * s, (y + 1) * s], [(x + 1) * s, y * s], c00, c01, c11, c10);
                     if (t === 2) {
                         const wy = heightMap[y][x] * EH - 0.05;
                         water.quad([x, wy, y], [x, wy, y + 1], [x + 1, wy, y + 1], [x + 1, wy, y], [x / 4, y / 4], [x / 4, (y + 1) / 4], [(x + 1) / 4, (y + 1) / 4], [(x + 1) / 4, y / 4], 1, 1, 1, 1);
