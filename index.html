@@ -120,6 +120,15 @@
             cursor: crosshair;
         }
 
+        /* 電影級暗角氛圍濾鏡 (模擬 Unity Post-Processing Vignette，零效能損耗) */
+        #cinematicVignette {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 2;
+            background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 56%, rgba(4, 6, 11, 0.52) 100%);
+        }
+
         ::-webkit-scrollbar {
             width: 4px;
             height: 4px;
@@ -232,6 +241,7 @@
          ========================================================== -->
     <canvas id="glCanvas"></canvas>
     <canvas id="gameCanvas"></canvas>
+    <div id="cinematicVignette"></div>
 
     <!-- ==========================================================
          3. 左上角：模仿「玩天堂.com」超精簡角色血魔狀態框 (手機不擋畫面)
@@ -2111,10 +2121,20 @@
             log.scrollTop = log.scrollHeight;
         }
 
-        function addFloatingText(wx, wy, text, color = '#ffffff', size = 13) {
+        function addFloatingText(wx, wy, text, color = '#ffffff', size = 13, isHeavy = null) {
+            const str = String(text);
+            let heavy = isHeavy;
+            if (heavy === null) {
+                const dmgMatch = str.match(/^[-+](\d+)/);
+                const dmgVal = dmgMatch ? parseInt(dmgMatch[1], 10) : 0;
+                heavy = /[!！]|爆擊|CRIT/i.test(str) || dmgVal >= 85 || size >= 16;
+            }
+            const refinedSize = heavy ? Math.max(size, 15) : Math.min(size, 12);
             floatingTexts.push({
-                wx, wy, text, color, size,
-                offsetY: 0, alpha: 1.0, life: 0.9
+                wx, wy, text: str, color, size: refinedSize,
+                heavy,
+                offsetX: (Math.random() - 0.5) * 28,
+                offsetY: 0, alpha: 1.0, life: heavy ? 1.05 : 0.85, maxLife: heavy ? 1.05 : 0.85
             });
         }
 
@@ -4928,18 +4948,30 @@
                 }
             }
 
-            // 5. 傷害飄字
+            // 5. 傷害飄字 (一般傷害細緻常規字體，僅爆擊/高傷害使用粗體＋微幅彈出)
             for (const ft of floatingTexts) {
                 const sp = window.R3D.project(ft.wx, ft.wy, 1.85);
                 if (!sp.visible) continue;
+                const age = (ft.maxLife || 0.9) - ft.life;
+                const pop = ft.heavy && age < 0.16 ? 1 + (1 - age / 0.16) * 0.22 : 1;
+                const drawX = sp.x + (ft.offsetX || 0);
+                const drawY = sp.y + ft.offsetY;
                 ctx.save();
-                ctx.font = `900 ${ft.size}px "Noto Sans TC", sans-serif`;
+                ctx.translate(drawX, drawY);
+                if (pop !== 1) ctx.scale(pop, pop);
+                ctx.font = `${ft.heavy ? 700 : 400} ${ft.size}px "Noto Sans TC", sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.globalAlpha = ft.alpha;
-                ctx.fillStyle = '#000000';
-                ctx.fillText(ft.text, sp.x + 1, sp.y + ft.offsetY + 1);
+                if (ft.heavy) {
+                    ctx.lineWidth = 2.6;
+                    ctx.strokeStyle = 'rgba(0,0,0,0.88)';
+                    ctx.strokeText(ft.text, 0, 0);
+                } else {
+                    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+                    ctx.fillText(ft.text, 0.8, 0.9);
+                }
                 ctx.fillStyle = ft.color;
-                ctx.fillText(ft.text, sp.x, sp.y + ft.offsetY);
+                ctx.fillText(ft.text, 0, 0);
                 ctx.restore();
             }
         }
@@ -5105,14 +5137,26 @@
 
             for (const ft of floatingTexts) {
                 const sp = worldToScreen(ft.wx, ft.wy, camera.x, camera.y);
+                const age = (ft.maxLife || 0.9) - ft.life;
+                const pop = ft.heavy && age < 0.16 ? 1 + (1 - age / 0.16) * 0.22 : 1;
+                const drawX = sp.x + (ft.offsetX || 0);
+                const drawY = sp.y - 44 + ft.offsetY;
                 ctx.save();
-                ctx.font = `900 ${ft.size}px "Noto Sans TC", sans-serif`;
+                ctx.translate(drawX, drawY);
+                if (pop !== 1) ctx.scale(pop, pop);
+                ctx.font = `${ft.heavy ? 700 : 400} ${ft.size}px "Noto Sans TC", sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.globalAlpha = ft.alpha;
-                ctx.fillStyle = '#000000';
-                ctx.fillText(ft.text, sp.x + 1, sp.y - 44 + ft.offsetY + 1);
+                if (ft.heavy) {
+                    ctx.lineWidth = 2.6;
+                    ctx.strokeStyle = 'rgba(0,0,0,0.88)';
+                    ctx.strokeText(ft.text, 0, 0);
+                } else {
+                    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+                    ctx.fillText(ft.text, 0.8, 0.9);
+                }
                 ctx.fillStyle = ft.color;
-                ctx.fillText(ft.text, sp.x, sp.y - 44 + ft.offsetY);
+                ctx.fillText(ft.text, 0, 0);
                 ctx.restore();
             }
         }
@@ -6616,6 +6660,7 @@
                 const pmrem = new THREE.PMREMGenerator(renderer);
                 ENV = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
                 scene.environment = ENV;
+                scene.environmentIntensity = 1.25;
                 pmrem.dispose();
 
                 cam = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.2, 160);
@@ -6633,6 +6678,7 @@
                 sun.shadow.camera.left = -d; sun.shadow.camera.right = d;
                 sun.shadow.camera.top = d; sun.shadow.camera.bottom = -d;
                 sun.shadow.bias = -0.0005;
+                sun.shadow.normalBias = 0.03;
                 scene.add(sun, sun.target);
 
                 fill = new THREE.DirectionalLight(0x5275b5, 0.55);
@@ -6663,6 +6709,37 @@
                 dayNight = createDayNightController({ scene, renderer, sun, hemi, fill, bloomPass, camTarget: camState.target });
                 window.cycleTimeOfDay = () => dayNight.cycleMode();
                 window.cycleWeather = () => dayNight.cycleWeather();
+
+                // 單一 Draw Call 3D 空氣漂浮微塵／螢火微光 (模擬 Unity 大氣粒子層次，手機零負擔)
+                {
+                    const dustCount = 85;
+                    const dustPos = new Float32Array(dustCount * 3);
+                    const dustSeed = new Float32Array(dustCount);
+                    for (let i = 0; i < dustCount; i++) {
+                        dustPos[i * 3] = (Math.random() - 0.5) * 26;
+                        dustPos[i * 3 + 1] = 0.6 + Math.random() * 6.5;
+                        dustPos[i * 3 + 2] = (Math.random() - 0.5) * 26;
+                        dustSeed[i] = Math.random() * Math.PI * 2;
+                    }
+                    const [dc, dg] = makeCanvas(32, 32);
+                    const grad = dg.createRadialGradient(16, 16, 1, 16, 16, 15);
+                    grad.addColorStop(0, 'rgba(255, 232, 168, 0.95)');
+                    grad.addColorStop(0.45, 'rgba(255, 198, 110, 0.45)');
+                    grad.addColorStop(1, 'rgba(255, 180, 80, 0)');
+                    dg.fillStyle = grad;
+                    dg.fillRect(0, 0, 32, 32);
+                    const dustTex = new THREE.CanvasTexture(dc);
+                    const dustGeo = new THREE.BufferGeometry();
+                    dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
+                    const dustMat = new THREE.PointsMaterial({
+                        map: dustTex, size: 0.24, transparent: true, opacity: 0.62,
+                        depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true
+                    });
+                    const dustPts = new THREE.Points(dustGeo, dustMat);
+                    dustPts.frustumCulled = false;
+                    scene.add(dustPts);
+                    R3D._atmoDust = { pts: dustPts, base: new Float32Array(dustPos), seed: dustSeed, count: dustCount };
+                }
 
                 // 滾輪縮放 + 手機雙指縮放 + 右鍵旋轉視角
                 window.addEventListener('wheel', (e) => {
@@ -6756,6 +6833,18 @@
             }
 
             updateCamera(dt);
+            if (R3D._atmoDust) {
+                const ad = R3D._atmoDust;
+                ad.pts.position.set(camState.target.x, 0, camState.target.z);
+                const posArr = ad.pts.geometry.attributes.position.array;
+                for (let i = 0; i < ad.count; i++) {
+                    const s = ad.seed[i];
+                    posArr[i * 3] = ad.base[i * 3] + Math.sin(simTime * 0.45 + s) * 0.9;
+                    posArr[i * 3 + 1] = ad.base[i * 3 + 1] + Math.sin(simTime * 0.7 + s * 1.7) * 0.45;
+                    posArr[i * 3 + 2] = ad.base[i * 3 + 2] + Math.cos(simTime * 0.4 + s * 1.3) * 0.9;
+                }
+                ad.pts.geometry.attributes.position.needsUpdate = true;
+            }
             // 手機流暢模式直接渲染 (略過昂貴全螢幕 Bloom，保留所有 Additive 劍身與魔法發光，穩跑 60FPS！)
             if (mobileFastMode) renderer.render(scene, cam);
             else composer.render();
