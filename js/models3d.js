@@ -937,63 +937,114 @@ export function createModelFactory(sharedTEX) {
             }
         }
 
-        // 英雄戰姿 + 雙刀流網遊帥氣低重心交叉連斬 vs 騎士大開大闔揮劍
+        // 英雄戰姿 + 依武器類型量身打造的人體工學 AAA 動作 (雙刀 / 劍盾 / 雙手巨劍 / 武士太刀)
         const isDualBlade = (wClass === 'dagger');
+        const is2H = (wClass === '2h_sword');
+        const isKatana = (wClass === 'katana');
+        const breath = Math.sin(t * 2.3);
+        const runRoll = (state.isMoving && jumpZ < 0.05) ? stride * 0.055 : 0;
+        rig.body.rotation.z = lerp(rig.body.rotation.z, runRoll, clamp(dt * 12, 0, 1));
+        if (rig.head) {
+            rig.head.rotation.x = lerp(rig.head.rotation.x, (state.isMoving ? -0.06 : breath * 0.025), clamp(dt * 10, 0, 1));
+            rig.head.rotation.y = lerp(rig.head.rotation.y, isDualBlade ? 0.24 : (isKatana ? 0.16 : -0.08), clamp(dt * 10, 0, 1));
+        }
+
         if (state.swingAnimTimer > 0) {
             const p = 1 - clamp(state.swingAnimTimer / 0.26, 0, 1);
             const comboDir = (state.swingCombo % 2 === 0) ? 1 : -1;
+            // AAA 三段式揮擊曲線：蓄力回拉 (0~0.22) -> 爆發斬擊 (0.22~0.68) -> 收勢緩衝 (0.68~1)
+            const strikeCurve = p < 0.22 ? -0.18 * (p / 0.22) : (p < 0.68 ? lerp(-0.18, 1.08, smooth((p - 0.22) / 0.46)) : lerp(1.08, 0.96, (p - 0.68) / 0.32));
             if (isDualBlade) {
-                // 雙刀流：低重心前傾 + 左右手 X 型交叉反手連斬！
                 rig.body.position.y = bob - 0.09;
                 rig.torso.rotation.x = 0.26;
-                rig.torso.rotation.y = lerp(-0.72 * comboDir, 0.78 * comboDir, smooth(p));
-                rig.armR.rotation.x = lerp(-2.15, 0.85, smooth(p));
-                rig.armR.rotation.z = lerp(-0.68 * comboDir, 0.72 * comboDir, smooth(p));
+                rig.torso.rotation.y = lerp(-0.72 * comboDir, 0.78 * comboDir, clamp(strikeCurve, 0, 1));
+                rig.armR.rotation.x = lerp(-2.15, 0.85, clamp(strikeCurve, 0, 1));
+                rig.armR.rotation.z = lerp(-0.68 * comboDir, 0.72 * comboDir, clamp(strikeCurve, 0, 1));
                 rig.foreR.rotation.x = lerp(-0.18, -0.68, smooth(p));
-                // 左手反手刀反向橫劈呼應
-                rig.armL.rotation.x = lerp(0.55, -1.95, smooth(p));
-                rig.armL.rotation.z = lerp(0.65 * comboDir, -0.58 * comboDir, smooth(p));
+                rig.armL.rotation.x = lerp(0.55, -1.95, clamp(strikeCurve, 0, 1));
+                rig.armL.rotation.z = lerp(0.65 * comboDir, -0.58 * comboDir, clamp(strikeCurve, 0, 1));
                 rig.foreL.rotation.x = lerp(-0.85, -0.25, smooth(p));
+            } else if (is2H) {
+                // 雙手巨劍：沉重蓄力後仰 -> 全身腰胯帶動大弧度劈斬
+                rig.torso.rotation.x = lerp(-0.2, 0.28, clamp(strikeCurve, 0, 1));
+                rig.torso.rotation.y = lerp(-0.78 * comboDir, 0.82 * comboDir, clamp(strikeCurve, 0, 1));
+                rig.armR.rotation.x = lerp(-2.55, 0.92, clamp(strikeCurve, 0, 1));
+                rig.armR.rotation.z = lerp(-0.48 * comboDir, 0.62 * comboDir, clamp(strikeCurve, 0, 1));
+                rig.foreR.rotation.x = lerp(-0.35, -0.42, smooth(p));
+                rig.armL.rotation.x = lerp(-2.15, 0.55, clamp(strikeCurve, 0, 1));
+                rig.armL.rotation.z = lerp(-0.55, -0.25, smooth(p));
+                rig.foreL.rotation.x = -0.65;
+            } else if (isKatana) {
+                // 武士太刀：俐落居合拔斬，手腕精準收刀
+                rig.torso.rotation.x = lerp(0.06, 0.22, Math.sin(p * Math.PI));
+                rig.torso.rotation.y = lerp(-0.65 * comboDir, 0.72 * comboDir, clamp(strikeCurve, 0, 1));
+                rig.armR.rotation.x = lerp(-1.85, 0.78, clamp(strikeCurve, 0, 1));
+                rig.armR.rotation.z = lerp(-0.78 * comboDir, 0.88 * comboDir, clamp(strikeCurve, 0, 1));
+                rig.foreR.rotation.x = lerp(-0.62, -0.22, smooth(p));
+                rig.armL.rotation.x = lerp(-0.68, -0.32, smooth(p));
+                rig.armL.rotation.z = 0.22;
+                rig.foreL.rotation.x = -0.78;
             } else {
-                rig.torso.rotation.x = lerp(0.06, 0.16, Math.sin(p * Math.PI));
-                rig.torso.rotation.y = lerp(-0.58 * comboDir, 0.68 * comboDir, smooth(p));
-                rig.armR.rotation.x = lerp(-2.3, 0.88, smooth(p));
-                rig.armR.rotation.z = lerp(-0.58 * comboDir, 0.75 * comboDir, smooth(p));
-                rig.foreR.rotation.x = lerp(-0.2, -0.72, smooth(p));
-                rig.armL.rotation.x = -0.4;
-                rig.armL.rotation.z = 0.18;
-                rig.foreL.rotation.x = -0.75;
+                // 單手劍＋盾：左盾護胸外展平衡，右肩帶動自然斜劈／反手上挑
+                rig.torso.rotation.x = lerp(-0.06, 0.18, clamp(strikeCurve, 0, 1));
+                rig.torso.rotation.y = lerp(-0.58 * comboDir, 0.68 * comboDir, clamp(strikeCurve, 0, 1));
+                rig.armR.rotation.x = lerp(-2.25, 0.82, clamp(strikeCurve, 0, 1));
+                rig.armR.rotation.z = lerp(-0.52 * comboDir, 0.72 * comboDir, clamp(strikeCurve, 0, 1));
+                rig.foreR.rotation.x = lerp(-0.22, -0.65, smooth(p));
+                rig.armL.rotation.x = lerp(-0.72, -0.42, Math.sin(p * Math.PI));
+                rig.armL.rotation.z = lerp(0.28, 0.48, Math.sin(p * Math.PI));
+                rig.foreL.rotation.x = -0.92;
             }
             const env = Math.sin(p * Math.PI);
             rig.slashMat.opacity = env * 0.88;
             rig.slashInnerMat.opacity = env * 0.92;
             rig.slashGroup.rotation.y = lerp(-1.15 * comboDir, 1.2 * comboDir, p);
-            rig.slashGroup.rotation.z = comboDir * (isDualBlade ? 0.36 : 0.22);
-            rig.slashGroup.scale.setScalar(0.9 + p * 0.34);
+            rig.slashGroup.rotation.z = comboDir * (isDualBlade ? 0.36 : (isKatana ? 0.12 : 0.24));
+            rig.slashGroup.scale.setScalar((is2H ? 1.12 : 0.9) + p * 0.34);
         } else if (isDualBlade) {
-            // 網遊刺客雙刀待機／奔跑戰鬥姿勢：壓低重心、微側身、右刀斜下前指、左反手刀護於側翼
             rig.body.position.y = bob - (state.isMoving ? 0.08 : 0.06);
-            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.28 : 0.18, clamp(dt * 10, 0, 1));
-            rig.torso.rotation.y = lerp(rig.torso.rotation.y, -0.34 + Math.sin(t * 2.2) * 0.04, clamp(dt * 10, 0, 1));
+            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.28 : 0.18 + breath * 0.02, clamp(dt * 10, 0, 1));
+            rig.torso.rotation.y = lerp(rig.torso.rotation.y, -0.34 + breath * 0.04, clamp(dt * 10, 0, 1));
             rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.52 - stride * 0.32, clamp(dt * 12, 0, 1));
             rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.44, clamp(dt * 12, 0, 1));
             rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.58, clamp(dt * 12, 0, 1));
             rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.82 + stride * 0.26, clamp(dt * 12, 0, 1));
             rig.armL.rotation.z = lerp(rig.armL.rotation.z, 0.52, clamp(dt * 12, 0, 1));
             rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.82, clamp(dt * 12, 0, 1));
-            rig.slashMat.opacity = 0;
-            rig.slashInnerMat.opacity = 0;
+            rig.slashMat.opacity = 0; rig.slashInnerMat.opacity = 0;
+        } else if (is2H) {
+            // 雙手巨劍待機／奔跑：厚重沉穩、雙手斜握劍柄
+            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.16 : 0.05 + breath * 0.02, clamp(dt * 10, 0, 1));
+            rig.torso.rotation.y = lerp(rig.torso.rotation.y, -0.18 + stride * 0.08, clamp(dt * 10, 0, 1));
+            rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.96 - stride * 0.18 + breath * 0.03, clamp(dt * 12, 0, 1));
+            rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.32, clamp(dt * 12, 0, 1));
+            rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.62, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.78 + stride * 0.14, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.z = lerp(rig.armL.rotation.z, -0.34, clamp(dt * 12, 0, 1));
+            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.82, clamp(dt * 12, 0, 1));
+            rig.slashMat.opacity = 0; rig.slashInnerMat.opacity = 0;
+        } else if (isKatana) {
+            // 武士太刀中段構え：重心沉穩、刀尖微朝前上方
+            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.18 : 0.06 + breath * 0.015, clamp(dt * 10, 0, 1));
+            rig.torso.rotation.y = lerp(rig.torso.rotation.y, -0.24 + stride * 0.06, clamp(dt * 10, 0, 1));
+            rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.62 - stride * 0.22 + breath * 0.02, clamp(dt * 12, 0, 1));
+            rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.18, clamp(dt * 12, 0, 1));
+            rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.76, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.52 + stride * 0.22, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.z = lerp(rig.armL.rotation.z, -0.16, clamp(dt * 12, 0, 1));
+            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.78, clamp(dt * 12, 0, 1));
+            rig.slashMat.opacity = 0; rig.slashInnerMat.opacity = 0;
         } else {
-            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.1 : Math.sin(t * 2.1) * 0.015, clamp(dt * 10, 0, 1));
-            rig.torso.rotation.y = lerp(rig.torso.rotation.y, 0.14, clamp(dt * 10, 0, 1));
-            rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.35 - stride * 0.38, clamp(dt * 12, 0, 1));
-            rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.22, clamp(dt * 12, 0, 1));
-            rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.45, clamp(dt * 12, 0, 1));
-            rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.28 + stride * 0.3, clamp(dt * 12, 0, 1));
-            rig.armL.rotation.z = lerp(rig.armL.rotation.z, 0.14, clamp(dt * 12, 0, 1));
-            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.75, clamp(dt * 12, 0, 1));
-            rig.slashMat.opacity = 0;
-            rig.slashInnerMat.opacity = 0;
+            // 單手劍＋盾：人體工學標準護盾前傾戰姿
+            rig.torso.rotation.x = lerp(rig.torso.rotation.x, state.isMoving ? 0.12 : 0.03 + breath * 0.018, clamp(dt * 10, 0, 1));
+            rig.torso.rotation.y = lerp(rig.torso.rotation.y, 0.18 + stride * 0.1, clamp(dt * 10, 0, 1));
+            rig.armR.rotation.x = lerp(rig.armR.rotation.x, -0.42 - stride * 0.36 + breath * 0.025, clamp(dt * 12, 0, 1));
+            rig.armR.rotation.z = lerp(rig.armR.rotation.z, -0.26, clamp(dt * 12, 0, 1));
+            rig.foreR.rotation.x = lerp(rig.foreR.rotation.x, -0.52, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.x = lerp(rig.armL.rotation.x, -0.68 + stride * 0.22, clamp(dt * 12, 0, 1));
+            rig.armL.rotation.z = lerp(rig.armL.rotation.z, 0.26, clamp(dt * 12, 0, 1));
+            rig.foreL.rotation.x = lerp(rig.foreL.rotation.x, -0.92, clamp(dt * 12, 0, 1));
+            rig.slashMat.opacity = 0; rig.slashInnerMat.opacity = 0;
         }
 
         if (poly === 'death_knight') { rig.armorMat.color.set('#27272a'); rig.capeMat.color.set('#7f1d1d'); }
@@ -1027,48 +1078,51 @@ export function createModelFactory(sharedTEX) {
                 rig.mageHair.rotation.x = (state.isMoving ? 0.35 : 0.08) + Math.sin(t * 4.5) * 0.08;
                 rig.mageHair.rotation.z = Math.sin(t * 3.2) * 0.06;
 
-                // 2. 施法舉杖＆翻舉魔法書 vs 近距離護書揮杖 vs 自然托書待機/優雅邁步
+                // 2. 人體工學優雅施法 (三段式聚能後仰 -> 舉杖展書詠唱 -> 柔和回落) vs 優雅邁步
+                if (rig.mageHead) {
+                    rig.mageHead.rotation.x = lerp(rig.mageHead.rotation.x, state.castAnimTimer > 0 ? -0.1 : Math.sin(t * 2.0) * 0.03, clamp(dt * 8, 0, 1));
+                    rig.mageHead.rotation.y = lerp(rig.mageHead.rotation.y, Math.sin(t * 1.4) * 0.06, clamp(dt * 8, 0, 1));
+                }
                 if (state.castAnimTimer > 0) {
                     const cp = 1 - clamp(state.castAnimTimer / 0.42, 0, 1);
                     const env = Math.sin(cp * Math.PI);
-                    rig.mageTorso.rotation.x = lerp(-0.12, 0.1, smooth(cp));
-                    rig.mageTorso.rotation.y = lerp(-0.2, 0.24, smooth(cp));
-                    rig.mageArmR.rotation.x = lerp(-1.75, -0.45, smooth(cp));
-                    rig.mageArmR.rotation.z = lerp(0.24, -0.16, smooth(cp));
-                    rig.mageStaffHolder.rotation.x = lerp(0.1, 0.78, smooth(cp));
-                    // 左手穩穩托舉展開的魔法書向前詠唱
-                    rig.mageArmL.rotation.x = lerp(-1.15, -0.92, smooth(cp));
-                    rig.mageArmL.rotation.z = -0.18;
-                    if (rig.bookGlowMat) rig.bookGlowMat.opacity = 0.25 + env * 0.7;
+                    const castArc = cp < 0.3 ? smooth(cp / 0.3) : (cp < 0.72 ? 1.0 : lerp(1.0, 0.15, (cp - 0.72) / 0.28));
+                    rig.mageTorso.rotation.x = lerp(-0.14, 0.12, smooth(cp));
+                    rig.mageTorso.rotation.y = lerp(-0.26, 0.28, smooth(cp));
+                    rig.mageTorso.rotation.z = Math.sin(cp * Math.PI) * 0.06;
+                    rig.mageArmR.rotation.x = lerp(-0.25, -1.72, castArc);
+                    rig.mageArmR.rotation.z = lerp(0.12, 0.32, castArc);
+                    rig.mageStaffHolder.rotation.x = lerp(0.08, 0.85, castArc);
+                    rig.mageArmL.rotation.x = lerp(-0.78, -1.22, castArc);
+                    rig.mageArmL.rotation.z = lerp(-0.08, -0.24, castArc);
+                    if (rig.bookGlowMat) rig.bookGlowMat.opacity = 0.22 + env * 0.65;
                     if (rig.staffCastGlow) {
-                        rig.staffCastGlow.material.opacity = env * 0.9;
-                        const gs = 0.38 + env * 0.65;
+                        rig.staffCastGlow.material.opacity = env * 0.85;
+                        const gs = 0.35 + env * 0.62;
                         rig.staffCastGlow.scale.set(gs, gs, 1);
                     }
                 } else if (state.swingAnimTimer > 0) {
-                    // 近距離緩慢揮舞長法杖，左手自然收書護胸
-                    const sp = 1 - clamp(state.swingAnimTimer / 0.46, 0, 1);
+                    const sp = 1 - clamp(state.swingAnimTimer / 0.44, 0, 1);
                     const env = Math.sin(sp * Math.PI);
-                    const cdir = (state.swingCombo % 2 === 0) ? 1 : -1;
-                    rig.mageTorso.rotation.y = lerp(-0.5 * cdir, 0.6 * cdir, smooth(sp));
-                    rig.mageTorso.rotation.x = env * 0.14;
-                    rig.mageArmR.rotation.x = lerp(-1.75, 0.6, smooth(sp));
-                    rig.mageArmR.rotation.z = lerp(-0.45 * cdir, 0.6 * cdir, smooth(sp));
-                    rig.mageStaffHolder.rotation.x = 0.9;
-                    rig.mageArmL.rotation.x = -0.88;
-                    rig.mageArmL.rotation.z = 0.18;
-                    if (rig.bookGlowMat) rig.bookGlowMat.opacity = 0.18;
-                    if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = env * 0.4;
+                    rig.mageTorso.rotation.x = lerp(-0.08, 0.14, smooth(sp));
+                    rig.mageTorso.rotation.y = lerp(-0.28, 0.32, smooth(sp));
+                    rig.mageArmR.rotation.x = lerp(-1.35, -0.45, smooth(sp));
+                    rig.mageArmR.rotation.z = lerp(0.28, -0.12, smooth(sp));
+                    rig.mageStaffHolder.rotation.x = lerp(0.2, 0.88, env);
+                    rig.mageArmL.rotation.x = -0.92;
+                    rig.mageArmL.rotation.z = 0.14;
+                    if (rig.bookGlowMat) rig.bookGlowMat.opacity = 0.16;
+                    if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = env * 0.45;
                 } else {
-                    // 自然待機＆行走：右手持長杖輕擺、左手托著魔法書隨步伐輕微律動
-                    rig.mageTorso.rotation.x = lerp(rig.mageTorso.rotation.x, state.isMoving ? 0.05 : Math.sin(t * 2.2) * 0.02, clamp(dt * 10, 0, 1));
-                    rig.mageTorso.rotation.y = lerp(rig.mageTorso.rotation.y, Math.sin(t * 1.8) * 0.04 + stride * 0.09, clamp(dt * 10, 0, 1));
-                    rig.mageArmR.rotation.x = lerp(rig.mageArmR.rotation.x, -0.14 - stride * 0.18, clamp(dt * 10, 0, 1));
-                    rig.mageArmR.rotation.z = lerp(rig.mageArmR.rotation.z, 0.08, clamp(dt * 10, 0, 1));
+                    rig.mageTorso.rotation.x = lerp(rig.mageTorso.rotation.x, state.isMoving ? 0.08 : Math.sin(t * 2.1) * 0.025, clamp(dt * 10, 0, 1));
+                    rig.mageTorso.rotation.y = lerp(rig.mageTorso.rotation.y, Math.sin(t * 1.6) * 0.05 + stride * 0.11, clamp(dt * 10, 0, 1));
+                    rig.mageTorso.rotation.z = lerp(rig.mageTorso.rotation.z, state.isMoving ? -stride * 0.04 : Math.sin(t * 1.6) * 0.02, clamp(dt * 10, 0, 1));
+                    rig.mageArmR.rotation.x = lerp(rig.mageArmR.rotation.x, -0.18 - stride * 0.22 + Math.sin(t * 2.1) * 0.03, clamp(dt * 10, 0, 1));
+                    rig.mageArmR.rotation.z = lerp(rig.mageArmR.rotation.z, 0.1, clamp(dt * 10, 0, 1));
                     rig.mageStaffHolder.rotation.x = lerp(rig.mageStaffHolder.rotation.x, 0.06, clamp(dt * 10, 0, 1));
-                    rig.mageArmL.rotation.x = lerp(rig.mageArmL.rotation.x, -0.78 + stride * 0.1 + Math.sin(t * 2.2) * 0.03, clamp(dt * 10, 0, 1));
-                    rig.mageArmL.rotation.z = lerp(rig.mageArmL.rotation.z, -0.06, clamp(dt * 10, 0, 1));
-                    if (rig.bookGlowMat) rig.bookGlowMat.opacity = 0.14 + Math.sin(t * 3.0) * 0.05;
+                    rig.mageArmL.rotation.x = lerp(rig.mageArmL.rotation.x, -0.82 + stride * 0.12 + Math.sin(t * 2.1) * 0.035, clamp(dt * 10, 0, 1));
+                    rig.mageArmL.rotation.z = lerp(rig.mageArmL.rotation.z, -0.08, clamp(dt * 10, 0, 1));
+                    if (rig.bookGlowMat) rig.bookGlowMat.opacity = 0.12 + Math.sin(t * 2.8) * 0.04;
                     if (rig.staffCastGlow) rig.staffCastGlow.material.opacity = 0;
                 }
             }
@@ -1682,77 +1736,122 @@ export function createModelFactory(sharedTEX) {
             rig.yaw = lerpAngle(rig.yaw, targetYaw, clamp(dt * 10, 0, 1));
             rig.root.rotation.y = rig.yaw;
         }
-        const lunge = (!immobilized && m.attackAnimTimer > 0) ? Math.sin((m.attackAnimTimer / 0.35) * Math.PI) : 0;
+        const atkP = (!immobilized && m.attackAnimTimer > 0) ? (1 - clamp(m.attackAnimTimer / 0.35, 0, 1)) : 0;
+        // AAA 怪物三段式攻擊前搖＋爆發撲擊曲線
+        const windUp = atkP > 0 && atkP < 0.28 ? (atkP / 0.28) : 0;
+        const lunge = atkP >= 0.28 ? Math.sin(((atkP - 0.28) / 0.72) * Math.PI) : 0;
+        const breath = Math.sin(t * 2.4 + m.id * 1.7);
         const hurt = m.hurtFlashTimer > 0;
 
         if (m.type === 'werewolf') {
             const w = Math.sin(m.walkPhase);
-            rig.legL.rotation.x = w * 0.68;
-            rig.legR.rotation.x = -w * 0.68;
-            rig.armL.rotation.x = -0.38 - w * 0.42 - lunge * 1.55;
-            rig.armR.rotation.x = -0.38 + w * 0.42 - lunge * 1.55;
-            rig.jaw.rotation.x = 0.14 + Math.abs(Math.sin(t * 3 + m.id)) * 0.12 + lunge * 0.48;
-            rig.body.position.z = lunge * 0.5;
-            rig.tail.rotation.y = Math.sin(t * 6.5 + m.id) * 0.38;
+            rig.body.position.y = Math.abs(w) * 0.08 + breath * 0.025;
+            rig.body.rotation.z = w * 0.08;
+            rig.body.rotation.x = 0.08 - windUp * 0.22 + lunge * 0.26;
+            rig.legL.rotation.x = w * 0.72;
+            rig.legR.rotation.x = -w * 0.72;
+            rig.armL.rotation.x = -0.45 - w * 0.45 - windUp * 0.9 - lunge * 1.45;
+            rig.armR.rotation.x = -0.45 + w * 0.45 - windUp * 0.9 - lunge * 1.45;
+            rig.jaw.rotation.x = 0.14 + Math.abs(Math.sin(t * 3 + m.id)) * 0.12 + (windUp * 0.35 + lunge * 0.52);
+            rig.body.position.z = -windUp * 0.18 + lunge * 0.52;
+            rig.tail.rotation.y = Math.sin(t * 6.5 + m.id) * 0.42;
         } else if (m.type === 'drake') {
-            // 高空飛龍：相位差自然拍翅
             const ph = m.wingPhase * 0.65;
             const flapIn = Math.sin(ph);
             const flapOut = Math.sin(ph - 0.85);
-            rig.body.position.y = (rig.baseY || 3.35) + Math.cos(ph) * 0.34;
-            rig.body.rotation.x = Math.sin(ph) * 0.06;
-            rig.wingL.shoulder.rotation.z = flapIn * 0.48;
-            rig.wingL.outer.rotation.z = flapOut * 0.55;
-            rig.wingR.shoulder.rotation.z = -flapIn * 0.48;
-            rig.wingR.outer.rotation.z = -flapOut * 0.55;
-            rig.neck.rotation.x = lunge * 0.38 + Math.sin(t * 1.8 + m.id) * 0.07;
-            rig.jaw.rotation.x = 0.12 + lunge * 0.68;
+            rig.body.position.y = (rig.baseY || 3.35) + Math.cos(ph) * 0.36;
+            rig.body.rotation.x = Math.sin(ph) * 0.07 - windUp * 0.14 + lunge * 0.16;
+            rig.body.rotation.z = Math.sin(t * 1.4 + m.id) * 0.05;
+            rig.wingL.shoulder.rotation.z = flapIn * 0.5;
+            rig.wingL.outer.rotation.z = flapOut * 0.58;
+            rig.wingR.shoulder.rotation.z = -flapIn * 0.5;
+            rig.wingR.outer.rotation.z = -flapOut * 0.58;
+            rig.neck.rotation.x = -windUp * 0.28 + lunge * 0.42 + breath * 0.07;
+            rig.jaw.rotation.x = 0.12 + windUp * 0.4 + lunge * 0.72;
             rig.tailSegs.forEach((seg, i) => {
-                seg.rotation.y = Math.sin(t * 3.4 + m.id - i * 0.68) * 0.26;
-                seg.rotation.x = Math.cos(t * 2.2 + m.id - i * 0.5) * 0.08;
+                seg.rotation.y = Math.sin(t * 3.4 + m.id - i * 0.68) * 0.28;
+                seg.rotation.x = Math.cos(t * 2.2 + m.id - i * 0.5) * 0.09;
             });
         } else if (m.type === 'water_dragon') {
-            // 末日水龍：地面四足沉重踏步行走 BOSS (絕不飛上天！)
+            // 末日水龍：地面四足沉重踏步 + 身體重心左右起伏 + 仰頸蓄力吐息
             const step = Math.sin(m.walkPhase * 0.7);
-            rig.body.position.y = 1.05 + Math.abs(step) * 0.06;
+            rig.body.position.y = 1.05 + Math.abs(step) * 0.07 + breath * 0.03;
+            rig.body.rotation.z = step * 0.065;
+            rig.body.rotation.x = -windUp * 0.12 + lunge * 0.14;
             if (rig.groundLegs) {
                 rig.groundLegs.forEach(({ g, sx, sz }) => {
                     const phase = (sx * sz > 0) ? step : -step;
-                    g.rotation.x = phase * 0.42;
+                    g.rotation.x = phase * 0.46;
                 });
             }
-            rig.neck.rotation.x = lunge * 0.35 + Math.sin(t * 2.0 + m.id) * 0.05;
-            rig.jaw.rotation.x = 0.1 + lunge * 0.72;
+            rig.neck.rotation.x = -windUp * 0.32 + lunge * 0.4 + breath * 0.06;
+            rig.neck.rotation.y = Math.sin(t * 1.6 + m.id) * 0.14;
+            rig.jaw.rotation.x = 0.1 + windUp * 0.45 + lunge * 0.74;
             rig.tailSegs.forEach((seg, i) => {
-                seg.rotation.y = Math.sin(t * 2.8 + m.id - i * 0.6) * 0.24;
+                seg.rotation.y = Math.sin(t * 2.8 + m.id - i * 0.6) * 0.28;
             });
         } else if (m.type === 'shelob') {
+            rig.body.position.y = Math.abs(Math.sin(m.walkPhase)) * 0.05 + breath * 0.02;
+            rig.body.rotation.x = -windUp * 0.28 + lunge * 0.22;
             rig.legs.forEach(({ g, s, i }) => {
-                g.rotation.y = Math.sin(m.walkPhase + i * 1.45 + (s > 0 ? 0 : Math.PI)) * 0.34;
+                g.rotation.y = Math.sin(m.walkPhase + i * 1.45 + (s > 0 ? 0 : Math.PI)) * 0.38;
+                g.rotation.z = s * (0.06 + Math.cos(m.walkPhase + i * 1.45) * 0.08);
             });
-            rig.body.position.z = lunge * 0.38;
+            rig.body.position.z = -windUp * 0.12 + lunge * 0.42;
         } else if (m.type === 'croc') {
-            rig.tail.rotation.y = Math.sin(m.walkPhase * 0.72) * 0.42;
-            rig.jaw.rotation.x = -lunge * 0.62;
-            rig.legs.forEach((l, i) => { l.rotation.x = Math.sin(m.walkPhase + i * Math.PI * 0.5) * 0.42; });
+            rig.body.rotation.y = Math.sin(m.walkPhase * 0.72) * 0.14;
+            rig.tail.rotation.y = Math.sin(m.walkPhase * 0.72 - 0.6) * 0.46;
+            rig.jaw.rotation.x = -windUp * 0.25 - lunge * 0.68;
+            rig.body.position.z = lunge * 0.32;
+            rig.legs.forEach((l, i) => { l.rotation.x = Math.sin(m.walkPhase + i * Math.PI * 0.5) * 0.45; });
         } else if (m.type === 'niss') {
-            rig.body.position.y = 0.1 + Math.sin(t * 3.5 + m.id) * 0.12;
-            rig.tail.rotation.y = Math.sin(t * 6.5 + m.id) * 0.48;
-            rig.body.position.z = lunge * 0.35;
+            rig.body.position.y = 0.1 + Math.sin(t * 3.5 + m.id) * 0.14;
+            rig.body.rotation.z = Math.sin(t * 2.6 + m.id) * 0.1;
+            rig.body.rotation.x = lunge * 0.22;
+            rig.tail.rotation.y = Math.sin(t * 6.5 + m.id) * 0.52;
+            rig.body.position.z = lunge * 0.38;
         } else if (m.type === 'de_archer') {
             const w = Math.sin(m.walkPhase);
-            rig.legL.rotation.x = w * 0.55;
-            rig.legR.rotation.x = -w * 0.55;
-            rig.bowArm.rotation.x = -lunge * 0.35;
+            rig.body.position.y = Math.abs(w) * 0.05 + breath * 0.015;
+            rig.body.rotation.y = -0.22 - windUp * 0.32 + lunge * 0.18;
+            rig.legL.rotation.x = w * 0.58;
+            rig.legR.rotation.x = -w * 0.58;
+            rig.bowArm.rotation.x = -0.25 - windUp * 0.35 + lunge * 0.25;
         } else if (m.type === 'dark_mage') {
-            rig.body.position.y = 0.18 + Math.sin(t * 2.8 + m.id) * 0.12;
-            rig.staffArm.rotation.x = -lunge * 0.65;
-        } else if (m.type === 'skeleton' || m.type === 'golem' || m.type === 'baphomet_boss') {
-            const w = Math.sin(m.walkPhase * (m.type === 'golem' ? 0.55 : 0.85));
-            rig.legL.rotation.x = w * 0.55;
-            rig.legR.rotation.x = -w * 0.55;
-            rig.armR.rotation.x = -0.25 - w * 0.35 - lunge * 1.45;
-            rig.armL.rotation.x = -0.2 + w * 0.35 - (m.type === 'golem' ? lunge * 1.45 : 0);
+            rig.body.position.y = 0.18 + Math.sin(t * 2.8 + m.id) * 0.14;
+            rig.body.rotation.z = Math.sin(t * 1.9 + m.id) * 0.06;
+            rig.body.rotation.x = -windUp * 0.16 + lunge * 0.18;
+            rig.staffArm.rotation.x = -0.15 - windUp * 0.55 - lunge * 0.72;
+        } else if (m.type === 'skeleton') {
+            const w = Math.sin(m.walkPhase * 0.85);
+            rig.body.position.y = Math.abs(w) * 0.06 + breath * 0.015;
+            rig.body.rotation.z = w * 0.09;
+            rig.body.rotation.y = w * 0.12 - windUp * 0.45 + lunge * 0.55;
+            rig.legL.rotation.x = w * 0.62;
+            rig.legR.rotation.x = -w * 0.62;
+            rig.armR.rotation.x = -0.35 - w * 0.32 - windUp * 1.35 + lunge * 1.25;
+            rig.armL.rotation.x = -0.45 + w * 0.25;
+        } else if (m.type === 'golem') {
+            // 遠古石魔像：沉重步伐重心擺盪 + 雙臂高舉重鎚砸地！
+            const w = Math.sin(m.walkPhase * 0.55);
+            rig.body.position.y = Math.abs(w) * 0.1 + breath * 0.02;
+            rig.body.rotation.z = -w * 0.11;
+            rig.body.rotation.x = 0.06 - windUp * 0.26 + lunge * 0.34;
+            rig.legL.rotation.x = w * 0.48;
+            rig.legR.rotation.x = -w * 0.48;
+            rig.armR.rotation.x = -0.22 - w * 0.38 - windUp * 1.95 + lunge * 1.65;
+            rig.armL.rotation.x = -0.22 + w * 0.38 - windUp * 1.95 + lunge * 1.65;
+        } else if (m.type === 'baphomet_boss') {
+            // 深淵魔神巴風特：壓迫感律動步伐 + 高舉地獄權杖施咒前壓
+            const w = Math.sin(m.walkPhase * 0.72);
+            rig.body.position.y = Math.abs(w) * 0.08 + breath * 0.04;
+            rig.body.rotation.z = w * 0.06;
+            rig.body.rotation.x = -windUp * 0.18 + lunge * 0.24;
+            rig.body.rotation.y = w * 0.1 - windUp * 0.28 + lunge * 0.32;
+            rig.legL.rotation.x = w * 0.52;
+            rig.legR.rotation.x = -w * 0.52;
+            rig.armR.rotation.x = -0.28 - w * 0.28 - windUp * 1.45 + lunge * 0.95;
+            rig.armL.rotation.x = -0.35 + w * 0.28 - windUp * 0.65;
         } else {
             const bounce = Math.abs(Math.sin(m.walkPhase * 0.6));
             rig.body.position.y = bounce * 0.24;

@@ -92,6 +92,30 @@
             background: radial-gradient(circle, #332412 0%, #140e08 100%);
         }
 
+        /* 暗黑魔龍鍛鐵血魔條風格 (參考截圖：深邃曜石金屬外框＋高光紅藍血魔條) */
+        .dragon-bar-track {
+            background: linear-gradient(180deg, #0b0d12 0%, #171a21 55%, #090a0e 100%);
+            border: 1.5px solid #494d56;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.92), 0 2px 6px rgba(0, 0, 0, 0.85);
+            position: relative;
+        }
+        .dragon-hp-fill {
+            background: linear-gradient(180deg, #ff6b6b 0%, #dc2626 36%, #991b1b 75%, #5c0a0a 100%);
+            box-shadow: inset 0 1px 0 rgba(255, 210, 210, 0.45);
+        }
+        .dragon-mp-fill {
+            background: linear-gradient(180deg, #60d5ff 0%, #0284c7 38%, #075985 78%, #082f49 100%);
+            box-shadow: inset 0 1px 0 rgba(200, 240, 255, 0.45);
+        }
+        .jump-boot-btn {
+            background: radial-gradient(circle at 35% 30%, #2c313b 0%, #12141a 70%, #08090c 100%);
+            border: 2px solid #787d88;
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.18), 0 6px 18px rgba(0, 0, 0, 0.9);
+            transition: transform 0.1s ease, border-color 0.15s ease;
+        }
+        .jump-boot-btn:hover { border-color: #eab308; }
+        .jump-boot-btn:active { transform: scale(0.92) translateY(2px); }
+
         /* 經典天堂浮雕金屬標題特效 */
         .title-emboss {
             background: linear-gradient(180deg, #fff6d6 0%, #f5c76b 42%, #b87b20 78%, #694108 100%);
@@ -244,54 +268,94 @@
     <div id="cinematicVignette"></div>
 
     <!-- ==========================================================
-         3. 左上角：模仿「玩天堂.com」超精簡角色血魔狀態框 (手機不擋畫面)
+         3. 左上角：暗黑魔龍鍛鐵頭像框 ＆ 雙層高光紅藍血魔條 HUD
          ========================================================== -->
-    <div class="fixed top-2 left-2 z-20 w-44 sm:w-52 lineage-panel p-2 pointer-events-auto">
-        <div class="flex items-center justify-between mb-1">
-            <div class="flex items-center gap-1 min-w-0">
-                <span class="text-[10px] bg-amber-950 border border-amber-600/80 px-1 rounded text-amber-300 font-bold shrink-0">
-                    Lv.<span id="uiLevel">1</span>
-                </span>
-                <span id="uiPlayerName" class="serif-font font-bold text-amber-200 text-xs truncate">亞丁騎士</span>
-            </div>
-            <div class="flex items-center gap-1 shrink-0">
-                <span id="hasteBadge" class="hidden bg-emerald-800/90 text-[9px] text-emerald-200 px-1 rounded border border-emerald-400">綠</span>
-                <span id="braveBadge" class="hidden bg-red-800/90 text-[9px] text-red-200 px-1 rounded border border-yellow-400">勇</span>
-                <span id="polyBadge" class="hidden bg-purple-900/95 text-[9px] text-purple-200 px-1 rounded border border-purple-400">變</span>
-                <span id="frozenBadge" class="hidden bg-cyan-900/95 text-[9px] text-cyan-200 px-1 rounded border border-cyan-300 animate-pulse">❄凍</span>
-                <span id="burnBadge" class="hidden bg-orange-900/95 text-[9px] text-orange-200 px-1 rounded border border-orange-400">🔥灼</span>
-                <span id="poisonBadge" class="hidden bg-lime-900/95 text-[9px] text-lime-200 px-1 rounded border border-lime-400">☠毒</span>
-            </div>
-        </div>
-
-        <!-- 精緻縮小版 HP / MP 條 -->
-        <div class="space-y-1">
-            <div class="relative w-full h-3 bg-black/90 rounded-sm overflow-hidden border border-stone-700/90">
-                <div id="hpBar" class="h-full bg-gradient-to-r from-red-800 via-red-600 to-red-500 transition-all duration-150" style="width: 100%;"></div>
-                <div class="absolute inset-0 flex items-center justify-between px-1.5 text-[9px] font-mono text-white drop-shadow">
-                    <span class="text-red-200 font-bold">HP</span>
-                    <span><span id="uiHp">220</span>/<span id="uiMaxHp">220</span></span>
+    <div class="fixed top-2 left-2 z-20 pointer-events-auto select-none" style="max-width: 268px;">
+        <div class="relative flex items-center">
+            <!-- 左側：暗黑魔龍雕塑頭像框 (SVG 曜石龍首＋背刺＋等級圓徽) -->
+            <div class="relative w-[68px] h-[68px] sm:w-[74px] sm:h-[74px] shrink-0 -mr-3 z-10">
+                <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-[0_4px_8px_rgba(0,0,0,0.95)] overflow-visible">
+                    <defs>
+                        <linearGradient id="ironGrad" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#4b505c"/>
+                            <stop offset="45%" stop-color="#1f232b"/>
+                            <stop offset="100%" stop-color="#0b0d11"/>
+                        </linearGradient>
+                        <radialGradient id="portraitBg" cx="45%" cy="35%" r="65%">
+                            <stop offset="0%" stop-color="#4a3121"/>
+                            <stop offset="65%" stop-color="#1e1512"/>
+                            <stop offset="100%" stop-color="#090707"/>
+                        </radialGradient>
+                    </defs>
+                    <!-- 龍背尖刺外廓 -->
+                    <path d="M22,26 L32,8 L45,17 L58,6 L66,18 L82,16 L76,30 L88,38 L78,52 L84,66 L68,78 L54,88 L36,84 L22,74 L12,56 Z" fill="url(#ironGrad)" stroke="#6b7280" stroke-width="1.4"/>
+                    <!-- 左側暗黑魔龍頭首 -->
+                    <path d="M26,48 L8,54 L2,65 L12,67 L6,76 L18,75 L16,84 L28,74 L34,62 Z" fill="#17191f" stroke="#525866" stroke-width="1.4"/>
+                    <!-- 魔龍熾紅雙眼 -->
+                    <circle cx="17" cy="60" r="2.2" fill="#ef4444"/>
+                    <!-- 圓形鍛鐵頭像框 -->
+                    <circle cx="54" cy="50" r="27" fill="url(#portraitBg)" stroke="#686d78" stroke-width="3.2"/>
+                    <circle cx="54" cy="50" r="24" fill="none" stroke="#181a20" stroke-width="1.5"/>
+                    <!-- 角色肖像剪影 (優雅奇幻英雄側像) -->
+                    <path d="M38,68 C40,56 48,54 54,54 C60,54 68,56 70,68 A24,24 0 0,1 38,68 Z" fill="#7c2d12"/>
+                    <circle cx="54" cy="45" r="10.5" fill="#e2b494"/>
+                    <path d="M42,46 C42,33 50,29 58,31 C65,33 67,41 64,49 C62,42 56,39 48,42 C45,43 43,45 42,46 Z" fill="#d99a4e"/>
+                    <path d="M44,37 L54,32 L64,37" fill="none" stroke="#facc15" stroke-width="1.8"/>
+                </svg>
+                <!-- 左上角圓形等級徽章 (對應截圖圓盾位置) -->
+                <div class="absolute top-1 left-2.5 w-6 h-6 rounded-full bg-gradient-to-b from-[#3c414d] to-[#111318] border border-[#8e95a3] shadow flex items-center justify-center text-[10px] font-mono font-bold text-amber-200" title="目前等級">
+                    <span id="uiLevel">1</span>
                 </div>
             </div>
 
-            <div class="relative w-full h-2.5 bg-black/90 rounded-sm overflow-hidden border border-stone-700/90">
-                <div id="mpBar" class="h-full bg-gradient-to-r from-blue-900 via-sky-600 to-cyan-400 transition-all duration-150" style="width: 100%;"></div>
-                <div class="absolute inset-0 flex items-center justify-between px-1.5 text-[8px] font-mono text-white drop-shadow">
-                    <span class="text-sky-200 font-bold">MP</span>
-                    <span><span id="uiMp">120</span>/<span id="uiMaxMp">120</span></span>
+            <!-- 右側：鍛鐵雙層高光紅藍血魔條 + 角色名稱與狀態 -->
+            <div class="flex-1 min-w-[172px] sm:min-w-[192px] pl-2.5">
+                <!-- 名稱與 Buff 標籤列 -->
+                <div class="flex items-center justify-between gap-1 mb-0.5 pl-1 pr-0.5">
+                    <span id="uiPlayerName" class="serif-font text-amber-100 text-[11px] tracking-wide truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)]">亞丁騎士</span>
+                    <div class="flex items-center gap-0.5 shrink-0">
+                        <span id="hasteBadge" class="hidden bg-emerald-900/85 text-[8px] text-emerald-200 px-1 rounded border border-emerald-500/60">綠</span>
+                        <span id="braveBadge" class="hidden bg-red-900/85 text-[8px] text-red-200 px-1 rounded border border-amber-400/60">勇</span>
+                        <span id="polyBadge" class="hidden bg-purple-900/85 text-[8px] text-purple-200 px-1 rounded border border-purple-400/60">變</span>
+                        <span id="frozenBadge" class="hidden bg-cyan-900/90 text-[8px] text-cyan-200 px-1 rounded border border-cyan-300 animate-pulse">凍</span>
+                        <span id="burnBadge" class="hidden bg-orange-900/90 text-[8px] text-orange-200 px-1 rounded border border-orange-400">灼</span>
+                        <span id="poisonBadge" class="hidden bg-lime-900/90 text-[8px] text-lime-200 px-1 rounded border border-lime-400">毒</span>
+                    </div>
+                </div>
+
+                <!-- 鍛鐵尖刺雙層血魔條 (截圖同款風格) -->
+                <div class="relative">
+                    <!-- 頂部微小鍛鐵尖刺裝飾 -->
+                    <svg viewBox="0 0 180 8" class="w-full h-1.5 block -mb-[1px] pointer-events-none">
+                        <path d="M62,8 L72,1 L75,8 Z M132,8 L142,2 L144,8 Z" fill="#252932" stroke="#5b616e" stroke-width="0.7"/>
+                    </svg>
+                    <div class="space-y-[3px]">
+                        <!-- 紅血條 -->
+                        <div class="dragon-bar-track w-full h-[15px] rounded-r-sm overflow-hidden">
+                            <div id="hpBar" class="dragon-hp-fill h-full transition-all duration-150" style="width: 100%;"></div>
+                            <div class="absolute inset-0 flex items-center justify-end pr-1.5 text-[9px] font-mono text-white/95 drop-shadow-[0_1px_1px_#000]">
+                                <span><span id="uiHp">220</span>/<span id="uiMaxHp">220</span></span>
+                            </div>
+                        </div>
+                        <!-- 藍魔條 -->
+                        <div class="dragon-bar-track w-full h-[13px] rounded-r-sm overflow-hidden">
+                            <div id="mpBar" class="dragon-mp-fill h-full transition-all duration-150" style="width: 100%;"></div>
+                            <div class="absolute inset-0 flex items-center justify-end pr-1.5 text-[8px] font-mono text-white/95 drop-shadow-[0_1px_1px_#000]">
+                                <span><span id="uiMp">120</span>/<span id="uiMaxMp">120</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 精簡底部鍛鐵資訊列 (AC / 金幣 / 地區 / 在線) -->
+                <div class="flex items-center justify-between gap-1.5 mt-1 pl-1 pr-0.5 text-[9px] text-stone-300 drop-shadow-[0_1px_2px_#000]">
+                    <span class="text-emerald-300 font-mono">AC <span id="uiDef">-26</span></span>
+                    <span class="text-amber-300 font-mono truncate"><i class="fa-solid fa-coins mr-0.5 text-[8px]"></i><span id="uiGold">2,000</span></span>
+                    <span id="uiRegionName" class="text-stone-300 truncate">說話之島</span>
+                    <span class="hidden" id="saveIndicator">已存</span>
+                    <span class="text-emerald-400/90 font-mono shrink-0">●<span id="onlineCountBadge">1</span></span>
                 </div>
             </div>
-        </div>
-
-        <!-- 緊湊底部：AC防禦、金幣、區域與自動存檔提示 -->
-        <div class="flex items-center justify-between mt-1.5 pt-1 border-t border-amber-950/80 text-[10px]">
-            <span class="text-emerald-400 font-mono">AC <b id="uiDef">-26</b></span>
-            <span class="text-yellow-400 font-mono truncate"><i class="fa-solid fa-coins mr-0.5 text-[9px]"></i><span id="uiGold">2,000</span></span>
-            <span id="saveIndicator" class="text-[9px] text-stone-400 font-mono" title="自動儲存於瀏覽器">💾已存</span>
-        </div>
-        <div class="flex items-center justify-between text-[9px] text-amber-200/60 mt-0.5">
-            <span id="uiRegionName" class="truncate">說話之島</span>
-            <span class="text-emerald-400 font-mono">線上:<span id="onlineCountBadge">1</span></span>
         </div>
     </div>
 
@@ -613,16 +677,17 @@
                 </div>
             </div>
 
-            <!-- 第二行 (8格)：雷操/跳躍/普攻/內掛/魔攻/大地圖/王城商店/背包 -->
+            <!-- 第二行 (8格)：雷操 / 自訂快捷欄(裝備切換或道具) / 普攻 / 內掛 / 魔攻 / 地圖 / 王城店 / 背包 -->
             <div class="grid grid-cols-8 gap-1">
                 <button id="mageSlot9Btn" onclick="castSpell('void_thunder')" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative border-purple-500/80 cursor-pointer overflow-hidden" title="雷電操術 (9) / 法師大招">
                     <span class="text-xs sm:text-sm leading-none">🟣</span>
                     <span class="text-[8px] text-purple-300 font-bold mt-0.5">雷操</span>
                     <div id="cdBar_void_thunder" class="absolute bottom-0 left-0 h-0.5 bg-purple-400 transition-all" style="width:0%"></div>
                 </button>
-                <button onclick="triggerJump()" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative cursor-pointer border-cyan-700/70" title="跳躍障礙 (Space)">
-                    <span class="text-xs sm:text-sm leading-none">🦘</span>
-                    <span class="text-[8px] text-cyan-200 mt-0.5">跳躍</span>
+                <button id="customQuickSlot" onclick="triggerCustomQuickSlot()" oncontextmenu="event.preventDefault(); openCustomSlotPicker();" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative cursor-pointer border-dashed border-amber-600/70" title="自訂欄位：點擊綁定裝備一鍵切換或道具（右鍵更換）">
+                    <span id="customSlotIcon" class="text-xs sm:text-sm leading-none text-amber-400/50">＋</span>
+                    <span id="customSlotLabel" class="text-[8px] text-stone-400 mt-0.5 truncate max-w-[34px]">自訂</span>
+                    <span onclick="event.stopPropagation(); openCustomSlotPicker();" class="absolute -top-0.5 -right-0.5 text-[8px] text-amber-300/80 hover:text-white px-0.5 leading-none" title="變更綁定">⚙</span>
                 </button>
                 <button onclick="triggerManualSwing()" class="equip-slot w-9 h-8 sm:w-10 sm:h-9 rounded flex flex-col items-center justify-center relative cursor-pointer" title="普通攻擊 (A)">
                     <span class="text-xs sm:text-sm leading-none">⚔️</span>
@@ -656,6 +721,35 @@
             <div id="expBar" class="h-full bg-gradient-to-r from-amber-700 via-yellow-500 to-amber-300 transition-all duration-200" style="width: 0%;"></div>
             <div class="absolute inset-0 flex items-center justify-center text-[8px] font-mono text-amber-100 drop-shadow">
                 EXP <span id="uiExpPercent" class="ml-1 font-bold">0.0%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右下角獨立「鞋子跳躍」圓形動作鈕 -->
+    <button id="floatingJumpBtn" onclick="triggerJump()" class="jump-boot-btn fixed bottom-5 right-3 sm:bottom-6 sm:right-5 z-30 w-13 h-13 sm:w-14 sm:h-14 rounded-full flex flex-col items-center justify-center cursor-pointer pointer-events-auto" style="width:54px;height:54px;" title="跳躍 (Space)">
+        <svg viewBox="0 0 36 36" class="w-7 h-7 drop-shadow-[0_2px_3px_rgba(0,0,0,0.9)]">
+            <!-- 向上躍起動感弧線 -->
+            <path d="M8,28 Q18,22 28,28" fill="none" stroke="#7dd3fc" stroke-width="1.8" stroke-linecap="round" opacity="0.75"/>
+            <path d="M18,5 L14,10 M18,5 L22,10" fill="none" stroke="#fde047" stroke-width="2" stroke-linecap="round"/>
+            <!-- 鍛鐵奇幻戰靴剪影 -->
+            <path d="M12,12 L19,12 L19,20 L27,22 C28.5,22.4 29,24.5 27.5,25.5 L11.5,25.5 C10.5,25.5 10,24.6 10.2,23.5 L12,12 Z" fill="#cbd5e1" stroke="#1e293b" stroke-width="1.3"/>
+            <path d="M12,14.5 L19,14.5 M19,20 L11.5,20" stroke="#92400e" stroke-width="1.4"/>
+            <!-- 靴側小翼 -->
+            <path d="M11.5,14 L6,11 L8.5,16 L5.5,17.5 L11,18 Z" fill="#facc15" stroke="#78350f" stroke-width="0.8"/>
+        </svg>
+    </button>
+
+    <!-- 自訂快捷欄位選擇彈窗 (可綁定背包裝備一鍵切換，或綁定常用道具) -->
+    <div id="customSlotModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pointer-events-auto" onclick="if(event.target===this) closeCustomSlotPicker()">
+        <div class="lineage-panel w-full max-w-[340px] overflow-hidden border border-amber-500/80 shadow-2xl">
+            <div class="lineage-header px-3 py-2 flex items-center justify-between text-xs font-bold">
+                <span><i class="fa-solid fa-bolt mr-1.5"></i>自訂快捷欄 — 綁定裝備切換或道具</span>
+                <button onclick="closeCustomSlotPicker()" class="text-amber-200 hover:text-white cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="p-2.5 space-y-2">
+                <div class="text-[10px] text-amber-200/75">點擊下方任一裝備或道具即可放入快捷欄；綁定武器／防具後點擊即可一鍵換裝！</div>
+                <div id="customSlotPickerList" class="max-h-60 overflow-y-auto space-y-1"></div>
+                <button onclick="clearCustomQuickSlot()" class="lineage-btn w-full py-1 rounded text-[11px] text-stone-300 cursor-pointer">清空此自訂欄位</button>
             </div>
         </div>
     </div>
@@ -2643,6 +2737,7 @@
         function updateUI() {
             updateStatusNumbersUI();
             renderEquipmentAndInventoryDOM();
+            if (window.renderCustomQuickSlotUI) window.renderCustomQuickSlotUI();
         }
 
         function initInventoryDelegatedEvents() {
@@ -3291,6 +3386,100 @@
         }
         window.openWorldMap = openWorldMap;
         window.closeWorldMap = closeWorldMap;
+
+        // 自訂快捷欄位系統 (可綁定背包裝備一鍵切換，或綁定藥水／卷軸直接使用)
+        let customQuickBinding = null;
+        try { customQuickBinding = JSON.parse(localStorage.getItem('tiana_custom_slot_v1') || 'null'); } catch (e) {}
+
+        function renderCustomQuickSlotUI() {
+            const btn = document.getElementById('customQuickSlot');
+            const iconEl = document.getElementById('customSlotIcon');
+            const lblEl = document.getElementById('customSlotLabel');
+            if (!btn || !iconEl || !lblEl) return;
+            if (!customQuickBinding) {
+                iconEl.textContent = '＋';
+                iconEl.className = 'text-xs sm:text-sm leading-none text-amber-400/50';
+                lblEl.textContent = '自訂';
+                lblEl.className = 'text-[8px] text-stone-400 mt-0.5 truncate max-w-[34px]';
+                btn.classList.add('border-dashed');
+                return;
+            }
+            btn.classList.remove('border-dashed');
+            iconEl.textContent = customQuickBinding.icon || '⭐';
+            iconEl.className = 'text-xs sm:text-sm leading-none';
+            const shortName = (customQuickBinding.name || '自訂').replace(/^\+\d+\s*/, '').slice(0, 3);
+            lblEl.textContent = shortName;
+            lblEl.className = 'text-[8px] text-amber-200 font-bold mt-0.5 truncate max-w-[34px]';
+        }
+        function openCustomSlotPicker() {
+            const listEl = document.getElementById('customSlotPickerList');
+            if (listEl) {
+                const items = player.inventory || [];
+                if (!items.length) {
+                    listEl.innerHTML = '<div class="text-center text-xs text-stone-400 py-4">背包目前為空</div>';
+                } else {
+                    listEl.innerHTML = items.map((it, idx) => `
+                        <button onclick="bindCustomQuickSlot(${idx})" class="lineage-btn w-full p-1.5 rounded text-left flex items-center justify-between gap-2 cursor-pointer">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <span class="text-base shrink-0">${it.icon || '📦'}</span>
+                                <div class="min-w-0">
+                                    <div class="text-xs font-bold text-amber-200 truncate">${it.name}${it.count > 1 ? ' x' + it.count : ''}</div>
+                                    <div class="text-[9px] text-stone-400">${VALID_EQUIP_TYPES.has(it.type) ? '點擊快捷欄即可一鍵換裝' : '點擊快捷欄即可直接使用'}</div>
+                                </div>
+                            </div>
+                            <span class="text-[10px] text-emerald-300 shrink-0">綁定</span>
+                        </button>
+                    `).join('');
+                }
+            }
+            document.getElementById('customSlotModal')?.classList.remove('hidden');
+        }
+        function closeCustomSlotPicker() {
+            document.getElementById('customSlotModal')?.classList.add('hidden');
+        }
+        function bindCustomQuickSlot(invIdx) {
+            const it = player.inventory[invIdx];
+            if (!it) return;
+            customQuickBinding = { id: it.id, name: it.name, icon: it.icon, type: it.type, subType: it.subType || null };
+            try { localStorage.setItem('tiana_custom_slot_v1', JSON.stringify(customQuickBinding)); } catch (e) {}
+            renderCustomQuickSlotUI();
+            closeCustomSlotPicker();
+            addChatLog(`⚡ 已將【${it.name}】綁定至自訂快捷欄！`, 'text-amber-300');
+        }
+        function clearCustomQuickSlot() {
+            customQuickBinding = null;
+            try { localStorage.removeItem('tiana_custom_slot_v1'); } catch (e) {}
+            renderCustomQuickSlotUI();
+            closeCustomSlotPicker();
+        }
+        function triggerCustomQuickSlot() {
+            if (!customQuickBinding) { openCustomSlotPicker(); return; }
+            // 在背包找對應 ID（或同類同名裝備）並觸發穿戴／使用；若裝備已穿在身上，改尋找另一件同部位裝備達成「一鍵雙武器切換」！
+            let idx = player.inventory.findIndex(x => x && x.id === customQuickBinding.id);
+            if (idx < 0 && VALID_EQUIP_TYPES.has(customQuickBinding.type)) {
+                idx = player.inventory.findIndex(x => x && x.type === customQuickBinding.type);
+            }
+            if (idx >= 0) {
+                const targetItem = player.inventory[idx];
+                // 若為換裝，把換下來的裝備同步記住以便下次再按直接切回來！
+                const prevEq = VALID_EQUIP_TYPES.has(targetItem.type) ? player.equipped[targetItem.type] : null;
+                handleInventoryClick(idx);
+                if (prevEq) {
+                    customQuickBinding = { id: prevEq.id, name: prevEq.name, icon: prevEq.icon, type: prevEq.type, subType: prevEq.subType || null };
+                    try { localStorage.setItem('tiana_custom_slot_v1', JSON.stringify(customQuickBinding)); } catch (e) {}
+                    renderCustomQuickSlotUI();
+                }
+            } else {
+                addChatLog(`⚠️ 背包內找不到【${customQuickBinding.name}】，請點擊右下角 ⚙ 重新綁定。`, 'text-stone-400');
+            }
+        }
+        window.renderCustomQuickSlotUI = renderCustomQuickSlotUI;
+        window.openCustomSlotPicker = openCustomSlotPicker;
+        window.closeCustomSlotPicker = closeCustomSlotPicker;
+        window.bindCustomQuickSlot = bindCustomQuickSlot;
+        window.clearCustomQuickSlot = clearCustomQuickSlot;
+        window.triggerCustomQuickSlot = triggerCustomQuickSlot;
+        renderCustomQuickSlotUI();
 
         // 綁定小地圖雙擊 (電腦 dblclick + 手機雙點) 與大地圖點擊自動尋路
         (function initWorldMapControls() {
@@ -5890,7 +6079,7 @@
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
-        import { createModelFactory } from './js/models3d.js?v=20261123c';
+        import { createModelFactory } from './js/models3d.js?v=20261123d';
         import { buildAllBuildings } from './js/buildings3d.js?v=20261123b';
         import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js?v=20261123b';
 
