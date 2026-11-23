@@ -692,6 +692,15 @@ export function createModelFactory(sharedTEX) {
         offDagger.rotation.x = Math.PI * 0.45;
         foreL.add(offDagger);
 
+        // 輕量化腳底接觸假陰影 (手機 60FPS 模式關閉即時陰影時依然立體接地不懸浮！)
+        const blobShadow = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.15, 1.15),
+            new THREE.MeshBasicMaterial({ map: sharedTEX.blob, color: 0x000000, transparent: true, opacity: 0.52, depthWrite: false })
+        );
+        blobShadow.rotation.x = -Math.PI / 2;
+        blobShadow.position.y = 0.03;
+        root.add(blobShadow);
+
         // 腳底加速光環與升級光柱
         const hasteRing = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 1.5), new THREE.MeshBasicMaterial({ map: sharedTEX.ringDash, color: 0x34d399, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
         hasteRing.rotation.x = -Math.PI / 2; hasteRing.position.y = 0.04; hasteRing.visible = false;
@@ -1486,6 +1495,14 @@ export function createModelFactory(sharedTEX) {
         const ring = new THREE.Mesh(new THREE.PlaneGeometry(1.65, 1.65), ringMat);
         ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04; ring.visible = false;
         rig.root.add(ring);
+        // 怪物腳底輕量接觸假陰影 (手機關閉即時陰影仍極具立體感)
+        const mShadowSize = (m.type === 'drake' || m.type === 'water_dragon') ? 2.6 : 1.35;
+        const mShadow = new THREE.Mesh(
+            new THREE.PlaneGeometry(mShadowSize, mShadowSize),
+            new THREE.MeshBasicMaterial({ map: sharedTEX.blob, color: 0x000000, transparent: true, opacity: m.type === 'drake' ? 0.32 : 0.48, depthWrite: false })
+        );
+        mShadow.rotation.x = -Math.PI / 2; mShadow.position.y = 0.03;
+        rig.root.add(mShadow);
         rig.ring = ring; rig.ringMat = ringMat;
         rig.type = m.type;
         const bossScale = (m.type === 'drake' || m.type === 'water_dragon') ? 1.52 : 0.96;

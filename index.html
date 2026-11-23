@@ -317,6 +317,9 @@
             <button onclick="switchCharacterModal()" class="lineage-btn px-2 py-1 rounded text-[11px] text-stone-300 hover:text-white cursor-pointer shadow" title="切換角色 ID">
                 <i class="fa-solid fa-user-pen"></i>
             </button>
+            <button onclick="window.toggleGraphicsMode && window.toggleGraphicsMode()" id="gfxBtn" class="lineage-btn px-1.5 py-1 rounded text-[10px] text-emerald-300 cursor-pointer shadow" title="切換：手機流暢60幀 / 電腦極致光影">
+                <span id="gfxLabel">✨極致</span>
+            </button>
             <button onclick="toggleBgm()" id="bgmBtn" class="lineage-btn px-2 py-1 rounded text-[11px] text-amber-300 cursor-pointer shadow flex items-center gap-1" title="背景音樂開關">
                 <i id="bgmIcon" class="fa-solid fa-music"></i>
             </button>
@@ -5113,6 +5116,7 @@
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
         import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
         import { createModelFactory } from './js/models3d.js';
         import { buildAllBuildings } from './js/buildings3d.js';
         import { createPineTextures, buildRealisticPineGeo, genCobbleRoughnessTex, createDayNightController, createSpellVfxEngine } from './js/aaa_upgrades.js';
@@ -5808,6 +5812,9 @@
         window.EXTERNAL_GLB_CONFIG = EXTERNAL_GLB_CONFIG;
 
         const gltfLoader = new GLTFLoader();
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+        gltfLoader.setDRACOLoader(dracoLoader);
         const glbCache = new Map();
         const activeMixers = [];
 
@@ -6450,13 +6457,31 @@
             if (coordEl) coordEl.textContent = `${Math.floor(player.x)},${Math.floor(player.y)}`;
         }
 
-        /* ---------------- 初始化與每幀渲染 ---------------- */
+        /* ---------------- 初始化與每幀渲染 (手機 60FPS 自動最佳化模式) ---------------- */
+        const IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.innerWidth < 768;
+        let mobileFastMode = IS_MOBILE;
+
+        function applyGraphicsQuality() {
+            if (!renderer || !sun) return;
+            const dpr = window.devicePixelRatio || 1;
+            renderer.setPixelRatio(Math.min(dpr, mobileFastMode ? 1.15 : 1.25));
+            renderer.shadowMap.enabled = !mobileFastMode;
+            sun.castShadow = !mobileFastMode;
+            const lbl = document.getElementById('gfxLabel');
+            if (lbl) lbl.textContent = mobileFastMode ? '⚡流暢' : '✨極致';
+        }
+        window.toggleGraphicsMode = function () {
+            mobileFastMode = !mobileFastMode;
+            applyGraphicsQuality();
+            addChatLog(mobileFastMode ? '⚡ 已切換為【手機流暢 60FPS 模式】（輕量陰影＋直出渲染，省電不發燙）' : '✨ 已切換為【電腦極致光影模式】（軟陰影＋全螢幕泛光）', 'text-emerald-300');
+        };
+
         R3D.init = function () {
             try {
-                renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, powerPreference: 'high-performance' });
-                renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+                renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: !IS_MOBILE, powerPreference: 'high-performance' });
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobileFastMode ? 1.15 : 1.25));
                 renderer.setSize(window.innerWidth, window.innerHeight);
-                renderer.shadowMap.enabled = true;
+                renderer.shadowMap.enabled = !mobileFastMode;
                 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
                 renderer.toneMapping = THREE.ACESFilmicToneMapping;
                 renderer.toneMappingExposure = 1.05;
@@ -6560,6 +6585,7 @@
                     composer.setSize(window.innerWidth, window.innerHeight);
                 });
 
+                applyGraphicsQuality();
                 R3D.ready = true;
                 R3D.snapCamera();
             } catch (err) {
@@ -6607,7 +6633,9 @@
             }
 
             updateCamera(dt);
-            composer.render();
+            // 手機流暢模式直接渲染 (略過昂貴全螢幕 Bloom，保留所有 Additive 劍身與魔法發光，穩跑 60FPS！)
+            if (mobileFastMode) renderer.render(scene, cam);
+            else composer.render();
             if (!R3D._mmT || now - R3D._mmT > 100) { R3D._mmT = now; drawMinimap(); }
         };
     </script>
