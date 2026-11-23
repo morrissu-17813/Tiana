@@ -1,0 +1,17 @@
+# Unity temporary & cache directories (prevent repo bloat)
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Ll]ogs/
+*.csproj
+*.sln
+*.user
+*.pidb
+*.booproj
+.vs/
