@@ -7688,9 +7688,10 @@
         // 使用者只要把 AI 生成的 .glb 放進 assets/models/ 並在這裡開啟對應路徑，就會自動替換成外部 3D 模型！
         // 找不到檔案時會自動無縫退回內建高精細程序化 3D 模型，完全不會報錯。
         const EXTERNAL_GLB_CONFIG = {
-            enabled: true, // 已內建首批免費 CC0 .glb 寫實模型 (可持續擴充 assets/models/)
+            enabled: true, // 已內建免費 CC0 .glb 寫實模型 (主角騎士/法師 + 怪物)
             models: {
-                // player 保留內建可換裝＋雙職業＋變身系統；怪物與建築自動掛載 CC0 .glb
+                knight:   { url: './assets/models/paladin.glb',  targetHeight: 1.92, yOffset: 0 },
+                mage:     { url: './assets/models/mage.glb',     targetHeight: 1.88, yOffset: 0 },
                 werewolf: { url: './assets/models/werewolf.glb', targetHeight: 1.45, yOffset: 0 },
                 shelob:   { url: './assets/models/shelob.glb',   targetHeight: 1.05, yOffset: 0 }
             }
@@ -7704,13 +7705,181 @@
         const glbCache = new Map();
         const activeMixers = [];
 
+        function loadGlbCached(url, onDone) {
+            if (glbCache.has(url)) {
+                const cached = glbCache.get(url);
+                if (cached) onDone(cached);
+                return;
+            }
+            gltfLoader.load(url, (gltf) => {
+                glbCache.set(url, gltf);
+                onDone(gltf);
+            }, undefined, () => {
+                glbCache.set(url, null);
+            });
+        }
+
+        // 專屬主角／遠端玩家 CC0 骨架 .glb 控制器 (支援真動作捕捉交叉淡入 + 手部發光附魔武器掛點 + 變身自動切回)
+        function ensurePlayerClassGlb(rig, cls) {
+            if (!EXTERNAL_GLB_CONFIG.enabled) return;
+            const key = (cls === 'mage') ? 'mage' : 'knight';
+            if (!rig._charGlbs) rig._charGlbs = {};
+            if (rig._charGlbs[key] !== undefined) return; // 已載入或載入中
+            rig._charGlbs[key] = 'loading';
+            const cfg = EXTERNAL_GLB_CONFIG.models[key];
+            if (!cfg || !cfg.url) return;
+
+            loadGlbCached(cfg.url, (gltf) => {
+                const model = SkeletonUtils.clone(gltf.scene);
+                const box = new THREE.Box3().setFromObject(model);
+                const size = new THREE.Vector3();
+                box.getSize(size);
+                const sc = cfg.targetHeight && size.y > 0.001 ? (cfg.targetHeight / size.y) : 1.0;
+                model.scale.setScalar(sc);
+                const box2 = new THREE.Box3().setFromObject(model);
+                model.position.y = (cfg.yOffset || 0) - box2.min.y;
+                setShadows(model, true);
+                model.visible = false;
+                rig.root.add(model);
+
+                const entry = { model, mixer: null, actions: {}, curAction: null, bones: {}, weapR: null, weapL: null };
+                model.traverse((obj) => {
+                    if (obj.isBone || obj.name) {
+                        const n = obj.name || '';
+                        if (/^(Palm\.R|Hand\.R)$/i.test(n)) entry.bones.handR = obj;
+                        else if (/^(Palm\.L|Hand\.L)$/i.test(n)) entry.bones.handL = obj;
+                        else if (/^UpperArm\.R$/i.test(n)) entry.bones.armR = obj;
+                        else if (/^UpperArm\.L$/i.test(n)) entry.bones.armL = obj;
+                        else if (/^UpperLeg\.R$/i.test(n)) entry.bones.legR = obj;
+                        else if (/^UpperLeg\.L$/i.test(n)) entry.bones.legL = obj;
+                        else if (/^Torso$/i.test(n)) entry.bones.torso = obj;
+                        else if (/^Head$/i.test(n)) entry.bones.head = obj;
+                    }
+                });
+
+                // 掛載發光強化武器於手掌骨架 (讓 +10~+60 武器發光在真實 .glb 角色手上同樣耀眼！)
+                if (key === 'knight' && entry.bones.handR && rig.bladeMat && rig.bladeAuraMat) {
+                    const invSc = 1 / sc;
+                    const mkGlbBlade = (len) => {
+                        const g = new THREE.Group();
+                        g.scale.setScalar(invSc);
+                        const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.024, 0.28, 8), new THREE.MeshStandardMaterial({ color: 0x3b2416, roughness: 0.8 }));
+                        g.add(hilt);
+                        const guard = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.04, 0.05), new THREE.MeshStandardMaterial({ color: 0xe6b94c, metalness: 0.9, roughness: 0.25 }));
+                        guard.position.y = 0.14; g.add(guard);
+                        const blade = new THREE.Mesh(new THREE.BoxGeometry(0.06, len, 0.02), rig.bladeMat);
+                        blade.position.y = 0.16 + len / 2; g.add(blade);
+                        const aura = new THREE.Mesh(new THREE.BoxGeometry(0.11, len + 0.08, 0.06), rig.bladeAuraMat);
+                        aura.position.y = 0.16 + len / 2; g.add(aura);
+                        g.rotation.set(Math.PI * 0.45, 0, 0);
+                        return g;
+                    };
+                    entry.weapR = mkGlbBlade(1.15);
+                    entry.bones.handR.add(entry.weapR);
+                    if (entry.bones.handL) {
+                        entry.weapL = mkGlbBlade(0.76);
+                        entry.weapL.visible = false;
+                        entry.bones.handL.add(entry.weapL);
+                    }
+                } else if (key === 'mage' && entry.bones.handR && rig.bladeMat && rig.bladeAuraMat) {
+                    const invSc = 1 / sc;
+                    const sg = new THREE.Group();
+                    sg.scale.setScalar(invSc);
+                    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.03, 2.2, 8), new THREE.MeshStandardMaterial({ color: 0x262b34, metalness: 0.8, roughness: 0.35 }));
+                    shaft.position.y = 0.25; sg.add(shaft);
+                    const orb = new THREE.Mesh(new THREE.OctahedronGeometry(0.13, 1), rig.bladeMat);
+                    orb.position.y = 1.42; sg.add(orb);
+                    const orbA = new THREE.Mesh(new THREE.OctahedronGeometry(0.18, 1), rig.bladeAuraMat);
+                    orbA.position.y = 1.42; sg.add(orbA);
+                    sg.rotation.set(Math.PI * 0.48, 0, 0);
+                    entry.bones.handR.add(sg);
+                    entry.weapR = sg;
+                }
+
+                // 建立動畫狀態機 (Idle / Run / Attack / Jump)
+                if (gltf.animations && gltf.animations.length > 0) {
+                    const mixer = new THREE.AnimationMixer(model);
+                    const pick = (re) => gltf.animations.find(c => re.test(c.name));
+                    const cIdle = pick(/Idle_swordRight|Idle/i) || gltf.animations[0];
+                    const cRun = pick(/Run_swordRight|Run$|Walking/i) || cIdle;
+                    const cAtk = pick(/Run_swordAttack|swordAttack|Attack/i) || cRun;
+                    const cJump = pick(/Jump/i) || cRun;
+                    entry.actions.idle = mixer.clipAction(cIdle);
+                    entry.actions.run = mixer.clipAction(cRun);
+                    entry.actions.attack = mixer.clipAction(cAtk);
+                    entry.actions.jump = mixer.clipAction(cJump);
+                    entry.actions.idle.play();
+                    entry.curAction = 'idle';
+                    entry.mixer = mixer;
+                    activeMixers.push(mixer);
+                }
+                rig._charGlbs[key] = entry;
+            });
+        }
+
+        function updatePlayerClassGlb(rig, state, t, dt) {
+            const key = (state.charClass === 'mage') ? 'mage' : 'knight';
+            ensurePlayerClassGlb(rig, key);
+            const useGlb = EXTERNAL_GLB_CONFIG.enabled && !state.polyForm && rig._charGlbs && rig._charGlbs[key] && rig._charGlbs[key] !== 'loading';
+
+            // 變身時顯示內建變身骨架，平時無縫顯示真實 CC0 .glb 角色！
+            if (rig.body) rig.body.visible = !useGlb;
+            if (rig._charGlbs) {
+                for (const k in rig._charGlbs) {
+                    const ent = rig._charGlbs[k];
+                    if (ent && ent !== 'loading' && ent.model) ent.model.visible = (useGlb && k === key);
+                }
+            }
+            if (!useGlb) return;
+
+            const ent = rig._charGlbs[key];
+            // 同步跳躍高度
+            const baseY = ent._baseY ?? (ent._baseY = ent.model.position.y);
+            ent.model.position.y = baseY + (state.jumpZ || 0);
+
+            // 武器外型比例 (雙手劍加長 / 雙刀顯示副手刀)
+            if (key === 'knight' && ent.weapR) {
+                const wc = state.weaponClass || '1h_sword';
+                ent.weapR.scale.y = (wc === '2h_sword' ? 1.45 : (wc === 'dagger' ? 0.72 : 1.0)) * (1 / ent.model.scale.x);
+                if (ent.weapL) ent.weapL.visible = (wc === 'dagger');
+            }
+
+            // 有內建動畫 (paladin.glb)：流暢交叉淡入切換 Idle / Run / Attack / Jump！
+            if (ent.mixer && ent.actions.idle) {
+                const desired = (state.swingAnimTimer > 0) ? 'attack'
+                    : ((state.jumpZ || 0) > 0.12 ? 'jump'
+                    : (state.isMoving ? 'run' : 'idle'));
+                if (desired !== ent.curAction && ent.actions[desired]) {
+                    const prev = ent.actions[ent.curAction];
+                    const next = ent.actions[desired];
+                    next.reset().setEffectiveTimeScale(desired === 'attack' ? 1.75 : (desired === 'run' ? 1.15 : 1.0)).fadeIn(0.1).play();
+                    if (prev) prev.fadeOut(0.1);
+                    ent.curAction = desired;
+                }
+            } else {
+                // 無內建動畫但有完整骨架 (mage.glb Witch)：即時驅動真實蒙皮骨骼！
+                const stride = (state.isMoving && (state.jumpZ || 0) < 0.05) ? Math.sin(state.walkCycle) : 0;
+                const b = ent.bones;
+                if (b.legL) b.legL.rotation.x = stride * 0.55;
+                if (b.legR) b.legR.rotation.x = -stride * 0.55;
+                if (b.torso) b.torso.rotation.y = Math.sin(t * 1.8) * 0.05 + stride * 0.08;
+                if (b.armR) {
+                    const castLift = (state.castAnimTimer > 0 || state.swingAnimTimer > 0) ? -1.1 : -0.15;
+                    b.armR.rotation.x = lerp(b.armR.rotation.x, castLift - stride * 0.25, clamp(dt * 12, 0, 1));
+                }
+                if (b.armL) {
+                    const bookLift = (state.castAnimTimer > 0) ? -0.95 : -0.35;
+                    b.armL.rotation.x = lerp(b.armL.rotation.x, bookLift + stride * 0.2, clamp(dt * 12, 0, 1));
+                }
+            }
+        }
+
         function tryAttachExternalGLB(key, rig) {
             if (!EXTERNAL_GLB_CONFIG.enabled) return;
             const cfg = EXTERNAL_GLB_CONFIG.models[key];
             if (!cfg || !cfg.url) return;
-            const applyModel = (gltf) => {
+            loadGlbCached(cfg.url, (gltf) => {
                 const model = SkeletonUtils.clone(gltf.scene);
-                // 自動量測包圍盒，將外部 .glb 精準歸一化至指定高度並貼地
                 const box = new THREE.Box3().setFromObject(model);
                 const size = new THREE.Vector3();
                 box.getSize(size);
@@ -7728,17 +7897,6 @@
                     activeMixers.push(mixer);
                     rig._mixer = mixer;
                 }
-            };
-            if (glbCache.has(cfg.url)) {
-                const cached = glbCache.get(cfg.url);
-                if (cached) applyModel(cached);
-                return;
-            }
-            gltfLoader.load(cfg.url, (gltf) => {
-                glbCache.set(cfg.url, gltf);
-                applyModel(gltf);
-            }, undefined, () => {
-                glbCache.set(cfg.url, null); // 找不到檔案時靜默保留內建高精細程序化 3D 模型
             });
         }
 
@@ -7748,7 +7906,10 @@
             MODEL_FACTORY = createModelFactory(TEX);
         }
         function createKnightRig() { return MODEL_FACTORY.createKnightRig(); }
-        function animateKnight(rig, state, t, dt) { return MODEL_FACTORY.animateKnight(rig, state, t, dt); }
+        function animateKnight(rig, state, t, dt) {
+            MODEL_FACTORY.animateKnight(rig, state, t, dt);
+            updatePlayerClassGlb(rig, state, t, dt);
+        }
         function createMonsterRig(m) {
             const rig = MODEL_FACTORY.createMonsterRig(m);
             tryAttachExternalGLB(m.type, rig);
