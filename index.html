@@ -7719,7 +7719,7 @@
             }, undefined, () => {});
         });
 
-        // 智慧骨名對齊 + 移除水平位移漂移 (確保 Mixamo 動畫 100% 精準套用到任何 Mixamo 角色且原地不跑偏！)
+        // 智慧骨名對齊 + 濾除 .scale 與 Hips.position 軌 (徹底根治 Mixamo FBX 縮成 0.01 隱形或跑偏的經典坑！)
         function retargetMixamoClip(srcClip, model) {
             const boneNames = new Set();
             const cleanToActual = new Map();
@@ -7735,12 +7735,12 @@
                 if (dot < 0) continue;
                 const rawBone = tr.name.slice(0, dot);
                 const prop = tr.name.slice(dot + 1);
+                // 只保留旋轉軌 (.quaternion)，濾除會導致角色縮小隱形的 .scale 與會讓角色跑偏的 .position！
+                if (prop !== 'quaternion') continue;
                 const actual = boneNames.has(rawBone)
                     ? rawBone
                     : cleanToActual.get(rawBone.replace(/^mixamorig[:_]?/i, '').toLowerCase());
                 if (!actual) continue;
-                // 濾除骨盆位置軌避免角色跑離中心點 (保留原地上下起伏與全身旋轉)
-                if (/hips$/i.test(actual) && prop === 'position') continue;
                 const cloned = tr.clone();
                 cloned.name = `${actual}.${prop}`;
                 tracks.push(cloned);
@@ -7756,10 +7756,12 @@
             }
             if (format === 'fbx' || /\.fbx$/i.test(url)) {
                 fbxLoader.load(url, (fbx) => {
-                    const wrapped = { scene: fbx, animations: fbx.animations || [] };
+                    const wrapped = { scene: fbx, animations: fbx.animations || [], usedDirect: false };
                     glbCache.set(url, wrapped);
                     onDone(wrapped);
-                }, undefined, () => {
+                }, undefined, (err) => {
+                    console.error('[FBXLoader] 載入失敗:', url, err);
+                    if (typeof addChatLog === 'function') addChatLog(`⚠️ 角色模型載入失敗 (${url})，暫時使用內建模型`, 'text-rose-400');
                     glbCache.set(url, null);
                 });
                 return;
@@ -7767,12 +7769,13 @@
             gltfLoader.load(url, (gltf) => {
                 glbCache.set(url, gltf);
                 onDone(gltf);
-            }, undefined, () => {
+            }, undefined, (err) => {
+                console.error('[GLTFLoader] 載入失敗:', url, err);
                 glbCache.set(url, null);
             });
         }
 
-        // 專屬主角／遠端玩家 Mixamo .fbx & CC0 .glb 控制器 (支援真動捕動畫交叉淡入 + 即時 Mixamo 骨骼驅動 + 手部發光武器掛點)
+        // 專屬主角／遠端玩家 Mixamo .fbx & CC0 .glb 控制器 (防視錐裁切 + 防材質全黑/透明 + 雙段真動捕動畫)
         function ensurePlayerClassGlb(rig, cls) {
             if (!EXTERNAL_GLB_CONFIG.enabled) return;
             const key = (cls === 'mage') ? 'mage' : 'knight';
@@ -7783,29 +7786,50 @@
             if (!cfg || !cfg.url) return;
 
             loadGlbCached(cfg.url, (gltf) => {
-                const model = SkeletonUtils.clone(gltf.scene);
-                // 修正 Mixamo FBX 材質透明度與陰影，避免貼圖偏暗
+                // 第一個載入的玩家直接使用原 FBX 實例（避免 SkeletonUtils.clone 破壞 FBX 蒙皮），遠端玩家再 clone
+                let model;
+                if (cfg.format === 'fbx' && !gltf.usedDirect) {
+                    gltf.usedDirect = true;
+                    model = gltf.scene;
+                } else {
+                    try { model = SkeletonUtils.clone(gltf.scene); } catch (e) { model = gltf.scene.clone(true); }
+                }
+                // 關閉 frustumCulled 防止蒙皮動畫角色被裁切隱形，並修正 Mixamo 材質反光與透明度
                 model.traverse((obj) => {
+                    obj.frustumCulled = false;
                     if (obj.isMesh) {
                         obj.castShadow = true;
                         obj.receiveShadow = true;
                         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
                         mats.forEach((m) => {
                             if (!m) return;
-                            if (m.transparent && m.opacity === 0) { m.opacity = 1; m.transparent = false; }
-                            if (m.shininess !== undefined) m.shininess = Math.min(35, m.shininess);
+                            m.transparent = false;
+                            m.opacity = 1;
+                            m.depthWrite = true;
+                            m.side = THREE.DoubleSide;
+                            if (m.map && m.color && m.color.r < 0.05 && m.color.g < 0.05 && m.color.b < 0.05) {
+                                m.color.setHex(0xffffff);
+                            }
+                            if (m.shininess !== undefined) m.shininess = Math.min(30, m.shininess);
                         });
                     }
                 });
+                model.updateMatrixWorld(true);
                 const box = new THREE.Box3().setFromObject(model);
                 const size = new THREE.Vector3();
                 box.getSize(size);
-                const sc = cfg.targetHeight && size.y > 0.001 ? (cfg.targetHeight / size.y) : 1.0;
+                const validH = Number.isFinite(size.y) && size.y > 0.05 && size.y < 1000;
+                const sc = validH ? ((cfg.targetHeight || 1.92) / size.y) : 0.011;
                 model.scale.setScalar(sc);
+                model.updateMatrixWorld(true);
                 const box2 = new THREE.Box3().setFromObject(model);
-                model.position.y = (cfg.yOffset || 0) - box2.min.y;
+                const minY = Number.isFinite(box2.min.y) ? box2.min.y : 0;
+                model.position.y = (cfg.yOffset || 0) - minY;
                 model.visible = false;
                 rig.root.add(model);
+                if (rig === playerRig && typeof addChatLog === 'function') {
+                    addChatLog(`🎭 已成功載入 Mixamo 寫實角色模型 (${key === 'mage' ? 'character2.fbx' : 'character.fbx'})！`, 'text-emerald-300');
+                }
 
                 const entry = { model, mixer: null, actions: {}, curAction: null, bones: {}, weapR: null, weapL: null, isMixamo: false };
                 model.traverse((obj) => {
