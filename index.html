@@ -1079,6 +1079,118 @@
                     osc.stop(now + 0.24);
                 });
             }
+            playMonsterSfx(type, event = 'attack') {
+                if (!this.enabled) return;
+                this.init();
+                if (!this.ctx || this.ctx.state !== 'running') return;
+                const nowMs = performance.now();
+                if (this._lastMonSfx && nowMs - this._lastMonSfx < 180) return;
+                this._lastMonSfx = nowMs;
+                const now = this.ctx.currentTime;
+                const isDeath = (event === 'death');
+
+                // 1. 巨龍 / 末日水龍：低沉共鳴龍吼
+                if (type === 'drake' || type === 'water_dragon') {
+                    const o = this.ctx.createOscillator(), g = this.ctx.createGain(), f = this.ctx.createBiquadFilter();
+                    o.type = 'sawtooth'; f.type = 'lowpass';
+                    f.frequency.setValueAtTime(isDeath ? 420 : 680, now);
+                    f.frequency.exponentialRampToValueAtTime(110, now + 0.45);
+                    o.frequency.setValueAtTime(isDeath ? 120 : 165, now);
+                    o.frequency.exponentialRampToValueAtTime(isDeath ? 42 : 68, now + 0.45);
+                    g.gain.setValueAtTime(0.001, now);
+                    g.gain.linearRampToValueAtTime(0.14, now + 0.05);
+                    g.gain.exponentialRampToValueAtTime(0.002, now + 0.48);
+                    o.connect(f); f.connect(g); g.connect(this.ctx.destination);
+                    o.start(now); o.stop(now + 0.5);
+                    return;
+                }
+                // 2. 深淵魔神巴風特：極低頻惡魔嘶吼
+                if (type === 'baphomet_boss') {
+                    [78, 117].forEach((fr, idx) => {
+                        const o = this.ctx.createOscillator(), g = this.ctx.createGain(), f = this.ctx.createBiquadFilter();
+                        o.type = idx === 0 ? 'sawtooth' : 'square'; f.type = 'lowpass'; f.frequency.value = 340;
+                        o.frequency.setValueAtTime(isDeath ? fr * 0.8 : fr, now);
+                        o.frequency.exponentialRampToValueAtTime(fr * 0.45, now + 0.42);
+                        g.gain.setValueAtTime(0.08, now); g.gain.exponentialRampToValueAtTime(0.002, now + 0.45);
+                        o.connect(f); f.connect(g); g.connect(this.ctx.destination);
+                        o.start(now); o.stop(now + 0.46);
+                    });
+                    return;
+                }
+                // 3. 狼人 / 冰狼 / 雪怪：野獸低吼咆哮
+                if (type === 'werewolf' || type === 'ice_wolf' || type === 'yeti') {
+                    const o = this.ctx.createOscillator(), g = this.ctx.createGain(), f = this.ctx.createBiquadFilter();
+                    o.type = 'sawtooth'; f.type = 'bandpass'; f.frequency.value = type === 'yeti' ? 220 : 380; f.Q.value = 2.2;
+                    const base = type === 'yeti' ? 95 : 175;
+                    o.frequency.setValueAtTime(isDeath ? base * 0.85 : base * 1.15, now);
+                    o.frequency.exponentialRampToValueAtTime(base * 0.52, now + 0.28);
+                    g.gain.setValueAtTime(0.11, now); g.gain.exponentialRampToValueAtTime(0.002, now + 0.3);
+                    o.connect(f); f.connect(g); g.connect(this.ctx.destination);
+                    o.start(now); o.stop(now + 0.31);
+                    return;
+                }
+                // 4. 夏洛柏毒蛛 / 沙漠巨蟻：甲殼嘶嘶與節肢喀嗒聲
+                if (type === 'shelob' || type === 'giant_ant') {
+                    [0, 0.06].forEach(off => {
+                        const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+                        o.type = 'square';
+                        o.frequency.setValueAtTime(isDeath ? 520 : 1180, now + off);
+                        o.frequency.exponentialRampToValueAtTime(320, now + off + 0.055);
+                        g.gain.setValueAtTime(0.055, now + off); g.gain.exponentialRampToValueAtTime(0.002, now + off + 0.06);
+                        o.connect(g); g.connect(this.ctx.destination);
+                        o.start(now + off); o.stop(now + off + 0.065);
+                    });
+                    return;
+                }
+                // 5. 骸骨劍士：清脆骸骨喀啦撞擊聲
+                if (type === 'skeleton') {
+                    [740, 510].forEach((fr, idx) => {
+                        const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+                        o.type = 'triangle';
+                        o.frequency.setValueAtTime(isDeath ? fr * 0.7 : fr, now + idx * 0.04);
+                        o.frequency.exponentialRampToValueAtTime(220, now + idx * 0.04 + 0.07);
+                        g.gain.setValueAtTime(0.09, now + idx * 0.04); g.gain.exponentialRampToValueAtTime(0.002, now + idx * 0.04 + 0.075);
+                        o.connect(g); g.connect(this.ctx.destination);
+                        o.start(now + idx * 0.04); o.stop(now + idx * 0.04 + 0.08);
+                    });
+                    return;
+                }
+                // 6. 遠古石魔像：沉重岩石崩裂低頻悶響
+                if (type === 'golem') {
+                    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+                    o.type = 'triangle';
+                    o.frequency.setValueAtTime(isDeath ? 95 : 115, now);
+                    o.frequency.exponentialRampToValueAtTime(34, now + 0.32);
+                    g.gain.setValueAtTime(0.18, now); g.gain.exponentialRampToValueAtTime(0.003, now + 0.34);
+                    o.connect(g); g.connect(this.ctx.destination);
+                    o.start(now); o.stop(now + 0.35);
+                    return;
+                }
+                // 7. 弓手類 (暗黑弓手 / 火焰弓手)：弓弦急彈「嗖！」聲
+                if (type === 'de_archer' || type === 'fire_archer') {
+                    const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+                    o.type = 'triangle';
+                    o.frequency.setValueAtTime(isDeath ? 240 : 480, now);
+                    o.frequency.exponentialRampToValueAtTime(isDeath ? 90 : 190, now + 0.14);
+                    g.gain.setValueAtTime(0.09, now); g.gain.exponentialRampToValueAtTime(0.002, now + 0.15);
+                    o.connect(g); g.connect(this.ctx.destination);
+                    o.start(now); o.stop(now + 0.16);
+                    return;
+                }
+                // 8. 史萊姆：Q 彈水泡啵滋聲；其他爬蟲／水怪／暗黑法師：低沉嘶鳴
+                const o = this.ctx.createOscillator(), g = this.ctx.createGain();
+                o.type = type === 'slime' ? 'sine' : 'sawtooth';
+                if (type === 'slime') {
+                    o.frequency.setValueAtTime(isDeath ? 360 : 220, now);
+                    o.frequency.exponentialRampToValueAtTime(isDeath ? 120 : 520, now + 0.12);
+                } else {
+                    o.frequency.setValueAtTime(isDeath ? 160 : 230, now);
+                    o.frequency.exponentialRampToValueAtTime(92, now + 0.22);
+                }
+                g.gain.setValueAtTime(0.075, now); g.gain.exponentialRampToValueAtTime(0.002, now + 0.24);
+                o.connect(g); g.connect(this.ctx.destination);
+                o.start(now); o.stop(now + 0.25);
+            }
         }
         const sound = new SoundEngine();
 
@@ -1089,129 +1201,185 @@
         }
         window.toggleSound = toggleSound;
 
-        // 熱血動漫搖滾 BGM 控制器 (支援自動讀取 assets/audio/dive.mp3 或匯入本機 MP3)
-        const bgmState = { enabled: true, audioEl: null, synthTimer: null, step: 0, customUrl: null };
-        // 天堂《說話之島／奇岩安全區》懷舊中世紀豎琴＋長笛＋溫暖弦樂背景音樂
+        // 分區動態背景音樂引擎：
+        // - 城鎮安全區：輪播 Flying (空靈情感弦樂鋼琴) ＆ Sweet Thoughts (溫柔八音盒豎琴)
+        // - 野外戰鬥區：自動切換 Battle Music (Universe Sounds 史詩戰鼓＋銅管戰鬥配樂)
+        // 若將原曲 MP3 放入 assets/audio/ (town_flying.mp3 / town_sweet.mp3 / field_battle.mp3) 將自動優先播放原曲！
+        const bgmState = {
+            enabled: true,
+            audioEl: null,
+            synthTimer: null,
+            step: 0,
+            customUrl: null,
+            activeZone: null,
+            mp3Available: { town: true, field: true },
+            townTrackIdx: 0
+        };
+
+        function getCurrentBgmZone() {
+            return isInSafeZone(player.x, player.y) ? 'town' : 'field';
+        }
+
         function startSynthBgmLoop() {
             if (bgmState.synthTimer || !bgmState.enabled) return;
-            // 經典中世紀小調和弦分解 (Am - F - C - G - Dm - Am - E7 - Am)
-            const chords = [
-                [220.00, 261.63, 329.63, 440.00], // Am
+            // (A) 城鎮曲目 1 —《Flying》風格：空靈溫暖情感鋼琴＋寬廣弦樂 Pad (C大調療癒進行)
+            const flyingChords = [
+                [261.63, 329.63, 392.00, 493.88], // Cmaj7
+                [220.00, 261.63, 329.63, 392.00], // Am7
+                [174.61, 220.00, 261.63, 329.63], // Fmaj7
+                [196.00, 246.94, 293.66, 392.00]  // G
+            ];
+            const flyingMel = [523.25, 0, 659.25, 587.33, 523.25, 0, 392.00, 0, 440.00, 0, 523.25, 659.25, 587.33, 0, 0, 0];
+
+            // (B) 城鎮曲目 2 —《Sweet Thoughts》風格：溫柔八音盒＋柔和豎琴 (F大調溫馨旋律)
+            const sweetChords = [
                 [174.61, 220.00, 261.63, 349.23], // F
-                [130.81, 196.00, 261.63, 329.63], // C
                 [196.00, 246.94, 293.66, 392.00], // G
-                [146.83, 220.00, 293.66, 349.23], // Dm
                 [220.00, 261.63, 329.63, 440.00], // Am
-                [164.81, 207.65, 246.94, 329.63], // E
-                [220.00, 261.63, 329.63, 440.00]  // Am
+                [130.81, 196.00, 261.63, 329.63]  // C
             ];
-            const fluteMelody = [
-                659.25, 0, 587.33, 523.25,  659.25, 0, 440.00, 0,
-                523.25, 0, 587.33, 659.25,  783.99, 0, 659.25, 0,
-                587.33, 659.25, 587.33, 523.25,  440.00, 0, 392.00, 440.00,
-                493.88, 0, 523.25, 493.88,  440.00, 0, 0, 0
-            ];
+            const sweetMel = [698.46, 659.25, 587.33, 0, 523.25, 587.33, 659.25, 0, 783.99, 659.25, 523.25, 0, 587.33, 0, 523.25, 0];
+
+            // (C) 野外戰鬥 —《Battle Music (Universe Sounds)》風格：定音鼓戰鼓＋急促低音弦樂＋史詩銅管
+            const battleBass = [110.00, 110.00, 130.81, 110.00, 98.00, 98.00, 116.54, 98.00, 87.31, 87.31, 110.00, 87.31, 82.41, 98.00, 110.00, 123.47];
+            const battleBrass = [440.00, 0, 440.00, 523.25, 587.33, 0, 523.25, 440.00, 392.00, 0, 440.00, 493.88, 523.25, 0, 659.25, 0];
+
             bgmState.synthTimer = setInterval(() => {
                 if (!bgmState.enabled || !sound.ctx || sound.ctx.state !== 'running') return;
+                const zone = getCurrentBgmZone();
+                // 若使用者放了對應區域的實體 MP3，自動嘗試切換
+                if (bgmState.activeZone !== zone && !bgmState.customUrl) {
+                    bgmState.activeZone = zone;
+                    trySwitchZoneMp3(zone);
+                    if (bgmState.audioEl) return;
+                }
                 const now = sound.ctx.currentTime;
                 const s = bgmState.step++;
-                // 偵測是否進入亞丁／奇岩城堡區域 (自動切換為皇家莊嚴管風琴＋號角進行曲！)
-                const inCastle = (player.y <= 23 && player.x >= 37 && player.x <= 71);
-                if (inCastle) {
-                    const royalChords = [
-                        [146.83, 220.00, 293.66, 369.99], // D major
-                        [196.00, 246.94, 293.66, 392.00], // G major
-                        [164.81, 220.00, 277.18, 329.63], // A major
-                        [146.83, 220.00, 293.66, 440.00]  // D major
-                    ];
-                    const brassMel = [587.33, 0, 587.33, 659.25, 739.99, 0, 659.25, 587.33, 783.99, 0, 739.99, 659.25, 587.33, 0, 440.00, 0];
-                    const rc = royalChords[Math.floor(s / 4) % royalChords.length];
-                    if (s % 4 === 0) {
-                        rc.forEach(freq => {
-                            const o = sound.ctx.createOscillator(), g = sound.ctx.createGain(), f = sound.ctx.createBiquadFilter();
-                            o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 620;
-                            o.frequency.setValueAtTime(freq, now);
-                            g.gain.setValueAtTime(0.001, now); g.gain.linearRampToValueAtTime(0.018, now + 0.14);
-                            g.gain.exponentialRampToValueAtTime(0.001, now + 1.48);
-                            o.connect(f); f.connect(g); g.connect(sound.ctx.destination);
-                            o.start(now); o.stop(now + 1.52);
-                        });
+
+                if (zone === 'field') {
+                    // 野外戰鬥：1. 低沉定音鼓戰鼓 (每 2 拍重擊)
+                    if (s % 2 === 0) {
+                        const ko = sound.ctx.createOscillator(), kg = sound.ctx.createGain();
+                        ko.type = 'sine';
+                        ko.frequency.setValueAtTime(s % 4 === 0 ? 115 : 88, now);
+                        ko.frequency.exponentialRampToValueAtTime(36, now + 0.16);
+                        kg.gain.setValueAtTime(s % 4 === 0 ? 0.13 : 0.08, now);
+                        kg.gain.exponentialRampToValueAtTime(0.002, now + 0.18);
+                        ko.connect(kg); kg.connect(sound.ctx.destination);
+                        ko.start(now); ko.stop(now + 0.19);
                     }
-                    const bf = brassMel[s % brassMel.length];
-                    if (bf > 0) {
-                        const o = sound.ctx.createOscillator(), g = sound.ctx.createGain(), f = sound.ctx.createBiquadFilter();
-                        o.type = 'sawtooth'; f.type = 'lowpass'; f.frequency.value = 1150;
-                        o.frequency.setValueAtTime(bf, now);
-                        g.gain.setValueAtTime(0.001, now); g.gain.linearRampToValueAtTime(0.026, now + 0.05);
-                        g.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
-                        o.connect(f); f.connect(g); g.connect(sound.ctx.destination);
-                        o.start(now); o.stop(now + 0.55);
+                    // 2. 急促低音大提琴 Ostinato
+                    const bf = battleBass[s % battleBass.length];
+                    const bo = sound.ctx.createOscillator(), bg = sound.ctx.createGain(), bflt = sound.ctx.createBiquadFilter();
+                    bo.type = 'sawtooth'; bflt.type = 'lowpass'; bflt.frequency.value = 460;
+                    bo.frequency.setValueAtTime(bf, now);
+                    bg.gain.setValueAtTime(0.001, now); bg.gain.linearRampToValueAtTime(0.048, now + 0.02);
+                    bg.gain.exponentialRampToValueAtTime(0.002, now + 0.24);
+                    bo.connect(bflt); bflt.connect(bg); bg.connect(sound.ctx.destination);
+                    bo.start(now); bo.stop(now + 0.26);
+
+                    // 3. 史詩銅管戰鬥主旋律
+                    const mf = battleBrass[s % battleBrass.length];
+                    if (mf > 0) {
+                        const mo = sound.ctx.createOscillator(), mg = sound.ctx.createGain(), mflt = sound.ctx.createBiquadFilter();
+                        mo.type = 'sawtooth'; mflt.type = 'lowpass'; mflt.frequency.value = 1280;
+                        mo.frequency.setValueAtTime(mf, now);
+                        mg.gain.setValueAtTime(0.001, now); mg.gain.linearRampToValueAtTime(0.032, now + 0.04);
+                        mg.gain.exponentialRampToValueAtTime(0.002, now + 0.42);
+                        mo.connect(mflt); mflt.connect(mg); mg.connect(sound.ctx.destination);
+                        mo.start(now); mo.stop(now + 0.45);
                     }
                     return;
                 }
-                const bar = Math.floor(s / 4) % chords.length;
-                const ch = chords[bar];
 
-                // 1. 撥弦中世紀豎琴琶音 (柔和自然衰減)
-                const harpFreq = ch[s % 4];
-                const ho = sound.ctx.createOscillator();
-                const hg = sound.ctx.createGain();
-                const hf = sound.ctx.createBiquadFilter();
-                ho.type = 'triangle';
-                hf.type = 'lowpass'; hf.frequency.setValueAtTime(1400, now); hf.frequency.exponentialRampToValueAtTime(420, now + 0.85);
-                ho.frequency.setValueAtTime(harpFreq, now);
+                // 城鎮安全區：每 32 步自動在《Flying》與《Sweet Thoughts》風格之間切換
+                const isSweet = Math.floor(s / 32) % 2 === 1;
+                const chords = isSweet ? sweetChords : flyingChords;
+                const mel = isSweet ? sweetMel : flyingMel;
+                const ch = chords[Math.floor(s / 4) % chords.length];
+
+                // 1. 溫暖空靈鋼琴／八音盒琶音
+                const noteFreq = ch[s % 4] * (isSweet ? 1.5 : 1.0);
+                const ho = sound.ctx.createOscillator(), hg = sound.ctx.createGain(), hf = sound.ctx.createBiquadFilter();
+                ho.type = isSweet ? 'sine' : 'triangle';
+                hf.type = 'lowpass'; hf.frequency.setValueAtTime(isSweet ? 2200 : 1300, now);
+                ho.frequency.setValueAtTime(noteFreq, now);
                 hg.gain.setValueAtTime(0.001, now);
-                hg.gain.linearRampToValueAtTime(0.048, now + 0.018);
-                hg.gain.exponentialRampToValueAtTime(0.001, now + 0.92);
+                hg.gain.linearRampToValueAtTime(isSweet ? 0.032 : 0.042, now + 0.02);
+                hg.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
                 ho.connect(hf); hf.connect(hg); hg.connect(sound.ctx.destination);
-                ho.start(now); ho.stop(now + 0.95);
+                ho.start(now); ho.stop(now + 0.88);
 
-                // 2. 每小節首拍加入溫暖低音弦樂 Pad
+                // 2. 寬廣溫暖弦樂 Pad (每小節首拍)
                 if (s % 4 === 0) {
-                    const po = sound.ctx.createOscillator();
-                    const pg = sound.ctx.createGain();
-                    const pf = sound.ctx.createBiquadFilter();
-                    po.type = 'sine';
-                    pf.type = 'lowpass'; pf.frequency.value = 320;
-                    po.frequency.setValueAtTime(ch[0] * 0.5, now);
-                    pg.gain.setValueAtTime(0.001, now);
-                    pg.gain.linearRampToValueAtTime(0.042, now + 0.35);
-                    pg.gain.exponentialRampToValueAtTime(0.001, now + 1.55);
-                    po.connect(pf); pf.connect(pg); pg.connect(sound.ctx.destination);
-                    po.start(now); po.stop(now + 1.6);
+                    ch.slice(0, 3).forEach(freq => {
+                        const po = sound.ctx.createOscillator(), pg = sound.ctx.createGain(), pf = sound.ctx.createBiquadFilter();
+                        po.type = 'sine'; pf.type = 'lowpass'; pf.frequency.value = 520;
+                        po.frequency.setValueAtTime(freq * 0.5, now);
+                        pg.gain.setValueAtTime(0.001, now);
+                        pg.gain.linearRampToValueAtTime(0.022, now + 0.35);
+                        pg.gain.exponentialRampToValueAtTime(0.001, now + 1.48);
+                        po.connect(pf); pf.connect(pg); pg.connect(sound.ctx.destination);
+                        po.start(now); po.stop(now + 1.52);
+                    });
                 }
 
-                // 3. 懷舊柔和長笛主旋律 (帶輕微自然顫音)
-                const mFreq = fluteMelody[s % fluteMelody.length];
+                // 3. 療癒主旋律
+                const mFreq = mel[s % mel.length];
                 if (mFreq > 0) {
-                    const fo = sound.ctx.createOscillator();
-                    const fg = sound.ctx.createGain();
+                    const fo = sound.ctx.createOscillator(), fg = sound.ctx.createGain();
                     fo.type = 'sine';
                     fo.frequency.setValueAtTime(mFreq, now);
                     fg.gain.setValueAtTime(0.001, now);
-                    fg.gain.linearRampToValueAtTime(0.032, now + 0.09);
+                    fg.gain.linearRampToValueAtTime(0.028, now + 0.07);
                     fg.gain.exponentialRampToValueAtTime(0.001, now + 0.72);
                     fo.connect(fg); fg.connect(sound.ctx.destination);
                     fo.start(now); fo.stop(now + 0.75);
                 }
-            }, 390);
+            }, 320);
         }
         function stopSynthBgmLoop() {
             if (bgmState.synthTimer) { clearInterval(bgmState.synthTimer); bgmState.synthTimer = null; }
         }
+        function trySwitchZoneMp3(zone) {
+            if (!bgmState.enabled || bgmState.customUrl || !bgmState.mp3Available[zone]) return;
+            const url = zone === 'field'
+                ? 'assets/audio/field_battle.mp3'
+                : (bgmState.townTrackIdx % 2 === 0 ? 'assets/audio/town_flying.mp3' : 'assets/audio/town_sweet.mp3');
+            const audio = new Audio(url);
+            audio.loop = (zone === 'field');
+            audio.volume = 0.34;
+            if (zone === 'town') {
+                audio.onended = () => { bgmState.townTrackIdx++; trySwitchZoneMp3('town'); };
+            }
+            audio.onerror = () => {
+                bgmState.mp3Available[zone] = false;
+                if (bgmState.audioEl === audio) bgmState.audioEl = null;
+                startSynthBgmLoop();
+            };
+            if (bgmState.audioEl) bgmState.audioEl.pause();
+            bgmState.audioEl = audio;
+            audio.play().then(() => stopSynthBgmLoop()).catch(() => {
+                bgmState.audioEl = null;
+                startSynthBgmLoop();
+            });
+        }
         function startBgm() {
             if (!bgmState.enabled) return;
             sound.init();
-            if (bgmState.audioEl) {
+            if (bgmState.customUrl) {
+                if (!bgmState.audioEl) {
+                    const audio = new Audio(bgmState.customUrl);
+                    audio.loop = true; audio.volume = 0.35;
+                    bgmState.audioEl = audio;
+                }
                 bgmState.audioEl.play().catch(() => startSynthBgmLoop());
                 return;
             }
-            const audio = new Audio(bgmState.customUrl || 'assets/audio/dive.mp3');
-            audio.loop = true;
-            audio.volume = 0.35;
-            audio.onerror = () => { bgmState.audioEl = null; startSynthBgmLoop(); };
-            bgmState.audioEl = audio;
-            audio.play().catch(() => startSynthBgmLoop());
+            const zone = getCurrentBgmZone();
+            bgmState.activeZone = zone;
+            trySwitchZoneMp3(zone);
+            if (!bgmState.audioEl) startSynthBgmLoop();
         }
         function toggleBgm() {
             bgmState.enabled = !bgmState.enabled;
@@ -4178,6 +4346,7 @@
 
             spawnHitSparks(target.x, target.y, '#ef4444', 18, target.isFlying ? 30 : 12);
             const distToMe = Math.hypot(target.x - player.x, target.y - player.y);
+            if (distToMe <= 14.0) sound.playMonsterSfx(target.type, 'death');
             if (!fromNetwork || distToMe <= 10.0) {
                 if (!fromNetwork) dropMonsterLoot(target, player.uid, window.partyState ? window.partyState.id : null);
                 const expGain = fromNetwork ? Math.round(target.exp * 0.75) : target.exp;
@@ -5062,6 +5231,13 @@
             if (netSyncAccum >= 0.15) {
                 netSyncAccum = 0;
                 broadcastPlayerState('sync');
+                if (bgmState.enabled && !bgmState.customUrl) {
+                    const z = getCurrentBgmZone();
+                    if (bgmState.activeZone && bgmState.activeZone !== z && bgmState.audioEl) {
+                        bgmState.activeZone = z;
+                        trySwitchZoneMp3(z);
+                    }
+                }
             }
 
             autoSaveAccum += dt;
@@ -5285,6 +5461,7 @@
                             const cfg = MONSTER_TYPES[m.type] || {};
                             m.attackCooldown = (m.type === 'drake' || m.type === 'water_dragon') ? 1.75 : (cfg.ranged ? 1.55 : 1.25);
                             m.attackAnimTimer = 0.35;
+                            sound.playMonsterSfx(m.type, 'attack');
 
                             const rawDmg = Math.floor(m.atkMin + Math.random() * (m.atkMax - m.atkMin + 1));
                             const finalDmg = Math.max(1, rawDmg - Math.floor(stats.totalDef * 0.55));
