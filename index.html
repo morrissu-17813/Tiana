@@ -7708,14 +7708,45 @@
         const mixamoAnimClips = {}; // 若放入 assets/models/anims/{idle,run,attack,cast,jump}.fbx 會自動載入真動捕動畫！
         const activeMixers = [];
 
-        // 背景靜默預載可選的 Mixamo 動作檔 (Without Skin, FBX Binary)
-        ['idle', 'run', 'attack', 'cast', 'jump'].forEach((aKey) => {
+        // 預載你的 Mixamo 真人動作捕捉檔 (idle / run / attack / attack2 雙段連擊!)
+        let mixamoAnimVersion = 0;
+        ['idle', 'run', 'attack', 'attack2'].forEach((aKey) => {
             fbxLoader.load(`./assets/models/anims/${aKey}.fbx`, (fbx) => {
                 if (fbx.animations && fbx.animations.length > 0) {
                     mixamoAnimClips[aKey] = fbx.animations[0];
+                    mixamoAnimVersion++;
                 }
             }, undefined, () => {});
         });
+
+        // 智慧骨名對齊 + 移除水平位移漂移 (確保 Mixamo 動畫 100% 精準套用到任何 Mixamo 角色且原地不跑偏！)
+        function retargetMixamoClip(srcClip, model) {
+            const boneNames = new Set();
+            const cleanToActual = new Map();
+            model.traverse((o) => {
+                if (o.name) {
+                    boneNames.add(o.name);
+                    cleanToActual.set(o.name.replace(/^mixamorig[:_]?/i, '').toLowerCase(), o.name);
+                }
+            });
+            const tracks = [];
+            for (const tr of srcClip.tracks) {
+                const dot = tr.name.indexOf('.');
+                if (dot < 0) continue;
+                const rawBone = tr.name.slice(0, dot);
+                const prop = tr.name.slice(dot + 1);
+                const actual = boneNames.has(rawBone)
+                    ? rawBone
+                    : cleanToActual.get(rawBone.replace(/^mixamorig[:_]?/i, '').toLowerCase());
+                if (!actual) continue;
+                // 濾除骨盆位置軌避免角色跑離中心點 (保留原地上下起伏與全身旋轉)
+                if (/hips$/i.test(actual) && prop === 'position') continue;
+                const cloned = tr.clone();
+                cloned.name = `${actual}.${prop}`;
+                tracks.push(cloned);
+            }
+            return new THREE.AnimationClip(srcClip.name + '_rt', srcClip.duration, tracks);
+        }
 
         function loadGlbCached(url, onDone, format = 'glb') {
             if (glbCache.has(url)) {
@@ -7834,7 +7865,7 @@
                     entry.weapR = sg;
                 }
 
-                // 若檔案本身帶動畫或已預載 assets/models/anims/*.fbx，啟動 AnimationMixer
+                // 若檔案本身帶動畫或已預載 assets/models/anims/*.fbx，啟動 AnimationMixer (自動支援骨名對齊與雙段連擊！)
                 const mixer = new THREE.AnimationMixer(model);
                 const bindExternalAnims = () => {
                     const clips = gltf.animations || [];
@@ -7842,17 +7873,19 @@
                     const cIdle = mixamoAnimClips.idle || pick(/Idle_swordRight|Idle/i) || clips[0];
                     const cRun = mixamoAnimClips.run || pick(/Run_swordRight|Run$|Walking/i);
                     const cAtk = mixamoAnimClips.attack || pick(/Run_swordAttack|swordAttack|Attack|Slash/i);
-                    const cCast = mixamoAnimClips.cast || pick(/Cast|Spell|Magic/i);
-                    const cJump = mixamoAnimClips.jump || pick(/Jump/i);
+                    const cAtk2 = mixamoAnimClips.attack2 || cAtk;
                     if (cIdle) {
-                        entry.actions.idle = mixer.clipAction(cIdle);
-                        entry.actions.run = mixer.clipAction(cRun || cIdle);
-                        entry.actions.attack = mixer.clipAction(cAtk || cRun || cIdle);
-                        entry.actions.cast = mixer.clipAction(cCast || cAtk || cIdle);
-                        entry.actions.jump = mixer.clipAction(cJump || cRun || cIdle);
-                        entry.actions.idle.play();
-                        entry.curAction = 'idle';
+                        const mkAct = (c) => mixer.clipAction(retargetMixamoClip(c, model));
+                        if (!entry.actions.idle) {
+                            entry.actions.idle = mkAct(cIdle);
+                            entry.actions.idle.play();
+                            entry.curAction = 'idle';
+                        }
+                        if (cRun && !entry.actions.run) entry.actions.run = mkAct(cRun);
+                        if (cAtk && !entry.actions.attack) entry.actions.attack = mkAct(cAtk);
+                        if (cAtk2 && !entry.actions.attack2) entry.actions.attack2 = mkAct(cAtk2);
                         entry.mixer = mixer;
+                        entry.animVer = mixamoAnimVersion;
                         if (!activeMixers.includes(mixer)) activeMixers.push(mixer);
                     }
                 };
@@ -7878,7 +7911,7 @@
             if (!useGlb) return;
 
             const ent = rig._charGlbs[key];
-            if (!ent.mixer && mixamoAnimClips.idle && ent.tryBindAnims) ent.tryBindAnims();
+            if (ent.animVer !== mixamoAnimVersion && ent.tryBindAnims) ent.tryBindAnims();
             const baseY = ent._baseY ?? (ent._baseY = ent.model.position.y);
             ent.model.position.y = baseY + (state.jumpZ || 0);
 
@@ -7889,14 +7922,13 @@
             }
 
             if (ent.mixer && ent.actions.idle) {
-                const desired = (state.castAnimTimer > 0 && ent.actions.cast) ? 'cast'
-                    : (state.swingAnimTimer > 0) ? 'attack'
-                    : ((state.jumpZ || 0) > 0.12 ? 'jump'
-                    : (state.isMoving ? 'run' : 'idle'));
+                const atkKey = ((state.swingCombo || 0) % 2 === 1 && ent.actions.attack2) ? 'attack2' : 'attack';
+                const desired = (state.swingAnimTimer > 0 || state.castAnimTimer > 0) ? (ent.actions[atkKey] ? atkKey : 'idle')
+                    : (state.isMoving ? (ent.actions.run ? 'run' : 'idle') : 'idle');
                 if (desired !== ent.curAction && ent.actions[desired]) {
                     const prev = ent.actions[ent.curAction];
                     const next = ent.actions[desired];
-                    next.reset().setEffectiveTimeScale(desired === 'attack' ? 1.65 : (desired === 'run' ? 1.15 : 1.0)).fadeIn(0.1).play();
+                    next.reset().setEffectiveTimeScale((desired === 'attack' || desired === 'attack2') ? 1.85 : (desired === 'run' ? 1.1 : 1.0)).fadeIn(0.1).play();
                     if (prev) prev.fadeOut(0.1);
                     ent.curAction = desired;
                 }
