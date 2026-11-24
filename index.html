@@ -6914,6 +6914,7 @@
         import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
         import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
         import { createModelFactory } from './js/models3d.js?v=20261124c';
@@ -7688,12 +7689,12 @@
         // 使用者只要把 AI 生成的 .glb 放進 assets/models/ 並在這裡開啟對應路徑，就會自動替換成外部 3D 模型！
         // 找不到檔案時會自動無縫退回內建高精細程序化 3D 模型，完全不會報錯。
         const EXTERNAL_GLB_CONFIG = {
-            enabled: true, // 已內建免費 CC0 .glb 寫實模型 (主角騎士/法師 + 怪物)
+            enabled: true, // 已直接套用你的 Mixamo 寫實角色 (character.fbx / character2.fbx) + CC0 怪物
             models: {
-                knight:   { url: './assets/models/paladin.glb',  targetHeight: 1.92, yOffset: 0 },
-                mage:     { url: './assets/models/mage.glb',     targetHeight: 1.88, yOffset: 0 },
-                werewolf: { url: './assets/models/werewolf.glb', targetHeight: 1.45, yOffset: 0 },
-                shelob:   { url: './assets/models/shelob.glb',   targetHeight: 1.05, yOffset: 0 }
+                knight:   { url: './assets/models/character.fbx',  format: 'fbx', targetHeight: 1.94, yOffset: 0 },
+                mage:     { url: './assets/models/character2.fbx', format: 'fbx', targetHeight: 1.90, yOffset: 0 },
+                werewolf: { url: './assets/models/werewolf.glb',   format: 'glb', targetHeight: 1.45, yOffset: 0 },
+                shelob:   { url: './assets/models/shelob.glb',     format: 'glb', targetHeight: 1.05, yOffset: 0 }
             }
         };
         window.EXTERNAL_GLB_CONFIG = EXTERNAL_GLB_CONFIG;
@@ -7702,13 +7703,34 @@
         const dracoLoader = new DRACOLoader();
         dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
         gltfLoader.setDRACOLoader(dracoLoader);
+        const fbxLoader = new FBXLoader();
         const glbCache = new Map();
+        const mixamoAnimClips = {}; // 若放入 assets/models/anims/{idle,run,attack,cast,jump}.fbx 會自動載入真動捕動畫！
         const activeMixers = [];
 
-        function loadGlbCached(url, onDone) {
+        // 背景靜默預載可選的 Mixamo 動作檔 (Without Skin, FBX Binary)
+        ['idle', 'run', 'attack', 'cast', 'jump'].forEach((aKey) => {
+            fbxLoader.load(`./assets/models/anims/${aKey}.fbx`, (fbx) => {
+                if (fbx.animations && fbx.animations.length > 0) {
+                    mixamoAnimClips[aKey] = fbx.animations[0];
+                }
+            }, undefined, () => {});
+        });
+
+        function loadGlbCached(url, onDone, format = 'glb') {
             if (glbCache.has(url)) {
                 const cached = glbCache.get(url);
                 if (cached) onDone(cached);
+                return;
+            }
+            if (format === 'fbx' || /\.fbx$/i.test(url)) {
+                fbxLoader.load(url, (fbx) => {
+                    const wrapped = { scene: fbx, animations: fbx.animations || [] };
+                    glbCache.set(url, wrapped);
+                    onDone(wrapped);
+                }, undefined, () => {
+                    glbCache.set(url, null);
+                });
                 return;
             }
             gltfLoader.load(url, (gltf) => {
@@ -7719,18 +7741,31 @@
             });
         }
 
-        // 專屬主角／遠端玩家 CC0 骨架 .glb 控制器 (支援真動作捕捉交叉淡入 + 手部發光附魔武器掛點 + 變身自動切回)
+        // 專屬主角／遠端玩家 Mixamo .fbx & CC0 .glb 控制器 (支援真動捕動畫交叉淡入 + 即時 Mixamo 骨骼驅動 + 手部發光武器掛點)
         function ensurePlayerClassGlb(rig, cls) {
             if (!EXTERNAL_GLB_CONFIG.enabled) return;
             const key = (cls === 'mage') ? 'mage' : 'knight';
             if (!rig._charGlbs) rig._charGlbs = {};
-            if (rig._charGlbs[key] !== undefined) return; // 已載入或載入中
+            if (rig._charGlbs[key] !== undefined) return;
             rig._charGlbs[key] = 'loading';
             const cfg = EXTERNAL_GLB_CONFIG.models[key];
             if (!cfg || !cfg.url) return;
 
             loadGlbCached(cfg.url, (gltf) => {
                 const model = SkeletonUtils.clone(gltf.scene);
+                // 修正 Mixamo FBX 材質透明度與陰影，避免貼圖偏暗
+                model.traverse((obj) => {
+                    if (obj.isMesh) {
+                        obj.castShadow = true;
+                        obj.receiveShadow = true;
+                        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+                        mats.forEach((m) => {
+                            if (!m) return;
+                            if (m.transparent && m.opacity === 0) { m.opacity = 1; m.transparent = false; }
+                            if (m.shininess !== undefined) m.shininess = Math.min(35, m.shininess);
+                        });
+                    }
+                });
                 const box = new THREE.Box3().setFromObject(model);
                 const size = new THREE.Vector3();
                 box.getSize(size);
@@ -7738,26 +7773,29 @@
                 model.scale.setScalar(sc);
                 const box2 = new THREE.Box3().setFromObject(model);
                 model.position.y = (cfg.yOffset || 0) - box2.min.y;
-                setShadows(model, true);
                 model.visible = false;
                 rig.root.add(model);
 
-                const entry = { model, mixer: null, actions: {}, curAction: null, bones: {}, weapR: null, weapL: null };
+                const entry = { model, mixer: null, actions: {}, curAction: null, bones: {}, weapR: null, weapL: null, isMixamo: false };
                 model.traverse((obj) => {
-                    if (obj.isBone || obj.name) {
-                        const n = obj.name || '';
-                        if (/^(Palm\.R|Hand\.R)$/i.test(n)) entry.bones.handR = obj;
-                        else if (/^(Palm\.L|Hand\.L)$/i.test(n)) entry.bones.handL = obj;
-                        else if (/^UpperArm\.R$/i.test(n)) entry.bones.armR = obj;
-                        else if (/^UpperArm\.L$/i.test(n)) entry.bones.armL = obj;
-                        else if (/^UpperLeg\.R$/i.test(n)) entry.bones.legR = obj;
-                        else if (/^UpperLeg\.L$/i.test(n)) entry.bones.legL = obj;
-                        else if (/^Torso$/i.test(n)) entry.bones.torso = obj;
-                        else if (/^Head$/i.test(n)) entry.bones.head = obj;
-                    }
+                    const n = (obj.name || '').replace(/^mixamorig[:_]?/i, '');
+                    if (/mixamorig/i.test(obj.name || '')) entry.isMixamo = true;
+                    if (!obj.isBone && !entry.isMixamo) return;
+                    if (/^(RightHand|Palm\.R|Hand\.R)$/i.test(n)) entry.bones.handR = obj;
+                    else if (/^(LeftHand|Palm\.L|Hand\.L)$/i.test(n)) entry.bones.handL = obj;
+                    else if (/^(RightArm|UpperArm\.R)$/i.test(n)) entry.bones.armR = obj;
+                    else if (/^(LeftArm|UpperArm\.L)$/i.test(n)) entry.bones.armL = obj;
+                    else if (/^(RightForeArm|LowerArm\.R)$/i.test(n)) entry.bones.foreR = obj;
+                    else if (/^(LeftForeArm|LowerArm\.L)$/i.test(n)) entry.bones.foreL = obj;
+                    else if (/^(RightUpLeg|UpperLeg\.R)$/i.test(n)) entry.bones.legR = obj;
+                    else if (/^(LeftUpLeg|UpperLeg\.L)$/i.test(n)) entry.bones.legL = obj;
+                    else if (/^(RightLeg|LowerLeg\.R)$/i.test(n)) entry.bones.kneeR = obj;
+                    else if (/^(LeftLeg|LowerLeg\.L)$/i.test(n)) entry.bones.kneeL = obj;
+                    else if (/^(Spine1|Spine|Torso)$/i.test(n) && !entry.bones.torso) entry.bones.torso = obj;
+                    else if (/^Head$/i.test(n)) entry.bones.head = obj;
                 });
 
-                // 掛載發光強化武器於手掌骨架 (讓 +10~+60 武器發光在真實 .glb 角色手上同樣耀眼！)
+                // 掛載發光強化武器於手掌骨架 (讓 +10~+60 武器發光在真實 Mixamo 角色手上同樣耀眼！)
                 if (key === 'knight' && entry.bones.handR && rig.bladeMat && rig.bladeAuraMat) {
                     const invSc = 1 / sc;
                     const mkGlbBlade = (len) => {
@@ -7796,25 +7834,32 @@
                     entry.weapR = sg;
                 }
 
-                // 建立動畫狀態機 (Idle / Run / Attack / Jump)
-                if (gltf.animations && gltf.animations.length > 0) {
-                    const mixer = new THREE.AnimationMixer(model);
-                    const pick = (re) => gltf.animations.find(c => re.test(c.name));
-                    const cIdle = pick(/Idle_swordRight|Idle/i) || gltf.animations[0];
-                    const cRun = pick(/Run_swordRight|Run$|Walking/i) || cIdle;
-                    const cAtk = pick(/Run_swordAttack|swordAttack|Attack/i) || cRun;
-                    const cJump = pick(/Jump/i) || cRun;
-                    entry.actions.idle = mixer.clipAction(cIdle);
-                    entry.actions.run = mixer.clipAction(cRun);
-                    entry.actions.attack = mixer.clipAction(cAtk);
-                    entry.actions.jump = mixer.clipAction(cJump);
-                    entry.actions.idle.play();
-                    entry.curAction = 'idle';
-                    entry.mixer = mixer;
-                    activeMixers.push(mixer);
-                }
+                // 若檔案本身帶動畫或已預載 assets/models/anims/*.fbx，啟動 AnimationMixer
+                const mixer = new THREE.AnimationMixer(model);
+                const bindExternalAnims = () => {
+                    const clips = gltf.animations || [];
+                    const pick = (re) => clips.find(c => re.test(c.name));
+                    const cIdle = mixamoAnimClips.idle || pick(/Idle_swordRight|Idle/i) || clips[0];
+                    const cRun = mixamoAnimClips.run || pick(/Run_swordRight|Run$|Walking/i);
+                    const cAtk = mixamoAnimClips.attack || pick(/Run_swordAttack|swordAttack|Attack|Slash/i);
+                    const cCast = mixamoAnimClips.cast || pick(/Cast|Spell|Magic/i);
+                    const cJump = mixamoAnimClips.jump || pick(/Jump/i);
+                    if (cIdle) {
+                        entry.actions.idle = mixer.clipAction(cIdle);
+                        entry.actions.run = mixer.clipAction(cRun || cIdle);
+                        entry.actions.attack = mixer.clipAction(cAtk || cRun || cIdle);
+                        entry.actions.cast = mixer.clipAction(cCast || cAtk || cIdle);
+                        entry.actions.jump = mixer.clipAction(cJump || cRun || cIdle);
+                        entry.actions.idle.play();
+                        entry.curAction = 'idle';
+                        entry.mixer = mixer;
+                        if (!activeMixers.includes(mixer)) activeMixers.push(mixer);
+                    }
+                };
+                bindExternalAnims();
+                entry.tryBindAnims = bindExternalAnims;
                 rig._charGlbs[key] = entry;
-            });
+            }, cfg.format || 'glb');
         }
 
         function updatePlayerClassGlb(rig, state, t, dt) {
@@ -7822,7 +7867,7 @@
             ensurePlayerClassGlb(rig, key);
             const useGlb = EXTERNAL_GLB_CONFIG.enabled && !state.polyForm && rig._charGlbs && rig._charGlbs[key] && rig._charGlbs[key] !== 'loading';
 
-            // 變身時顯示內建變身骨架，平時無縫顯示真實 CC0 .glb 角色！
+            // 變身時顯示內建變身骨架，平時無縫顯示真實 Mixamo / CC0 3D 角色！
             if (rig.body) rig.body.visible = !useGlb;
             if (rig._charGlbs) {
                 for (const k in rig._charGlbs) {
@@ -7833,43 +7878,68 @@
             if (!useGlb) return;
 
             const ent = rig._charGlbs[key];
-            // 同步跳躍高度
+            if (!ent.mixer && mixamoAnimClips.idle && ent.tryBindAnims) ent.tryBindAnims();
             const baseY = ent._baseY ?? (ent._baseY = ent.model.position.y);
             ent.model.position.y = baseY + (state.jumpZ || 0);
 
-            // 武器外型比例 (雙手劍加長 / 雙刀顯示副手刀)
             if (key === 'knight' && ent.weapR) {
                 const wc = state.weaponClass || '1h_sword';
                 ent.weapR.scale.y = (wc === '2h_sword' ? 1.45 : (wc === 'dagger' ? 0.72 : 1.0)) * (1 / ent.model.scale.x);
                 if (ent.weapL) ent.weapL.visible = (wc === 'dagger');
             }
 
-            // 有內建動畫 (paladin.glb)：流暢交叉淡入切換 Idle / Run / Attack / Jump！
             if (ent.mixer && ent.actions.idle) {
-                const desired = (state.swingAnimTimer > 0) ? 'attack'
+                const desired = (state.castAnimTimer > 0 && ent.actions.cast) ? 'cast'
+                    : (state.swingAnimTimer > 0) ? 'attack'
                     : ((state.jumpZ || 0) > 0.12 ? 'jump'
                     : (state.isMoving ? 'run' : 'idle'));
                 if (desired !== ent.curAction && ent.actions[desired]) {
                     const prev = ent.actions[ent.curAction];
                     const next = ent.actions[desired];
-                    next.reset().setEffectiveTimeScale(desired === 'attack' ? 1.75 : (desired === 'run' ? 1.15 : 1.0)).fadeIn(0.1).play();
+                    next.reset().setEffectiveTimeScale(desired === 'attack' ? 1.65 : (desired === 'run' ? 1.15 : 1.0)).fadeIn(0.1).play();
                     if (prev) prev.fadeOut(0.1);
                     ent.curAction = desired;
                 }
             } else {
-                // 無內建動畫但有完整骨架 (mage.glb Witch)：即時驅動真實蒙皮骨骼！
+                // T-Pose Mixamo 骨架即時自然動作驅動 (自動垂下雙臂脫離 T-Pose + 邁步屈膝 + 揮斬／施法！)
                 const stride = (state.isMoving && (state.jumpZ || 0) < 0.05) ? Math.sin(state.walkCycle) : 0;
+                const breath = Math.sin(t * 2.2);
                 const b = ent.bones;
-                if (b.legL) b.legL.rotation.x = stride * 0.55;
-                if (b.legR) b.legR.rotation.x = -stride * 0.55;
-                if (b.torso) b.torso.rotation.y = Math.sin(t * 1.8) * 0.05 + stride * 0.08;
+                const wc = state.weaponClass || '1h_sword';
+                const isSwinging = state.swingAnimTimer > 0;
+                const isCasting = state.castAnimTimer > 0;
+                const p = isSwinging ? (1 - clamp(state.swingAnimTimer / 0.26, 0, 1)) : 0;
+                const cdir = (state.swingCombo % 2 === 0) ? 1 : -1;
+
+                if (b.legL) b.legL.rotation.x = lerp(b.legL.rotation.x, (state.jumpZ > 0.1 ? -0.45 : stride * 0.58), clamp(dt * 14, 0, 1));
+                if (b.legR) b.legR.rotation.x = lerp(b.legR.rotation.x, (state.jumpZ > 0.1 ? 0.35 : -stride * 0.58), clamp(dt * 14, 0, 1));
+                if (b.kneeL) b.kneeL.rotation.x = lerp(b.kneeL.rotation.x, Math.max(0, -stride * 0.55) + 0.08, clamp(dt * 14, 0, 1));
+                if (b.kneeR) b.kneeR.rotation.x = lerp(b.kneeR.rotation.x, Math.max(0, stride * 0.55) + 0.08, clamp(dt * 14, 0, 1));
+                if (b.torso) {
+                    const ty = isSwinging ? lerp(-0.55 * cdir, 0.6 * cdir, smooth(p)) : (breath * 0.03 + stride * 0.08);
+                    b.torso.rotation.y = lerp(b.torso.rotation.y, ty, clamp(dt * 12, 0, 1));
+                    b.torso.rotation.x = lerp(b.torso.rotation.x, state.isMoving ? 0.12 : 0.04 + breath * 0.02, clamp(dt * 10, 0, 1));
+                }
                 if (b.armR) {
-                    const castLift = (state.castAnimTimer > 0 || state.swingAnimTimer > 0) ? -1.1 : -0.15;
-                    b.armR.rotation.x = lerp(b.armR.rotation.x, castLift - stride * 0.25, clamp(dt * 12, 0, 1));
+                    // Mixamo T-Pose 雙臂水平展開，Z 軸旋轉約 -1.15 / +1.15 自然放下！
+                    const rz = isSwinging ? lerp(-0.4, -1.25, smooth(p)) : (isCasting ? -0.55 : -1.12);
+                    const rx = isSwinging
+                        ? (wc === '2h_sword' ? lerp(0.95, -1.45, smooth(p)) : lerp(-1.45, 0.75, smooth(p)))
+                        : (isCasting ? -1.15 : (wc === '2h_sword' ? 0.45 : -0.22 - stride * 0.3));
+                    b.armR.rotation.z = lerp(b.armR.rotation.z, rz, clamp(dt * 14, 0, 1));
+                    b.armR.rotation.x = lerp(b.armR.rotation.x, rx, clamp(dt * 14, 0, 1));
+                }
+                if (b.foreR) {
+                    b.foreR.rotation.y = lerp(b.foreR.rotation.y, isSwinging ? -0.35 : -0.45, clamp(dt * 12, 0, 1));
                 }
                 if (b.armL) {
-                    const bookLift = (state.castAnimTimer > 0) ? -0.95 : -0.35;
-                    b.armL.rotation.x = lerp(b.armL.rotation.x, bookLift + stride * 0.2, clamp(dt * 12, 0, 1));
+                    const lz = (isSwinging && wc === 'dagger') ? lerp(0.5, 1.2, smooth(p)) : (isCasting ? 0.65 : 1.12);
+                    const lx = (isSwinging && wc === 'dagger') ? lerp(0.5, -1.35, smooth(p)) : (isCasting ? -0.85 : -0.18 + stride * 0.3);
+                    b.armL.rotation.z = lerp(b.armL.rotation.z, lz, clamp(dt * 14, 0, 1));
+                    b.armL.rotation.x = lerp(b.armL.rotation.x, lx, clamp(dt * 14, 0, 1));
+                }
+                if (b.foreL) {
+                    b.foreL.rotation.y = lerp(b.foreL.rotation.y, 0.42, clamp(dt * 12, 0, 1));
                 }
             }
         }
